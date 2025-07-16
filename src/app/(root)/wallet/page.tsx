@@ -81,6 +81,7 @@ export default function MoneyTransactionsPage() {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           credentials: 'include',
         });
@@ -114,7 +115,10 @@ export default function MoneyTransactionsPage() {
           const token = getTokenFromCookies();
           const res = await fetch(`${BACKEND}/payment/order/check/${odrId}`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json", },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({
               status: "Completed"
             }),
@@ -222,7 +226,10 @@ export default function MoneyTransactionsPage() {
 
       const response = await fetch(`${BACKEND}/payment/order/create`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(orderBody),
         credentials: 'include',
       });

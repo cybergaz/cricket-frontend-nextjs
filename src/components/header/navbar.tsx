@@ -22,10 +22,13 @@ const Navbar = () => {
   useEffect(() => {
     // Check for token in cookies
     const checkAuth = async () => {
-      const userDetails = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/whoami`, { credentials: "include", });
-      if (userDetails.status === 200) {
-        setIsUserAuthenticated(true);
-      }
+      // const userDetails = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/whoami`, { credentials: "include", });
+      // if (userDetails.status === 200) {
+      //   setIsUserAuthenticated(true);
+      const cookies = document.cookie.split(';');
+      const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
+      setIsUserAuthenticated(!!tokenCookie);
+      // }
     }
 
     checkAuth();

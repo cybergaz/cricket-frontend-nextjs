@@ -133,29 +133,33 @@ interface BackendResponse {
 }
 
 const isUserAdmin = async (request: NextRequest) => {
-  // const token = request.cookies.get("token")?.value;
-  // if (!token) {
-  //   return { suceess: false, message: "No token found" };
-  // }
+  const token = request.cookies.get("token")?.value;
+  if (!token) {
+    return { suceess: false, message: "No token found" };
+  }
 
   try {
-    const userDetails = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/whoami`, { credentials: "include", });
-    if (userDetails.status === 200 && (await userDetails.json()).user.isAdmin) {
-      return { success: true, message: "User is Admin" };
-    }
-    return { success: false, message: "user is not admin" };
-
-    // const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/is-admin`, {
-    //   method: "GET",
-    //   credentials: "include",
-    // });
-    //
-    // const data: BackendResponse = await response.json();
-    // if (response.status === 200) {
+    // const userDetails = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/whoami`, { credentials: "include", });
+    // if (userDetails.status === 200 && (await userDetails.json()).user.isAdmin) {
     //   return { success: true, message: "User is Admin" };
-    // } else {
-    //   return { success: false, message: data.message || "User is not an admin" };
     // }
+    // return { success: false, message: "user is not admin" };
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/is-admin`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      credentials: "include",
+    });
+
+    const data: BackendResponse = await response.json();
+    if (response.status === 200) {
+      return { success: true, message: "User is Admin" };
+    } else {
+      return { success: false, message: data.message || "User is not an admin" };
+    }
   } catch (error) {
     return { success: false, message: "Error checking admin status" }
   }
@@ -182,6 +186,10 @@ export const setUserIntoGlobalStore = async (token: string) => {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/user`, {
       method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       credentials: "include",
     });
 

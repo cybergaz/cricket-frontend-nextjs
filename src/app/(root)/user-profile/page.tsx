@@ -56,7 +56,8 @@ export default function UserProfile() {
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/upload/upload-profile`, {
           method: "POST",
           headers: {
-            'Content-Type': 'multipart/form-data',
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: formData,
           credentials: 'include'
@@ -101,7 +102,10 @@ export default function UserProfile() {
         const token = getTokenFromCookies();
         const res = await fetch(`${BACKEND}/user/data`, {
           method: "GET",
-          headers: { "Content-Type": "application/json", },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           credentials: "include"
         });
         const data = await res.json();
@@ -117,8 +121,10 @@ export default function UserProfile() {
     })();
 
   }, []);
-  const handleLogout = () => {
+  const handleLogout = async () => {
     // Remove only the "token" cookie
+
+    // await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/logout`, { method: 'POST', credentials: "include" });
     document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     router.replace("/login");
   };

@@ -32,7 +32,10 @@ export const buyPlayer = async (player: BettingPlayer, price: string, quantity: 
 
     const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/buy-player`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ player, price, quantity, match_id }),
       credentials: 'include',
     });
@@ -55,7 +58,10 @@ export const sellPlayer = async (player: BettingPlayer, price: string, quantity:
 
     const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/sell-player`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ player, price, quantity, match_id }),
       credentials: 'include',
     });
@@ -78,7 +84,10 @@ export const buyTeam = async (team: Team, price: string, quantity: string, match
 
     const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/buy-team`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ team, price, quantity, match_id }),
       credentials: 'include',
     });
@@ -101,7 +110,10 @@ export const sellTeam = async (team: Team, price: string, quantity: string, matc
 
     const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/sell-team`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ team, price, quantity, match_id }),
       credentials: 'include',
     });
