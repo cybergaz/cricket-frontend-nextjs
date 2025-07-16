@@ -165,8 +165,11 @@ export {
 };
 
 export const isAuthenticated = async (request: NextRequest) => {
-  const token = request.cookies.get("token")?.value;
-  return !!token;
+  const userDetails = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/whoami`, { credentials: "include", });
+  if (userDetails.status === 200) {
+    return true
+  }
+  return false
 };
 
 export const setUserIntoGlobalStore = async (token: string) => {
