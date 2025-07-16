@@ -32,7 +32,9 @@ class HttpClient {
     if (options.body && config.method !== 'GET') {
       if (options.body instanceof FormData) {
         // Remove Content-Type header for FormData (browser will set it with boundary)
-        delete config.headers['Content-Type'];
+        if (config.headers) {
+          delete (config.headers as Record<string, string>)['Content-Type'];
+        }
         config.body = options.body;
       } else {
         config.body = JSON.stringify(options.body);

@@ -52,7 +52,7 @@ export const apiCallExample = async () => {
   } catch (error) {
     console.error('API call failed:', error);
     // If 401, user needs to login again
-    if (error.message.includes('401')) {
+    if (error instanceof Error && error.message.includes('401')) {
       window.location.href = '/login';
     }
   }
