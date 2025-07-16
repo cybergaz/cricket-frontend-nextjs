@@ -4,7 +4,9 @@ import { isAuthenticated, isUserAdmin } from "@/lib/helper";
 import { UNPROTECTED_ROUTES } from "./lib/constants";
 
 type Environment = "production" | "development" | "other";
+
 export async function middleware(request: NextRequest) {
+  console.log("Middleware triggered for request:", request.nextUrl.pathname);
   const currentEnv = process.env.DEPLOY_ENV as Environment;
 
   if (currentEnv === 'production' && request.headers.get("x-forwarded-proto") !== "https") {
@@ -18,6 +20,8 @@ export async function middleware(request: NextRequest) {
   const isPublicPath = UNPROTECTED_ROUTES.includes(pathname);
 
   const isAuth = await isAuthenticated(request);
+  console.log("Is Authenticated:", isAuth);
+
   let isAdmin = false;
   if (isAuth) {
     const isadmin_result = await isUserAdmin(request);

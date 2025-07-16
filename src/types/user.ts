@@ -105,4 +105,5 @@ export interface User {
   transactions: Transaction[];
   portfolio: PlayerHolding[];
   teamPortfolio: TeamHolding[];
+
 }

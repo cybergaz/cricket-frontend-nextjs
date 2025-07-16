@@ -16,7 +16,6 @@ const login = async (mobile: string, password: string): Promise<LoginResponse> =
       method: "POST",
       headers: { "Content-Type": "application/json", },
       body: JSON.stringify({ mobile, password }),
-      credentials: 'include',
     });
 
     const data = await res.json();

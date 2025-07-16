@@ -85,6 +85,8 @@ export default function AuthPage() {
         .find(row => row.startsWith('token='))
         ?.split('=')[1];
 
+      console.log("token mil gya re", token)
+
       if (token) {
         router.push("/home"); // navigate to home if token exists
       }
