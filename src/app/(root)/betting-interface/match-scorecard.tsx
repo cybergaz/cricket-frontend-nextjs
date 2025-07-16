@@ -72,6 +72,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
   const battingTeam = currentInnings && data?.teama && data?.teamb ? (currentInnings.batting_team_id === data.teama.team_id ? data.teama : data.teamb) : null;
   const bowlingTeam = currentInnings && data?.teama && data?.teamb ? (currentInnings.batting_team_id === data.teama.team_id ? data.teamb : data.teama) : null;
   const matchNotesNormalized: string[][] = data && data.match_notes ? (Array.isArray(data.match_notes?.[0]) ? data.match_notes as unknown as string[][] : [[data.match_notes as string]]) : [[]];
+
   const basePrice =
     bettingNumber < 3
       ? 30

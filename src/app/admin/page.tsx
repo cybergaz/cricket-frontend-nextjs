@@ -48,10 +48,7 @@ const dashboardApi = {
   getTeamMembers: async () => {
     const res = await fetch(`${BACKEND_URL}/admin/fetch-all-admins`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${getCookie("token")}`,
-      },
+      credentials: "include"
     });
     if (!res.ok) throw new Error('Failed to fetch team members');
     return res.json();
@@ -59,10 +56,7 @@ const dashboardApi = {
   getProfitableUsers: async () => {
     const res = await fetch(`${BACKEND_URL}/admin/fetch-profitable-users`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${getCookie("token")}`,
-      },
+      credentials: "include"
     });
     if (!res.ok) throw new Error('Failed to fetch team members');
     return res.json();
@@ -70,10 +64,7 @@ const dashboardApi = {
   getLosingUsers: async () => {
     const res = await fetch(`${BACKEND_URL}/admin/fetch-users-having-loss`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${getCookie("token")}`,
-      },
+      credentials: "include"
     });
     if (!res.ok) throw new Error('Failed to fetch team members');
     return res.json();
@@ -81,10 +72,7 @@ const dashboardApi = {
   getTransactions: async () => {
     const res = await fetch(`${BACKEND_URL}/admin/fetch-total-transactions`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${getCookie("token")}`,
-      },
+      credentials: "include"
     });
     if (!res.ok) throw new Error('Failed to fetch total transactions');
     return res.json();

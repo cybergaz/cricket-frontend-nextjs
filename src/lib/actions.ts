@@ -14,19 +14,18 @@ const login = async (mobile: string, password: string): Promise<LoginResponse> =
   try {
     const res = await fetch(`${BACKEND_URL}/auth/login`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json", },
       body: JSON.stringify({ mobile, password }),
+      credentials: 'include',
     });
 
     const data = await res.json();
 
     if (res.ok && data.token) {
       // localStorage.setItem("token", data.token);
-      document.cookie = `token=${data.token}; path=/; secure;`;
+      // document.cookie = `token=${data.token}; path=/; secure;`;
       toast.success("Login successful! Welcome to Dashboard.");
-      setUserIntoGlobalStore(data.token)
+      // setUserIntoGlobalStore(data.token)
       return { success: true, message: data.message };
     }
 
@@ -60,25 +59,24 @@ const handleGoogleSuccess = async (
   try {
     const res = await fetch(`${BACKEND_URL}/auth/google-login`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json", },
       body: JSON.stringify({ tokenId }),
+      credentials: "include",
     });
 
     if (!res.ok) {
       throw new Error("Failed to login");
     }
 
-    const data: GoogleLoginResponse = await res.json();
-
-    if (data.token) {
-      document.cookie = `token=${data.token}; path=/; secure;`;
-      toast.success("Login successful! Welcome to Dashboard.");
-      setUserIntoGlobalStore(data.token)
-      window.location.href = "/home";
-      return { success: true, message: data.message };
-    }
+    // const data: GoogleLoginResponse = await res.json();
+    //
+    // if (data.token) {
+    //   document.cookie = `token=${data.token}; path=/; secure;`;
+    //   toast.success("Login successful! Welcome to Dashboard.");
+    //   setUserIntoGlobalStore(data.token)
+    //   window.location.href = "/home";
+    //   return { success: true, message: data.message };
+    // }
 
     return { success: false, message: "No token returned from server." };
   } catch (error) {

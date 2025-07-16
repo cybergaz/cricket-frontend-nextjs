@@ -39,7 +39,7 @@ const AccessDeniedPage = async () => {
           </div>
 
           <Button variant="outline" asChild className="w-full bg-white/60 text-black">
-            <Link href="/">
+            <Link href="/home">
               <Home className="h-4 w-4 mr-2" />
               Return Home
             </Link>

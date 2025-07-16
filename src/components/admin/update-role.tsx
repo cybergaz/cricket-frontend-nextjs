@@ -22,14 +22,12 @@ const UpdateRole = ({ children, user_id }: { children: React.ReactNode, user_id:
 
       const response = await fetch(`${BACKEND_URL}/admin/promote-user-to-admin`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", },
         body: JSON.stringify({
           id: user_id,
           role: selectedRole,
-        })
+        }),
+        credentials: 'include',
       });
 
       const data = await response.json();

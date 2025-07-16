@@ -7,6 +7,7 @@ import MatchScorecard from "./match-scorecard";
 import { Loading } from "./components/Loading";
 import { Error } from "./components/Error";
 import YetToStart from "./components/yet-to-start";
+// import sample from "./sample.json"
 
 export default function BettingPage() {
   const [matchData, setMatchData] = useState<CricketMatchData | null>(null);

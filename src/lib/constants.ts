@@ -2,8 +2,9 @@ export const NAVLINKS = [
   { title: "Home", href: "/home" },
   { title: "Live Matches", href: "/live-matches" },
   { title: "Portfolio", href: "/portfolio" },
-  { title: "Contact", href: "/contact" },
+  { title: "Wallet", href: "/wallet" },
   { title: "About Us", href: "/about-us" },
+  { title: "Contact Us", href: "/contact" },
 ]
 
 export const UNPROTECTED_ROUTES = [

@@ -165,6 +165,7 @@ export default function AuthPage() {
           mobile: formattedPhone,
           resetPassword: true,
         }),
+        credentials: 'include',
       });
 
       const data = await res.json();
@@ -196,6 +197,7 @@ export default function AuthPage() {
           new_password: form.new_password,
           otp,
         }),
+        credentials: 'include',
       });
 
       if (res.status === 201) {
@@ -274,6 +276,7 @@ export default function AuthPage() {
           password: form.password,
           otp,
         }),
+        credentials: 'include',
       });
 
       if (res.status === 201) {

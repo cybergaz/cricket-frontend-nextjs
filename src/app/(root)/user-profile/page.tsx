@@ -56,9 +56,10 @@ export default function UserProfile() {
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/upload/upload-profile`, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
           },
           body: formData,
+          credentials: 'include'
         });
 
         if (!response.ok) {
@@ -100,10 +101,8 @@ export default function UserProfile() {
         const token = getTokenFromCookies();
         const res = await fetch(`${BACKEND}/user/data`, {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-          },
+          headers: { "Content-Type": "application/json", },
+          credentials: "include"
         });
         const data = await res.json();
         if (data.data && data.success) {
@@ -130,7 +129,7 @@ export default function UserProfile() {
         {/* Profile Card */}
         <Card className="border-none rounded-xl shadow-md overflow-hidden">
           <CardContent className="pt-0 text-3xl">
-            <div className="flex items-start justify-between gap-4 w-full">
+            <div className="flex max-sm:flex-col items-start justify-between gap-4 w-full">
               <div className="flex gap-4">
                 <div>
                   {/* Hidden file input */}
@@ -159,15 +158,26 @@ export default function UserProfile() {
                   <h2 className="text-xl font-medium text-gray-100">
                     {`${user?.name.split(" ")[0] || "John"}'s Profile`}
                   </h2>
-                  <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
-                    <Phone className="h-3 w-3" />
-                    <span>+91-{user?.mobile.slice(3) || "XXXXXXXXXX"}</span>
-                    <Badge
-                      variant="outline"
-                      className="ml-1 text-xs text-amber-600 bg-gray-900 border-amber-600 cursor-no-drop"
-                    >
-                      Verified
-                    </Badge>
+                  <div className="flex max-sm:flex-col items-center max-sm:items-start gap-2 text-sm text-gray-400 mt-1">
+                    <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
+                      <Phone className="h-3 w-3" />
+                      <span>+91-{user?.mobile.slice(3) || "XXXXXXXXXX"}</span>
+                    </div>
+                    {
+                      user?.isVerified
+                        ? <Badge
+                          variant="outline"
+                          className=" text-xs text-emerald-600 bg-gray-900 border-emerald-600 cursor-no-drop"
+                        >
+                          Verified
+                        </Badge>
+                        : <Badge
+                          variant="outline"
+                          className=" text-xs text-amber-600 bg-gray-900 border-amber-600 cursor-no-drop"
+                        >
+                          Not Verified
+                        </Badge>
+                    }
                   </div>
                 </div>
               </div>
@@ -186,7 +196,7 @@ export default function UserProfile() {
         {/* Wallet Card */}
         <Card className="border-none rounded-xl shadow-md overflow-hidden bg-gray-900 border border-white">
           <div className="p-6">
-            <div className="flex justify-between items-center">
+            <div className="flex max-sm:flex-col gap-5 justify-between items-center max-sm:items-start">
               <div>
                 <p className="text-md font-normal text-gray-400">
                   Wallet Balance
@@ -198,7 +208,7 @@ export default function UserProfile() {
                 asChild
               >
                 <Link href={"/wallet"}>
-                  <Plus className="mr-2 h-4 w-4" />
+                  <Plus className=" h-4 w-4" />
                   Add Money
                 </Link>
               </Button>

@@ -141,9 +141,7 @@ const isUserAdmin = async (request: NextRequest) => {
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/is-admin`, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      credentials: "include",
     });
 
     const data: BackendResponse = await response.json();
@@ -175,10 +173,7 @@ export const setUserIntoGlobalStore = async (token: string) => {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/user`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      credentials: "include",
     });
 
     if (res.ok) {

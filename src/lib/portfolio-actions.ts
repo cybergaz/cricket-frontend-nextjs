@@ -20,11 +20,9 @@ export const storePortfolio = async (PlayerPortfolioData: PlayerPortfolioData): 
 
   const response = await fetch(`${BACKEND_URL}/portfolio/store-player-portfolio`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json', },
     body: JSON.stringify(PlayerPortfolioData),
+    credentials: "include",
   });
 
   const data = await response.json();
@@ -38,11 +36,9 @@ export const sellPortfolio = async (SellPlayerData: SellPlayerData): Promise<Pla
 
   const response = await fetch(`${BACKEND_URL}/portfolio/sell-player-portfolio`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json', },
     body: JSON.stringify(SellPlayerData),
+    credentials: "include",
   });
 
   const data = await response.json();
@@ -55,9 +51,7 @@ export const getPortfolio = async (): Promise<PlayerHolding[]> => {
   const token = getToken();
 
   const response = await fetch(`${BACKEND_URL}/portfolio/get-player-portfolio`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    credentials: "include",
   });
 
   const data = await response.json();
@@ -71,11 +65,9 @@ export const storeTeamPortfolio = async (teamPortfolioData: TeamPortfolioData): 
 
   const response = await fetch(`${BACKEND_URL}/portfolio/store-team-portfolio`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json', },
     body: JSON.stringify(teamPortfolioData),
+    credentials: 'include',
   });
 
   const data = await response.json();
@@ -89,11 +81,9 @@ export const sellTeamPortfolio = async (sellData: SellTeamData): Promise<TeamHol
 
   const response = await fetch(`${BACKEND_URL}/portfolio/sell-team-portfolio`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json', },
     body: JSON.stringify(sellData),
+    credentials: 'include',
   });
 
   const data = await response.json();
@@ -106,9 +96,7 @@ export const getTeamPortfolio = async (): Promise<TeamHolding[]> => {
   const token = getToken();
 
   const response = await fetch(`${BACKEND_URL}/portfolio/get-team-portfolio`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    credentials: 'include',
   });
 
   const data = await response.json();

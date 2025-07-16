@@ -58,10 +58,8 @@ export default function Portfolio() {
 
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/all`, {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-          },
+          headers: { "Content-Type": "application/json", },
+          credentials: 'include',
         });
 
         const apiData = await res.json();
