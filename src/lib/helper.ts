@@ -178,41 +178,51 @@ export const isAuthenticated = async (request: NextRequest) => {
   // console.log("User Details:", hee);
 };
 
-export const setUserIntoGlobalStore = async (token: string) => {
+export const setUserIntoGlobalStore = async (userData?: any) => {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/user`, {
-      method: "GET",
-      credentials: "include",
-    });
+    let userToStore;
+    
+    if (userData) {
+      // Use provided user data directly
+      userToStore = userData;
+    } else {
+      // Fetch user data from server
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/user`, {
+        method: "GET",
+        credentials: "include",
+      });
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.user) {
-        // Map MongoDB user data to User type
-        const mappedUser = {
-          name: data.user.name,
-          mobile: data.user.mobile,
-          isVerified: data.user.isVerified,
-          password: "", // We don't store password in frontend
-          isAdmin: data.user.isAdmin,
-          role: data.user.role,
-          lastSeen: new Date(data.user.lastSeen),
-          amount: data.user.amount,
-          transactions: data.user.transactions || [],
-          portfolio: data.user.portfolio || [],
-          teamPortfolio: data.user.teamPortfolio || [],
-          // Optional fields
-          ...(data.user.googleId && { googleId: data.user.googleId }),
-          ...(data.user.email && { email: data.user.email }),
-          ...(data.user.profileImage && { profileImage: data.user.profileImage }),
-          ...(data.user.referralCode && { referralCode: data.user.referralCode }),
-          ...(data.user.referredBy && { referredBy: data.user.referredBy }),
-        };
-
-        useUserStore.getState().setUser(mappedUser);
-        console.log("✅ User set in store:", mappedUser);
-        console.log("User data set into global store:", useUserStore.getState());
+      if (res.ok) {
+        const data = await res.json();
+        userToStore = data && data.user ? data.user : null;
       }
+    }
+    
+    if (userToStore) {
+      // Map MongoDB user data to User type
+      const mappedUser = {
+        name: userToStore.name,
+        mobile: userToStore.mobile,
+        isVerified: userToStore.isVerified,
+        password: "", // We don't store password in frontend
+        isAdmin: userToStore.isAdmin,
+        role: userToStore.role,
+        lastSeen: new Date(userToStore.lastSeen),
+        amount: userToStore.amount,
+        transactions: userToStore.transactions || [],
+        portfolio: userToStore.portfolio || [],
+        teamPortfolio: userToStore.teamPortfolio || [],
+        // Optional fields
+        ...(userToStore.googleId && { googleId: userToStore.googleId }),
+        ...(userToStore.email && { email: userToStore.email }),
+        ...(userToStore.profileImage && { profileImage: userToStore.profileImage }),
+        ...(userToStore.referralCode && { referralCode: userToStore.referralCode }),
+        ...(userToStore.referredBy && { referredBy: userToStore.referredBy }),
+      };
+
+      useUserStore.getState().setUser(mappedUser);
+      console.log("✅ User set in store:", mappedUser);
+      console.log("User data set into global store:", useUserStore.getState());
     }
   } catch (e) {
     console.error("Error setting user into global store", e);

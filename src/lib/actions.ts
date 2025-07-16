@@ -16,15 +16,19 @@ const login = async (mobile: string, password: string): Promise<LoginResponse> =
       method: "POST",
       headers: { "Content-Type": "application/json", },
       body: JSON.stringify({ mobile, password }),
+      credentials: "include", // CRITICAL: Include HTTP-only cookies
     });
 
     const data = await res.json();
+    console.log('Login response:', { status: res.status, data });
 
-    if (res.ok && data.token) {
-      // localStorage.setItem("token", data.token);
-      // document.cookie = `token=${data.token}; path=/; secure;`;
+    if (res.ok && data.success) {
+      // HTTP-only cookie is set automatically by the server
+      // No need to handle tokens manually
       toast.success("Login successful! Welcome to Dashboard.");
-      // setUserIntoGlobalStore(data.token)
+      if (data.user) {
+        setUserIntoGlobalStore(data.user); // Store user data, not token
+      }
       return { success: true, message: data.message };
     }
 
@@ -33,6 +37,7 @@ const login = async (mobile: string, password: string): Promise<LoginResponse> =
       message: data.message || "Login failed",
     };
   } catch (error) {
+    console.error('Login error:', error);
     return {
       success: false,
       message: "Login failed",
@@ -60,25 +65,25 @@ const handleGoogleSuccess = async (
       method: "POST",
       headers: { "Content-Type": "application/json", },
       body: JSON.stringify({ tokenId }),
-      credentials: "include",
+      credentials: "include", // CRITICAL: Include HTTP-only cookies
     });
 
-    if (!res.ok) {
-      throw new Error("Failed to login");
+    const data = await res.json();
+    console.log('Google login response:', { status: res.status, data });
+
+    if (res.ok && data.success) {
+      // HTTP-only cookie is set automatically by the server
+      toast.success("Login successful! Welcome to Dashboard.");
+      if (data.user) {
+        setUserIntoGlobalStore(data.user); // Store user data, not token
+      }
+      window.location.href = "/home";
+      return { success: true, message: data.message };
     }
 
-    // const data: GoogleLoginResponse = await res.json();
-    //
-    // if (data.token) {
-    //   document.cookie = `token=${data.token}; path=/; secure;`;
-    //   toast.success("Login successful! Welcome to Dashboard.");
-    //   setUserIntoGlobalStore(data.token)
-    //   window.location.href = "/home";
-    //   return { success: true, message: data.message };
-    // }
-
-    return { success: false, message: "No token returned from server." };
+    return { success: false, message: data.message || "Google login failed." };
   } catch (error) {
+    console.error('Google login error:', error);
     toast.error("Login failed. Please try again.");
     return { success: false, message: "Login request failed." };
   }

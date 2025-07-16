@@ -1,0 +1,7 @@
+# Environment Configuration for HTTP-only Cookie Authentication
+# Copy this to .env.local in your project root
+
+NEXT_PUBLIC_BACKEND_URL=http://localhost:5001
+
+# Note: No need for JWT secrets or token storage variables
+# since we're using HTTP-only cookies managed by the browser

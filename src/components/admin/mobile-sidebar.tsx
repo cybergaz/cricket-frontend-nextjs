@@ -79,7 +79,13 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
             </Link>
           </div>
 
-          <Button className="w-full flex justify-center items-center font-medium bg-transparent">
+          <Button 
+            onClick={async () => {
+              const { performLogout } = await import('@/lib/logout-utils');
+              await performLogout();
+            }}
+            className="w-full flex justify-center items-center font-medium bg-transparent"
+          >
             <LogOut className="mr-2 size-5 stroke-3" />
             Log Out
           </Button>

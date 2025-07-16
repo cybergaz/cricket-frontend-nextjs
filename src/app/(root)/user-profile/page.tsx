@@ -117,10 +117,15 @@ export default function UserProfile() {
     })();
 
   }, []);
-  const handleLogout = () => {
-    // Remove only the "token" cookie
-    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    router.replace("/login");
+  const handleLogout = async () => {
+    const { performLogoutWithRouter } = await import('@/lib/logout-utils');
+    const result = await performLogoutWithRouter(router);
+    
+    if (result.success) {
+      toast.success('Logged out successfully');
+    } else {
+      toast.error('Logout failed');
+    }
   };
 
   return (

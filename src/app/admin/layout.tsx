@@ -15,13 +15,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleLogout = () => {
-    document.cookie.split(";").forEach((c) => {
-      document.cookie = c
-        .replace(/^ +/, "")
-        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
-    router.replace("/login");
+  const handleLogout = async () => {
+    const { performLogoutWithRouter } = await import('@/lib/logout-utils');
+    await performLogoutWithRouter(router);
   };
 
   return (
