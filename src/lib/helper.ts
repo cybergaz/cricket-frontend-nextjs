@@ -177,6 +177,7 @@ export {
 export const isAuthenticated = async (request: NextRequest) => {
   const token = request.cookies.get("token")?.value;
   return !!token;
+
   // const userDetails = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/whoami`, { credentials: "include", });
   // const hee = await userDetails.json()
   // console.log("User Details:", hee);
