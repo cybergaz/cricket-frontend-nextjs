@@ -29,7 +29,7 @@ export default function ReferralPage() {
               </p>
             </div>
 
-            <Link href="/login">
+            <Link href={`/login?mode=signup&referral=${referralCode}`}>
               <button className="bg-emerald-600 hover:bg-emerald-500 transition-colors text-gray-900 font-bold py-3 px-6 text-lg rounded-full">
                 Create Account with Code &rarr;
               </button>

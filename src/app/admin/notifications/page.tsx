@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CirclePlus, X } from "lucide-react";
+import "dotenv/config";
+import { getCookie } from "@/lib/helper";
 
 // Define types for notification data
 type Notification = {
@@ -9,6 +11,8 @@ type Notification = {
   date: string;
   time: string;
 };
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 // Create a client component for the notification popup
 const NotificationPopup = ({
@@ -23,6 +27,24 @@ const NotificationPopup = ({
   const [text, setText] = useState<string>("");
   const [datetime, setDatetime] = useState<string>("");
   const [userGroup, setUserGroup] = useState<string>("all");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // setIsLoading(true);
+        const res = await fetch(`${BACKEND_URL}/admin/fetch-inactive-users`);
+        if (!res.ok) throw new Error("API Error");
+        const data = await res.json();
+        // setMatches(data.data);
+        console.log("Fetched inactive users:", data);
+      } catch (e) {
+        console.error("Fetch error:", e);
+      } finally {
+        // setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   if (!isOpen) return null;
 
@@ -71,6 +93,7 @@ const NotificationPopup = ({
             <option value="today">Today Login</option>
             <option value="new">New User</option>
             <option value="inactive">User Inactive for 24hr</option>
+            <option value="admin">All Admins</option>
           </select>
         </div>
 

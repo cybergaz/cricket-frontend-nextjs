@@ -4,7 +4,7 @@ import type React from "react";
 import { ChangeEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +54,9 @@ interface FormState {
 }
 
 export default function AuthPage() {
+  const referralCode = useSearchParams().get('referral')
+  const modeParam = useSearchParams().get('mode')
+
   const [hasReferral, setHasReferral] = useState(false);
   const [countryCode, setCountryCode] = useState("+91");
   const [mode, setMode] = useState<Mode>("login");
@@ -86,6 +89,16 @@ export default function AuthPage() {
         router.push("/home"); // navigate to home if token exists
       }
     };
+
+    // Check for referral code
+    if (referralCode) {
+      setHasReferral(true)
+      setForm({ ...form, referral_code: referralCode })
+    }
+
+    if (modeParam) {
+      setMode(modeParam as Mode)
+    }
 
     checkToken();
   }, [router]);
@@ -299,7 +312,7 @@ export default function AuthPage() {
         <div className="text-center mb-8 flex flex-col items-center gap-2 animate-slide-down-lg">
           <Link href={"/"} className="" >
             <Image
-              src={"/logo.png"}
+              src={"/images/logo.png"}
               alt="Logo"
               width={150}
               height={100}

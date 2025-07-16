@@ -56,6 +56,39 @@ const dashboardApi = {
     if (!res.ok) throw new Error('Failed to fetch team members');
     return res.json();
   },
+  getProfitableUsers: async () => {
+    const res = await fetch(`${BACKEND_URL}/admin/fetch-profitable-users`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getCookie("token")}`,
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch team members');
+    return res.json();
+  },
+  getLosingUsers: async () => {
+    const res = await fetch(`${BACKEND_URL}/admin/fetch-users-having-loss`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getCookie("token")}`,
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch team members');
+    return res.json();
+  },
+  getTransactions: async () => {
+    const res = await fetch(`${BACKEND_URL}/admin/fetch-total-transactions`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getCookie("token")}`,
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch total transactions');
+    return res.json();
+  },
 };
 
 // Custom Hook for Dashboard Data
@@ -83,6 +116,18 @@ const useDashboardData = () => {
   const [teamMembers, setTeamMembers] = useState<{ _id: string, name: string, role: Role }[]>([]);
   const [isTeamMembersLoading, setIsTeamMembersLoading] = useState<boolean>(true);
   const [teamMembersError, setTeamMembersError] = useState<string | null>(null);
+
+  const [profitableUsers, setProfitableUsers] = useState<number>(0);
+  const [isProfitableUsersLoading, setProfitableUsersLoading] = useState<boolean>(true);
+  const [profitableUsersError, setProfitableUsersError] = useState<string | null>(null);
+
+  const [losingUsers, setLosingUsers] = useState<number>(0);
+  const [isLosingUsersLoading, setLosingUsersLoading] = useState<boolean>(true);
+  const [losingUsersError, setLosingUsersError] = useState<string | null>(null);
+
+  const [transactions, setTransactions] = useState<any>(null);
+  const [isTransactionsLoading, setTransactionsLoading] = useState<boolean>(true);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
 
   // Function to fetch individual metric with proper TypeScript
   const fetchMetric = async (
@@ -147,6 +192,30 @@ const useDashboardData = () => {
       setTeamMembersError,
       'Failed to fetch team members'
     );
+
+    fetchMetric(
+      dashboardApi.getProfitableUsers,
+      setProfitableUsers,
+      setProfitableUsersLoading,
+      setProfitableUsersError,
+      'Failed to fetch profitable users'
+    );
+
+    fetchMetric(
+      dashboardApi.getLosingUsers,
+      setLosingUsers,
+      setLosingUsersLoading,
+      setLosingUsersError,
+      'Failed to fetch profitable users'
+    );
+
+    fetchMetric(
+      dashboardApi.getTransactions,
+      setTransactions,
+      setTransactionsLoading,
+      setTransactionsError,
+      'Failed to fetch transactions'
+    );
   }, []);
 
   return {
@@ -165,6 +234,15 @@ const useDashboardData = () => {
     teamMembers,
     isTeamMembersLoading,
     teamMembersError,
+    profitableUsers,
+    isProfitableUsersLoading,
+    profitableUsersError,
+    losingUsers,
+    isLosingUsersLoading,
+    losingUsersError,
+    transactions,
+    isTransactionsLoading,
+    transactionsError,
   };
 };
 
@@ -185,6 +263,15 @@ const Dashboard = (): JSX.Element => {
     teamMembers,
     isTeamMembersLoading,
     teamMembersError,
+    profitableUsers,
+    isProfitableUsersLoading,
+    profitableUsersError,
+    losingUsers,
+    isLosingUsersLoading,
+    losingUsersError,
+    transactions,
+    isTransactionsLoading,
+    transactionsError,
   } = useDashboardData();
 
   // Helper function to render metric value
@@ -201,6 +288,8 @@ const Dashboard = (): JSX.Element => {
     }
     return value;
   };
+
+  console.log("transactions", transactions);
 
   return (
     <section className="w-full min-h-[calc(100vh-50px)]">
@@ -220,11 +309,11 @@ const Dashboard = (): JSX.Element => {
                   {renderMetricValue(totalUsers, isTotalUsersLoading, totalUsersError)}
                 </div>
                 <div className="text-lg font-medium mb-1">Total Registered Users</div>
-                <div className="flex items-center text-sm">
-                  <span className="text-gray-300">Last Month</span>
-                  <span className="ml-2 text-green-500">+109</span>
-                  <span className="ml-2 text-green-500">Up 25%</span>
-                </div>
+                {/* <div className="flex items-center text-sm"> */}
+                {/*   <span className="text-gray-300">Last Month</span> */}
+                {/*   <span className="ml-2 text-green-500">+109</span> */}
+                {/*   <span className="ml-2 text-green-500">Up 25%</span> */}
+                {/* </div> */}
               </div>
             </div>
 
@@ -235,11 +324,11 @@ const Dashboard = (): JSX.Element => {
                   {renderMetricValue(companyProfit, isCompanyProfitLoading, companyProfitError)}
                 </div>
                 <div className="text-lg font-medium mb-1">Company Profit</div>
-                <div className="flex items-center text-sm">
-                  <span className="text-gray-300">Last Month</span>
-                  <span className="ml-2 text-green-500">+108</span>
-                  <span className="ml-2 text-green-500">Up 11%</span>
-                </div>
+                {/* <div className="flex items-center text-sm"> */}
+                {/*   <span className="text-gray-300">Last Month</span> */}
+                {/*   <span className="ml-2 text-green-500">+108</span> */}
+                {/*   <span className="ml-2 text-green-500">Up 11%</span> */}
+                {/* </div> */}
               </div>
             </div>
 
@@ -250,11 +339,11 @@ const Dashboard = (): JSX.Element => {
                   {renderMetricValue(companyLoss, isCompanyLossLoading, companyLossError)}
                 </div>
                 <div className="text-lg font-medium mb-1">Company Loss</div>
-                <div className="flex items-center text-sm">
-                  <span className="text-gray-300">Last Month</span>
-                  <span className="ml-2 text-red-500">-10</span>
-                  <span className="ml-2 text-red-500">Down 15%</span>
-                </div>
+                {/* <div className="flex items-center text-sm"> */}
+                {/*   <span className="text-gray-300">Last Month</span> */}
+                {/*   <span className="ml-2 text-red-500">-10</span> */}
+                {/*   <span className="ml-2 text-red-500">Down 15%</span> */}
+                {/* </div> */}
               </div>
             </div>
 
@@ -265,37 +354,41 @@ const Dashboard = (): JSX.Element => {
                   {renderMetricValue(totalActiveUsers, isTotalActiveUsersLoading, totalActiveUsersError)}
                 </div>
                 <div className="text-lg font-medium mb-1">Total Active users</div>
-                <div className="flex items-center text-sm">
-                  <span className="text-gray-300">Last Month</span>
-                  <span className="ml-2 text-green-500">+109</span>
-                  <span className="ml-2 text-green-500">Up 25%</span>
-                </div>
+                {/* <div className="flex items-center text-sm"> */}
+                {/*   <span className="text-gray-300">Last Month</span> */}
+                {/*   <span className="ml-2 text-green-500">+109</span> */}
+                {/*   <span className="ml-2 text-green-500">Up 25%</span> */}
+                {/* </div> */}
               </div>
             </div>
 
             {/* div 5 */}
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl">
               <div className="p-6">
-                <div className="text-6xl font-light mb-2">45</div>
-                <div className="text-lg font-medium mb-1">Profitable user</div>
-                <div className="flex items-center text-sm">
-                  <span className="text-gray-300">Last Month</span>
-                  <span className="ml-2 text-green-500">+108</span>
-                  <span className="ml-2 text-green-500">Up 11%</span>
+                <div className="text-6xl font-light mb-2">
+                  {renderMetricValue(profitableUsers, isProfitableUsersLoading, profitableUsersError)}
                 </div>
+                <div className="text-lg font-medium mb-1">Profitable user</div>
+                {/* <div className="flex items-center text-sm"> */}
+                {/*   <span className="text-gray-300">Last Month</span> */}
+                {/*   <span className="ml-2 text-green-500">+108</span> */}
+                {/*   <span className="ml-2 text-green-500">Up 11%</span> */}
+                {/* </div> */}
               </div>
             </div>
 
             {/* div 6 */}
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl">
               <div className="p-6">
-                <div className="text-6xl font-light mb-2">45</div>
-                <div className="text-lg font-medium mb-1">User having losses</div>
-                <div className="flex items-center text-sm">
-                  <span className="text-gray-300">Last Month</span>
-                  <span className="ml-2 text-red-500">-10</span>
-                  <span className="ml-2 text-red-500">Down 15%</span>
+                <div className="text-6xl font-light mb-2">
+                  {renderMetricValue(losingUsers, isLosingUsersLoading, losingUsersError)}
                 </div>
+                <div className="text-lg font-medium mb-1">User having losses</div>
+                {/* <div className="flex items-center text-sm"> */}
+                {/*   <span className="text-gray-300">Last Month</span> */}
+                {/*   <span className="ml-2 text-red-500">-10</span> */}
+                {/*   <span className="ml-2 text-red-500">Down 15%</span> */}
+                {/* </div> */}
               </div>
             </div>
           </div>

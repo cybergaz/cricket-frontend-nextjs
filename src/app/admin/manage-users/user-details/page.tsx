@@ -59,8 +59,8 @@ interface UserDetails {
   isAdmin: boolean;
   lastSeen: string;
   transactions: Transaction[];
-  portfolio: PlayerPortfolioItem[];
-  teamPortfolio: TeamPortfolioItem[];
+  playerPortfolios: PlayerPortfolioItem[];
+  teamPortfolios: TeamPortfolioItem[];
 }
 
 interface AccordionSections {
@@ -69,10 +69,11 @@ interface AccordionSections {
   teamPortfolio: boolean;
 }
 
-type Role = 'marketing' | 'financial' | 'super_admin'
+type Role = 'marketing' | 'financial' | 'super_admin' | 'user'
 
 export default function UserDetails() {
   const userId = useSearchParams().get('id');
+  console.log("userId ->", userId);
 
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -219,10 +220,10 @@ export default function UserDetails() {
         <div className={`space-y-4 overflow-hidden transition-all duration-300 
           ${openSections.playerPortfolio ? 'max-h-[2000px] mt-4 p-4 sm:p-6' : 'max-h-0'}`}
         >
-          {userDetails.portfolio.length === 0 ? (
+          {userDetails.playerPortfolios.length === 0 ? (
             <div className="text-gray-400 text-center py-4">No player portfolio found</div>
           ) : (
-            userDetails.portfolio.map((item, index) => (
+            userDetails.playerPortfolios.map((item, index) => (
               <div key={index} className="border rounded-lg p-3 sm:p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                   <div>
@@ -300,10 +301,10 @@ export default function UserDetails() {
         </button>
         <div className={`space-y-4 overflow-hidden transition-all duration-300 ${openSections.teamPortfolio ? 'max-h-[2000px] mt-4 p-4 sm:p-6' : 'max-h-0'
           }`}>
-          {userDetails.teamPortfolio.length === 0 ? (
+          {userDetails.teamPortfolios.length === 0 ? (
             <div className="text-gray-400 text-center py-4">No team portfolio found</div>
           ) : (
-            userDetails.teamPortfolio.map((item, index) => (
+            userDetails.teamPortfolios.map((item, index) => (
               <div key={index} className="border rounded-lg p-3 sm:p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                   <div>

@@ -238,7 +238,7 @@ export default function MoneyTransactionsPage() {
         setPaymentSessionId(data.orderDetails.paymentSessionId);
         setPaymentLink(data.orderDetails.paymentSessionId);
         toast.dismiss(toastID)
-        toast("Order created! Click 'Pay' to continue.");
+        toast("Click Pay to continue.");
       } else {
         toast("Failed to create order.");
       }
@@ -436,7 +436,7 @@ export default function MoneyTransactionsPage() {
                   <div className="text-3xl font-bold text-white">
                     {formatINR(
                       (transactions ?? [])
-                        .filter((transaction) => transaction.type === "Deposit")
+                        .filter((transaction) => transaction.type === "Deposit" && transaction.status === "Completed")
                         .reduce((sum, transaction) => {
                           const amount = Number(
                             (transaction.amount ?? "0").toString().replace(/,/g, "")

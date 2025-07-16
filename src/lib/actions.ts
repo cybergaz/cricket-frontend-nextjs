@@ -1,5 +1,4 @@
 import { z } from "zod"
-import "dotenv/config";
 import { toast } from "sonner"
 import { CredentialResponse } from "@react-oauth/google";
 import { setUserIntoGlobalStore } from "./helper";
@@ -155,4 +154,13 @@ async function verifyPan(formData: FormData) {
   return { success: true }
 }
 
-export { login, handleGoogleSuccess, verifyAadhar, verifyPan }; 
+
+const getTokenFromCookies = () => {
+  if (typeof document === "undefined") return null;
+  const cookies = document.cookie.split("; ");
+  console.log("Cookies:", cookies);
+  const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="));
+  return tokenCookie ? tokenCookie.split("=")[1] : null;
+};
+
+export { login, handleGoogleSuccess, verifyAadhar, verifyPan, getTokenFromCookies }; 

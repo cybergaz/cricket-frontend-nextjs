@@ -39,8 +39,8 @@ export default function Portfolio() {
   const [teamPortfolios, setTeamPortfolios] = useState<TeamPortfolio[]>([]);
   const [playerPortfoliosHistorys, setPlayerPortfoliosHistorys] = useState<PlayerPortfolio[]>([]);
   const [teamPortfoliosHistorys, setTeamPortfoliosHistorys] = useState<TeamPortfolio[]>([]);
-  const [value, setValue] = useState();
-  const [profit, setProfit] = useState();
+  const [value, setValue] = useState(0);
+  const [profit, setProfit] = useState(0);
 
 
   useEffect(() => {

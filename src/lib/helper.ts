@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { useUserStore } from "@/store/user-store"; // adjust path
+import { getTokenFromCookies } from "./actions";
+import { resolve } from "dns";
 
 export const validatePassword = (password: string): string => {
   if (!password) return "Password is required";
@@ -130,21 +132,14 @@ interface BackendResponse {
   message: string;
 }
 
-// Declaring BACKEND_URL and toast as they were used in the original code
-declare const BACKEND_URL: string;
-declare const toast: {
-  error: (message: string) => void;
-};
-
-const isUserAdmin = async (): Promise<boolean> => {
-  const token = localStorage.getItem("token");
+const isUserAdmin = async (request: NextRequest) => {
+  const token = request.cookies.get("token")?.value;
   if (!token) {
-    toast.error("Please login again");
-    return false;
+    return { suceess: false, message: "No token found" };
   }
 
   try {
-    const response = await fetch(`${BACKEND_URL}/auth/admin-login`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/is-admin`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -152,15 +147,13 @@ const isUserAdmin = async (): Promise<boolean> => {
     });
 
     const data: BackendResponse = await response.json();
-    if (data.status === 200) {
-      return true;
+    if (response.status === 200) {
+      return { success: true, message: "User is Admin" };
     } else {
-      toast.error(data.message);
-      return false;
+      return { success: false, message: data.message || "User is not an admin" };
     }
   } catch (error) {
-    toast.error("Failed to verify admin status");
-    return false;
+    return { success: false, message: "Error checking admin status" }
   }
 };
 

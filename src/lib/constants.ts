@@ -17,6 +17,7 @@ export const UNPROTECTED_ROUTES = [
   "/contact-us",
   "/game-rules",
   "/legality",
+  "/referrals",
 ]
 
 export const trends = [

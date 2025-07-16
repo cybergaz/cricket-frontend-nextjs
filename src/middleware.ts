@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { isAuthenticated } from "@/lib/helper";
+import { isAuthenticated, isUserAdmin } from "@/lib/helper";
 import { UNPROTECTED_ROUTES } from "./lib/constants";
 
 type Environment = "production" | "development" | "other";
@@ -18,6 +18,17 @@ export async function middleware(request: NextRequest) {
   const isPublicPath = UNPROTECTED_ROUTES.includes(pathname);
 
   const isAuth = await isAuthenticated(request);
+  let isAdmin = false;
+  if (isAuth) {
+    const isadmin_result = await isUserAdmin(request);
+    if (isadmin_result.success) {
+      isAdmin = true;
+    }
+  }
+
+  if (pathname === "/admin" && !isAdmin) {
+    return NextResponse.redirect(new URL("/access-denied", request.url));
+  }
 
   const response = NextResponse.next();
   response.headers.set("x-middleware-cache", "no-cache");
