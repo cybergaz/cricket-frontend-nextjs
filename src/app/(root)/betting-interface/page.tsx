@@ -6,6 +6,7 @@ import { CricketMatchData } from "./types";
 import MatchScorecard from "./match-scorecard";
 import { Loading } from "./components/Loading";
 import { Error } from "./components/Error";
+import YetToStart from "./components/yet-to-start";
 
 export default function BettingPage() {
   const [matchData, setMatchData] = useState<CricketMatchData | null>(null);
@@ -36,7 +37,6 @@ export default function BettingPage() {
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`
         );
         const apiData = await res.json();
-        // Check if the response has a message and data structure
         if (apiData.message && apiData.data === null) {
           setMatchData(null);
           setError('No such match found');
@@ -68,13 +68,18 @@ export default function BettingPage() {
     return <Loading />;
   }
 
-  if (error) {
-    return <Error message={error} />;
-  }
 
   if (!matchData) {
-    return <Error message="No match data available" />;
+    if (!matchId) {
+      return <Error message="No match data available" />;
+    } else {
+      return <YetToStart matchId={matchId} />;
+    }
   }
 
-  return <MatchScorecard matchData={matchData} />;
+  if (matchData) {
+    return <MatchScorecard matchData={matchData} />;
+  }
+
+  return null;
 }

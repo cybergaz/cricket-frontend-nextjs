@@ -153,7 +153,7 @@ export default function Portfolio() {
                       Total Balance
                     </p>
                     <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1">
-                      {formatINR(value)}
+                      {formatINR(Number(value))}
                     </h3>
                   </div>
                   <div className="flex items-center justify-center bg-purple-500/20 p-4 rounded-full shadow-inner">
@@ -204,7 +204,8 @@ export default function Portfolio() {
                       Total Profit
                     </p>
                     <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1">
-                      {formatINR(profit)}
+                      {formatINR(Number(profit))}
+
                     </h3>
                     <p className="text-emerald-500 text-sm flex items-center mt-1">
                       <TrendingUp className="h-4 w-4 mr-1" />

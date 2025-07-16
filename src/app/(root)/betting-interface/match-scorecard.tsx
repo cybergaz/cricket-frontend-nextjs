@@ -33,6 +33,22 @@ import sample from "./sample.json"
 
 
 export default function MatchScorecard({ matchData }: MatchScorecardProps) {
+    const hasData = matchData && Object.keys(matchData).length > 0;
+
+    const patchedSample = {
+        ...sample,
+        match_notes: Array.isArray(sample.match_notes)
+            ? (sample.match_notes.flat().join(" | ") || "")
+            : (sample.match_notes ?? ""),
+        match_number: Array.isArray(sample.match_number)
+            ? sample.match_number
+            : (typeof sample.match_number === "string"
+                ? [[sample.match_number]]
+                : [[""]])
+    }
+    const data: CricketMatchData = patchedSample as CricketMatchData
+    // const data: CricketMatchData | null = hasData ? matchData : null;
+
     const [activeTab, setActiveTab] = useState<string>("live")
     const [bettingNumber, setBettingNumber] = useState(0)
     const [currentPlayerPrice, setCurrentPlayerPrice] = useState(0)
@@ -49,37 +65,27 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
     // Team betting modal state
     const [teamQuantity, setTeamQuantity] = useState(1);
     const [teamPrice, setTeamPrice] = useState(0);
-    // const data: CricketMatchData = matchData
-    const patchedSample = {
-        ...sample,
-        match_notes: Array.isArray(sample.match_notes)
-            ? (sample.match_notes.flat().join(" | ") || "")
-            : (sample.match_notes ?? ""),
-        match_number: Array.isArray(sample.match_number)
-            ? sample.match_number
-            : (typeof sample.match_number === "string"
-                ? [[sample.match_number]]
-                : [[""]])
-    }
-    const data: CricketMatchData = patchedSample as CricketMatchData
-    const match_id = data.match_id
-    const currentInnings = data.innings[data.innings.length - 1]
-    const battingTeam = currentInnings?.batting_team_id === data.teama.team_id ? data.teama : data.teamb
-    const bowlingTeam = currentInnings?.batting_team_id === data.teama.team_id ? data.teamb : data.teama
-    const matchNotesNormalized: string[][] = Array.isArray(data.match_notes?.[0]) ? data.match_notes as unknown as string[][] : [[data.match_notes as string]];
+
+    // Defensive: fallback values if no data
+    const match_id = data && data.match_id ? data.match_id : "";
+    const currentInnings = data && data.innings && data.innings.length > 0 ? data.innings[data.innings.length - 1] : null;
+    const battingTeam = currentInnings && data?.teama && data?.teamb ? (currentInnings.batting_team_id === data.teama.team_id ? data.teama : data.teamb) : null;
+    const bowlingTeam = currentInnings && data?.teama && data?.teamb ? (currentInnings.batting_team_id === data.teama.team_id ? data.teamb : data.teama) : null;
+    const matchNotesNormalized: string[][] = data && data.match_notes ? (Array.isArray(data.match_notes?.[0]) ? data.match_notes as unknown as string[][] : [[data.match_notes as string]]) : [[]];
     const basePrice =
         bettingNumber < 3
-            ? 35
+            ? 30
             : bettingNumber < 6
-                ? 30
-                : 25;
+                ? 25
+                : 20;
     useEffect(() => {
-        console.log(data)
-    })
+        if (data) console.log(data)
+    }, [data])
     return (
         <div className="min-h-screen bg-gradient-to-br from-sky-600 via-transparent to-transparent">
             <div className="container mx-auto px-3 py-4 space-y-4">
-                {data.status_note && (
+                {/* Status Note */}
+                {data?.status_note && (
                     <div className="fixed top-23 left-1/2 transform -translate-x-1/2 z-50 flex justify-center w-full px-4">
                         <div className="pr-5 pl-3 py-3 rounded-full bg-[#7c8fa4] text-white text-base md:text-xl font-bold shadow-lg flex items-center gap-2">
                             <span className="text-red-500 text-shadow-sm bg-white px-4 rounded-4xl animate-pulse">Live</span>
@@ -88,42 +94,48 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     </div>
                 )}
 
+                {/* Title & Teams */}
                 <div className="text-center mb-4 mt-14">
                     <div className="flex items-center justify-center mb-10 gap-4">
                         <h1 className="text-6xl font-bold">
-                            {data.competition.title}
+                            {data?.competition?.title || "No match data found"}
                         </h1>
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12 text-white">
-                        <div className="flex items-center gap-4 group cursor-pointer" onClick={() => { setSelectedTeam(data.teama); setIsTeamModalOpen(true); }}>
-                            <img
-                                src={data.teama.logo_url}
-                                alt={data.teama.name}
-                                className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md hover:scale-105 transition-transform duration-500"
-                            />
-                            <div className="text-left">
-                                <span className="text-xl md:text-2xl font-extrabold block">{String(data.teama.name).toLocaleUpperCase()}</span>
-                                <span className="text-base md:text-lg text-sky-400 font-bold block">{data.teama.scores_full || "Yet to bat"}</span>
-                            </div>
-                        </div>
-
-                        <span className="text-3xl font-extrabold text-sky-400 animate-pulse">VS</span>
-
-                        <div className="flex items-center gap-4 group cursor-pointer" onClick={() => { setSelectedTeam(data.teamb); setIsTeamModalOpen(true); }}>
-                            <div className="text-right">
-                                <span className="text-xl md:text-2xl font-extrabold block">{String(data.teamb.name).toLocaleUpperCase()}</span>
-                                <span className="text-base md:text-lg text-gray-500 font-bold block">{data.teamb.scores_full || "Yet to bat"}</span>
-                            </div>
-                            <img
-                                src={data.teamb.logo_url || "/placeholder.svg?height=48&width=48"}
-                                alt={data.teamb.name}
-                                className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md hover:scale-105 transition-transform duration-500"
-                            />
-                        </div>
+                        {battingTeam && bowlingTeam ? (
+                            <>
+                                <div className="flex items-center gap-4 group cursor-pointer" onClick={() => { if (data?.teama) { setSelectedTeam(data.teama); setIsTeamModalOpen(true); } }}>
+                                    <img
+                                        src={data?.teama?.logo_url}
+                                        alt={data?.teama?.name ?? "Team A"}
+                                        className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md hover:scale-105 transition-transform duration-500"
+                                    />
+                                    <div className="text-left">
+                                        <span className="text-xl md:text-2xl font-extrabold block">{String(data?.teama?.name ?? "").toLocaleUpperCase()}</span>
+                                        <span className="text-base md:text-lg text-sky-400 font-bold block">{data?.teama?.scores_full || "Yet to bat"}</span>
+                                    </div>
+                                </div>
+                                <span className="text-3xl font-extrabold text-sky-400 animate-pulse">VS</span>
+                                <div className="flex items-center gap-4 group cursor-pointer" onClick={() => { if (data?.teamb) { setSelectedTeam(data.teamb); setIsTeamModalOpen(true); } }}>
+                                    <div className="text-right">
+                                        <span className="text-xl md:text-2xl font-extrabold block">{String(data?.teamb?.name ?? "").toLocaleUpperCase()}</span>
+                                        <span className="text-base md:text-lg text-gray-500 font-bold block">{data?.teamb?.scores_full || "Yet to bat"}</span>
+                                    </div>
+                                    <img
+                                        src={data?.teamb?.logo_url || "/placeholder.svg?height=48&width=48"}
+                                        alt={data?.teamb?.name ?? "Team B"}
+                                        className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md hover:scale-105 transition-transform duration-500"
+                                    />
+                                </div>
+                            </>
+                        ) : (
+                            <span className="text-gray-400 text-2xl">No team data found</span>
+                        )}
                     </div>
                 </div>
 
+                {/* Tabs always render, but content is conditional */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-10">
                     <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 overflow-visible mb-5">
                         <TabsTrigger
@@ -174,141 +186,153 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                             Commentary
                         </TabsTrigger>
                     </TabsList>
+                    {/* Live Tab */}
                     <TabsContent value="live" className="space-y-6 mt-6">
-                        <Card className="bg-gradient-to-r via-sky-700 from-transparent to-transparent rounded-none shadow-none overflow-hidden">
-                            <CardContent className="p-6 text-center space-y-4">
-                                <h2 className="text-5xl font-bold text-white uppercase tracking-wide">{battingTeam.name}</h2>
-                                <div className="text-6xl md:text-7xl font-extrabold text-white">
-                                    {currentInnings?.scores}
-                                    {/* {currentInnings?.equations.runs}/{currentInnings?.equations.wickets} */}
-                                </div>
-                                <div className="text-lg md:text-xl text-gray-300">({currentInnings?.equations.overs} overs)</div>
-                            </CardContent>
-                        </Card>
+                        {currentInnings && battingTeam ? (
+                            <Card className="bg-gradient-to-r via-sky-700 from-transparent to-transparent rounded-none shadow-none overflow-hidden">
+                                <CardContent className="p-6 text-center space-y-4">
+                                    <h2 className="text-5xl font-bold text-white uppercase tracking-wide">{battingTeam.name}</h2>
+                                    <div className="text-6xl md:text-7xl font-extrabold text-white">
+                                        {currentInnings?.scores}
+                                    </div>
+                                    <div className="text-lg md:text-xl text-gray-300">({currentInnings?.equations.overs} overs)</div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <Card className="bg-gradient-to-r via-sky-700 from-transparent to-transparent rounded-none shadow-none overflow-hidden">
+                                <CardContent className="p-6 text-center space-y-4">
+                                    <h2 className="text-3xl font-bold text-white uppercase tracking-wide">No live data found</h2>
+                                </CardContent>
+                            </Card>
+                        )}
 
-                        {currentInnings.equations.overs != '' ?
+                        {currentInnings?.equations.overs != '' ?
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <Card className="bg-gradient-to-l from-sky-700/70 via-sky-700/20 to-transparent rounded-xl shadow-none transition">
-                                    <CardHeader className="pb-2 -mb-5">
-                                        <CardTitle className="text-3xl flex items-center gap-3 text-white">
-                                            <img
-                                                src={data.teama.logo_url || "/placeholder.svg?height=48&width=48"}
-                                                alt={data.teama.name}
-                                                className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md hover:scale-105 transition-transform duration-500"
-                                            />
+                                {battingTeam && (
+                                    <Card className="bg-gradient-to-l from-sky-700/70 via-sky-700/20 to-transparent rounded-xl shadow-none transition">
+                                        <CardHeader className="pb-2 -mb-5">
+                                            <CardTitle className="text-3xl flex items-center gap-3 text-white">
+                                                <img
+                                                    src={data?.teama?.logo_url || "/placeholder.svg?height=48&width=48"}
+                                                    alt={data?.teama?.name}
+                                                    className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md hover:scale-105 transition-transform duration-500"
+                                                />
 
-                                            <span className="text-gray-400">{battingTeam.name}'s</span> Batsmen
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        {currentInnings?.batsmen
-                                            ?.filter((batsman) => batsman.batting === "true")
-                                            .map((batsman) => (
-                                                <div
-                                                    key={batsman.batsman_id}
-                                                    className="p-4"
-                                                >
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <h3 className="text-2xl font-bold text-white">{batsman.name}</h3>
-                                                        <Badge variant={batsman.position === "striker" ? "default" : "secondary"} className="text-md font-bold">
-                                                            {batsman.position === "striker" ? "Striker" : "Non-Striker"}
-                                                        </Badge>
+                                                <span className="text-gray-400">{battingTeam.name}'s</span> Batsmen
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            {currentInnings?.batsmen
+                                                ?.filter((batsman) => batsman.batting === "true")
+                                                .map((batsman) => (
+                                                    <div
+                                                        key={batsman.batsman_id}
+                                                        className="p-4"
+                                                    >
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <h3 className="text-2xl font-bold text-white">{batsman.name}</h3>
+                                                            <Badge variant={batsman.position === "striker" ? "default" : "secondary"} className="text-md font-bold">
+                                                                {batsman.position === "striker" ? "Striker" : "Non-Striker"}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-4 text-base text-gray-300">
+                                                            <div>
+                                                                Runs: <span className="text-white font-bold">{batsman.runs}</span>
+                                                            </div>
+                                                            <div>
+                                                                Balls: <span className="text-white font-bold">{batsman.balls_faced}</span>
+                                                            </div>
+                                                            <div>
+                                                                4s: <span className="text-white font-bold">{batsman.fours}</span>
+                                                            </div>
+                                                            <div>
+                                                                6s: <span className="text-white font-bold">{batsman.sixes}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-2 pt-2 border-t border-white/10 text-sm text-gray-400">
+                                                            SR: <span className="text-white font-bold">{batsman.strike_rate}</span>
+                                                        </div>
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-4 text-base text-gray-300">
-                                                        <div>
-                                                            Runs: <span className="text-white font-bold">{batsman.runs}</span>
-                                                        </div>
-                                                        <div>
-                                                            Balls: <span className="text-white font-bold">{batsman.balls_faced}</span>
-                                                        </div>
-                                                        <div>
-                                                            4s: <span className="text-white font-bold">{batsman.fours}</span>
-                                                        </div>
-                                                        <div>
-                                                            6s: <span className="text-white font-bold">{batsman.sixes}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-2 pt-2 border-t border-white/10 text-sm text-gray-400">
-                                                        SR: <span className="text-white font-bold">{batsman.strike_rate}</span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                    </CardContent>
-                                </Card>
+                                                ))}
+                                        </CardContent>
+                                    </Card>
+                                )}
 
                                 {/* === Current Bowler + Match Stats === */}
-                                <Card className="bg-gradient-to-r from-sky-700/70 via-sky-700/70 to-transparent rounded-xl shadow-none transition">
-                                    <CardHeader className="pb-2 -mb-5">
-                                        <CardTitle className="text-3xl flex items-center gap-3 text-white">
-                                            <img
-                                                src={data.teamb.logo_url || "/placeholder.svg?height=48&width=48"}
-                                                alt={data.teamb.name}
-                                                className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md hover:scale-105 transition-transform duration-500"
-                                            />
-                                            <span className="text-gray-400">{bowlingTeam.name}'s</span> Bowlers
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-6">
-                                        {currentInnings?.bowlers
-                                            ?.filter((bowler) => bowler.bowling === "true")
-                                            .map((bowler) => (
-                                                <div
-                                                    key={bowler.bowler_id}
-                                                    className="p-4"
-                                                >
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <h3 className="text-lg font-bold text-white">{bowler.name}</h3>
-                                                        <Badge variant="destructive" className="text-md font-bold">Bowling</Badge>
+                                {bowlingTeam && (
+                                    <Card className="bg-gradient-to-r from-sky-700/70 via-sky-700/70 to-transparent rounded-xl shadow-none transition">
+                                        <CardHeader className="pb-2 -mb-5">
+                                            <CardTitle className="text-3xl flex items-center gap-3 text-white">
+                                                <img
+                                                    src={data?.teamb?.logo_url || "/placeholder.svg?height=48&width=48"}
+                                                    alt={data?.teamb?.name}
+                                                    className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md hover:scale-105 transition-transform duration-500"
+                                                />
+                                                <span className="text-gray-400">{bowlingTeam.name}'s</span> Bowlers
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-6">
+                                            {currentInnings?.bowlers
+                                                ?.filter((bowler) => bowler.bowling === "true")
+                                                .map((bowler) => (
+                                                    <div
+                                                        key={bowler.bowler_id}
+                                                        className="p-4"
+                                                    >
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <h3 className="text-lg font-bold text-white">{bowler.name}</h3>
+                                                            <Badge variant="destructive" className="text-md font-bold">Bowling</Badge>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-4 text-base text-gray-300">
+                                                            <div>
+                                                                Overs: <span className="text-white font-bold">{bowler.overs}</span>
+                                                            </div>
+                                                            <div>
+                                                                Runs: <span className="text-white font-bold">{bowler.runs_conceded}</span>
+                                                            </div>
+                                                            <div>
+                                                                Wickets: <span className="text-white font-bold">{bowler.wickets}</span>
+                                                            </div>
+                                                            <div>
+                                                                Maidens: <span className="text-white font-bold">{bowler.maidens}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-2 pt-2 border-t border-white/10 text-sm text-gray-400">
+                                                            Econ: <span className="text-white font-bold">{bowler.econ}</span>
+                                                        </div>
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-4 text-base text-gray-300">
-                                                        <div>
-                                                            Overs: <span className="text-white font-bold">{bowler.overs}</span>
-                                                        </div>
-                                                        <div>
-                                                            Runs: <span className="text-white font-bold">{bowler.runs_conceded}</span>
-                                                        </div>
-                                                        <div>
-                                                            Wickets: <span className="text-white font-bold">{bowler.wickets}</span>
-                                                        </div>
-                                                        <div>
-                                                            Maidens: <span className="text-white font-bold">{bowler.maidens}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-2 pt-2 border-t border-white/10 text-sm text-gray-400">
-                                                        Econ: <span className="text-white font-bold">{bowler.econ}</span>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                ))}
 
-                                        {/* === Extra Stats Inside Bowler Card === */}
-                                        <div className="grid grid-cols-3 gap-4 text-center">
-                                            <div className="p-4">
-                                                <p className="text-4xl font-bold text-white">{currentInnings?.equations.runrate}</p>
-                                                <p className="text-gray-400 font-bold text-xl mt-1">Run Rate</p>
+                                            {/* === Extra Stats Inside Bowler Card === */}
+                                            <div className="grid grid-cols-3 gap-4 text-center">
+                                                <div className="p-4">
+                                                    <p className="text-4xl font-bold text-white">{currentInnings?.equations.runrate}</p>
+                                                    <p className="text-gray-400 font-bold text-xl mt-1">Run Rate</p>
+                                                </div>
+                                                <div className="p-4">
+                                                    <p className="text-4xl font-bold text-white">{currentInnings?.extra_runs.total}</p>
+                                                    <p className="text-gray-400 font-bold text-xl mt-1">Extras</p>
+                                                </div>
+                                                <div className="p-4">
+                                                    <p className="text-4xl font-bold text-white">{currentInnings?.equations.bowlers_used}</p>
+                                                    <p className="text-gray-400 font-bold text-xl mt-1">Bowlers Used</p>
+                                                </div>
                                             </div>
-                                            <div className="p-4">
-                                                <p className="text-4xl font-bold text-white">{currentInnings?.extra_runs.total}</p>
-                                                <p className="text-gray-400 font-bold text-xl mt-1">Extras</p>
-                                            </div>
-                                            <div className="p-4">
-                                                <p className="text-4xl font-bold text-white">{currentInnings?.equations.bowlers_used}</p>
-                                                <p className="text-gray-400 font-bold text-xl mt-1">Bowlers Used</p>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                        </CardContent>
+                                    </Card>
+                                )}
                             </div>
                             :
                             <div className="mb-3">
                                 <div className="text-center">
-                                    <p className="text-gray-400 text-4xl">{data.live}</p>
+                                    <p className="text-gray-400 text-4xl">{data?.live}</p>
                                 </div>
                             </div>
                         }
                     </TabsContent>
                     <TabsContent value="batting">
                         <div className="space-y-4">
-                            {data.innings.map((inning, idx) => (
+                            {data?.innings?.map((inning, idx) => (
                                 <Card key={inning.iid} className="border-slate-700 bg-slate-800/50">
                                     <CardHeader className="pb-2 border-b-white/20 border-b">
                                         <CardTitle className="text-5xl font-bold text-white -mb-4">
@@ -325,14 +349,14 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                                     return (
                                                         <div
                                                             key={batsman.batsman_id}
-                                                            className={`flex items-center justify-between p-3 rounded-md transition ${!isOut && idx == (Number(data.latest_inning_number) - 1)
+                                                            className={`flex items-center justify-between p-3 rounded-md transition ${!isOut && idx == (Number(data?.latest_inning_number) - 1)
                                                                 ? "bg-gray-700/20 hover:bg-gray-700/60 cursor-pointer"
                                                                 : isOut
                                                                     ? "opacity-50 cursor-not-allowed"
                                                                     : ""
                                                                 }`}
                                                             onClick={() => {
-                                                                if (!isOut && idx == (Number(data.latest_inning_number) - 1)) {
+                                                                if (!isOut && idx == (Number(data?.latest_inning_number) - 1)) {
                                                                     setBettingPlayer(batsman)
                                                                     setBettingNumber(number)
                                                                     setCurrentPlayerPrice(
@@ -380,7 +404,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                         :
                                         <div className="mb-3">
                                             <div className="text-center">
-                                                <p className="text-gray-400 text-4xl">{data.live}</p>
+                                                <p className="text-gray-400 text-4xl">{data?.live}</p>
                                             </div>
                                         </div>
                                     }
@@ -390,7 +414,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     </TabsContent>
                     <TabsContent value="bowling">
                         <div className="space-y-4">
-                            {data.innings.map((inning, index) => (
+                            {data?.innings?.map((inning, index) => (
                                 <Card key={inning.iid} className="bg-slate-800/50 border-slate-700">
                                     <CardHeader className="border-b-white/20 border-b">
                                         <CardTitle className="text-white flex items-center gap-5 px-2">
@@ -438,7 +462,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                         :
                                         <div className="mb-3">
                                             <div className="text-center">
-                                                <p className="text-gray-400 text-4xl">{data.live}</p>
+                                                <p className="text-gray-400 text-4xl">{data?.live}</p>
                                             </div>
                                         </div>
                                     }
@@ -448,32 +472,32 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     </TabsContent>
                     <TabsContent value="partnership">
                         <div className="space-y-4">
-                            {data.innings[Number(data.latest_inning_number) - 1].current_partnership && (
+                            {data?.innings?.[Number(data?.latest_inning_number) - 1]?.current_partnership && (
                                 <Card className="bg-slate-800/50 border-slate-700">
                                     <CardHeader className="pb-2 border-b-white/20 border-b">
                                         <CardTitle className="text-white text-5xl flex gap-5 items-center">
                                             Current Partnership
                                         </CardTitle>
                                     </CardHeader>
-                                    {data.innings[Number(data.latest_inning_number) - 1].current_partnership.balls != '' ?
+                                    {data.innings[Number(data?.latest_inning_number) - 1].current_partnership.balls != '' ?
                                         <CardContent>
                                             <div className="grid grid-cols-3 gap-2 mb-3">
                                                 <div className="text-center">
-                                                    <p className="text-5xl font-bold text-white">{currentInnings.current_partnership.runs}</p>
+                                                    <p className="text-5xl font-bold text-white">{currentInnings?.current_partnership?.runs}</p>
                                                     <p className="text-gray-400 text-4xl">Runs</p>
                                                 </div>
                                                 <div className="text-center">
-                                                    <p className="text-5xl font-bold text-white">{currentInnings.current_partnership.balls}</p>
+                                                    <p className="text-5xl font-bold text-white">{currentInnings?.current_partnership?.balls}</p>
                                                     <p className="text-gray-400 text-4xl">Balls</p>
                                                 </div>
                                                 <div className="text-center">
-                                                    <p className="text-5xl font-bold text-white">{currentInnings.current_partnership.overs}</p>
+                                                    <p className="text-5xl font-bold text-white">{currentInnings?.current_partnership?.overs}</p>
                                                     <p className="text-gray-400 text-4xl">Overs</p>
                                                 </div>
                                             </div>
                                             <Separator className="my-7 bg-white" />
                                             <div className="space-y-1">
-                                                {currentInnings.current_partnership.batsmen?.map((batsman, index) => (
+                                                {currentInnings?.current_partnership?.batsmen?.map((batsman, index) => (
                                                     <div key={index} className="flex justify-between items-center font-bold text-3xl">
                                                         <span className="text-white">{batsman.name}</span>
                                                         <span className="text-gray-400">
@@ -486,7 +510,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                         :
                                         <div className="mb-3">
                                             <div className="text-center">
-                                                <p className="text-gray-400 text-4xl">{data.live}</p>
+                                                <p className="text-gray-400 text-4xl">{data?.live}</p>
 
                                             </div>
                                         </div>
@@ -527,7 +551,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     </TabsContent>
                     <TabsContent value="players">
                         <div className="space-y-4">
-                            {Array.from(new Set(data.players.map((p) => p.nationality))).map((nationality) => (
+                            {data?.players && Array.from(new Set(data.players.map((p) => p.nationality))).map((nationality) => (
                                 <Card key={nationality} className="shadow-none bg-slate-800/50">
                                     <CardHeader className="pb-2">
                                         <CardTitle className="text-white text-4xl flex items-center gap-2">
@@ -572,26 +596,47 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                         </div>
                     </TabsContent>
                     <TabsContent value="match-notes">
-                        <Card className="bg-slate-800/50">
-                            <CardHeader className="-mb-2 border-b border-b-white/20">
-                                <CardTitle className="text-white text-4xl flex items-center gap-2 py-2">
-                                    <BarChart3 className="w-10 h-10" />
-                                    Match Commentary
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-2">
-                                    {formatMatchNotes(matchNotesNormalized).map((note, index) => (
-                                        <div
-                                            key={index}
-                                            className="p-2"
-                                        >
-                                            <p className="text-gray-300 text-md font-bold">{note}</p>
+                        {
+                            formatMatchNotes ?
+                                <Card className="bg-slate-800/50">
+                                    <CardHeader className="-mb-2 border-b border-b-white/20">
+                                        <CardTitle className="text-white text-4xl flex items-center gap-2 py-2">
+                                            <BarChart3 className="w-10 h-10" />
+                                            Match Commentary
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-2">
+                                            {formatMatchNotes(matchNotesNormalized).map((note, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="p-2"
+                                                >
+                                                    <p className="text-gray-300 text-md font-bold">{note}</p>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
+                                    </CardContent>
+                                </Card>
+                                :
+                                <Card className="bg-slate-800/50">
+                                    <CardHeader className="-mb-2 border-b border-b-white/20">
+                                        <CardTitle className="text-white text-4xl flex items-center gap-2 py-2">
+                                            <BarChart3 className="w-10 h-10" />
+                                            Match Commentary
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-2">
+                                            <div
+                                                className="p-2"
+                                            >
+                                                <p className="text-gray-300 text-3xl font-bold">Match Is Not Started Yet</p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                        }
                     </TabsContent>
                 </Tabs>
 
@@ -667,8 +712,8 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                             {/* === Header === */}
                             <div className="mb-6 flex items-center justify-between">
                                 <img
-                                    src={data.teama.team_id == data.innings[Number(data.latest_inning_number) - 1].batting_team_id ? data.teama.logo_url : data.teamb.logo_url}
-                                    alt={data.teama.team_id == data.innings[Number(data.latest_inning_number) - 1].batting_team_id ? data.teama.name : data.teamb.name}
+                                    src={data?.teama?.team_id == data?.innings?.[Number(data?.latest_inning_number) - 1]?.batting_team_id ? data?.teama?.logo_url : data?.teamb?.logo_url}
+                                    alt={data?.teama?.team_id == data?.innings?.[Number(data?.latest_inning_number) - 1]?.batting_team_id ? data?.teama?.name : data?.teamb?.name}
                                     className="w-20 h-20 rounded-full shadow-xl"
                                 />
                                 <h2 className="text-4xl flex items-center gap-4 font-extrabold text-white">
@@ -933,11 +978,11 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-3xl">
                             <div>
                                 <h4 className="text-white font-bold mb-1">Umpires</h4>
-                                <p className="text-white/60 font-bold text-lg">{data.umpires}</p>
+                                <p className="text-white/60 font-bold text-lg">{data?.umpires || "No data found"}</p>
                             </div>
                             <div>
                                 <h4 className="text-white font-bold mb-1">Match Referee</h4>
-                                <p className="text-white/60 font-bold text-lg">{data.referee}</p>
+                                <p className="text-white/60 font-bold text-lg">{data?.referee || "No data found"}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -948,7 +993,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                         <CardContent className="px-6 py-2">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                                 {/* Venue */}
-                                {typeof data.venue === "object" && data.venue && (
+                                {data?.venue && typeof data.venue === "object" && (
                                     <div className="space-y-4">
                                         <h4 className="flex items-center gap-3 text-white font-semibold text-2xl md:text-3xl">
                                             <MapPin className="w-8 h-8 text-emerald-400" />
@@ -976,7 +1021,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                 )}
 
                                 {/* Weather */}
-                                {data.weather && typeof data.weather === "object" && !!data.weather.weather_desc && (
+                                {data?.weather && typeof data.weather === "object" && !!data.weather.weather_desc && (
                                     <div className="space-y-4">
                                         <h4 className="flex items-center gap-3 text-white font-semibold text-2xl md:text-3xl">
                                             <Thermometer className="w-8 h-8 text-orange-400" />
@@ -1027,7 +1072,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                 )}
 
                                 {/* Pitch */}
-                                {data.pitch && typeof data.pitch === "object" && (
+                                {data?.pitch && typeof data.pitch === "object" && (
                                     (data.pitch.pitch_condition ||
                                         data.pitch.batting_condition ||
                                         data.pitch.pace_bowling_condition ||

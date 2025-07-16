@@ -2,6 +2,8 @@ import React from "react";
 import { Match } from "@/types/match-schedule";
 import { useRouter } from "next/navigation";
 import { BadgePoundSterling, Cloud, Grid3X3, Hotel, PoundSterling } from "lucide-react";
+import MatchStartTimer from "@/app/(root)/betting-interface/components/match-start-timer";
+import { toast } from "sonner";
 
 interface MatchCardProps {
     match: Match;
@@ -26,41 +28,35 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
         });
     }
 
-    // Helper to check if match is live and started
-    function isLiveAndStarted() {
-        if (match.status_str !== "Live") return false;
-        if (!match.date_start_ist) return false;
-        // Parse date_start_ist robustly (format: '2025-07-09 14:30:00')
-        const isoStr = match.date_start_ist.replace(" ", "T");
-        const startDate = new Date(isoStr);
-        return Date.now() >= startDate.getTime();
-    }
 
     return (
         <div className={`flex flex-col rounded-4xl overflow-hidden bg-gradient-to-tl from-transparent via-transparent to-sky-600/70 shadow-lg hover:shadow-2xl transition-all duration-300 animate-fade-in my-4 ${match.status_str !== "Live" && "from-transparent via-transparent shadow-none hover:shadow-none"}`}>
             {/* Header */}
             <div className="px-6 pt-5 pb-3 flex flex-row items-center justify-between gap-2 ">
-                {/* Left: Competition & Format */}
-                {match.format_str && match.status_str === "Live" && (
-                    <div className="flex items-center gap-2">
-                        <span className="bg-purple-900/80 text-purple-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide shadow-sm">
-                            {match.format_str}
-                        </span>
-                    </div>
-                )}
+
                 {match.competition.abbr && (
-                    <span className="text-center mx-auto px-3 py-1 rounded-full text-xl font-bold uppercase tracking-wide shadow-sm">
+                    <span className="text-center mx-auto px-3 py-1 pl-50 rounded-full text-3xl bg-gradient-to-r from-gray-100 via-gray-100/50 to-gray-100/40 bg-clip-text text-transparent font-bold uppercase tracking-wide">
                         {match.competition.title}
                     </span>
                 )}
                 {/* Right: Status and Umpires */}
-                {match.status_str === "Live" && (
-                    <div className="flex flex-col items-end gap-1">
-                        <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1 bg-red-700/80 text-white px-3 py-1 rounded-full text-xs font-bold animate-pulse shadow">
-                                <span className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></span> LIVE
-                            </span>
-                        </div>
+                {match.status_str !== "Live" ? (
+                    <div className="scale-70">
+                        <MatchStartTimer
+                            startTime={match.date_start_ist}
+                            onComplete={() => {
+                                toast.success("The match has started! Good luck");
+                                setTimeout(() => {
+                                    window.location.reload();
+                                }, 3000);
+                            }}
+                        />
+                    </div>
+                ) : (
+                    <div className="flex items-center gap- min-h-[40px] min-w-[120px] justify-end">
+                        <span className="flex items-center gap-1 bg-gray-700/80 text-white px-3 py-1 rounded-full text-xl font-bold shadow">
+                            <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></span> LIVE
+                        </span>
                     </div>
                 )}
             </div>
@@ -175,17 +171,15 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
             )}
 
             {/* Footer: More Info & CTA */}
-            {isLiveAndStarted() && (
-                <div className="px-6 pb-6 pt-2 gap-3 ">
-                    <button
-                        onClick={() => router.push(`/betting-interface?id=${match.match_id}`)}
-                        className="w-full gap-2 rounded-full bg-gradient-to-r from-transparent hover:via-sky-600/40 hover:from-sky-600/20 hover:to-sky-600/20  via-sky-600/20 to-transparent text-white font-extrabold py-3 px-8 cursor-pointer shadow-xl duration-300 transition-colors border-0 text-lg mt-2 md:mt-0 animate-fade-in "
-                        aria-label={`Create Portfolio for ${match.teama.name} vs ${match.teamb.name}`}
-                    >
-                        Create Portfolio
-                    </button>
-                </div>
-            )}
+            <div className="px-6 pb-6 pt-2 gap-3 ">
+                <button
+                    onClick={() => router.push(`/betting-interface?id=${match.match_id}`)}
+                    className="w-full gap-2 rounded-full bg-gradient-to-r from-transparent hover:via-sky-600/40 hover:from-sky-600/20 hover:to-sky-600/20  via-sky-600/20 to-transparent text-white font-extrabold py-3 px-8 cursor-pointer shadow-xl duration-300 transition-colors border-0 text-lg mt-2 md:mt-0 animate-fade-in "
+                    aria-label={`Create Portfolio for ${match.teama.name} vs ${match.teamb.name}`}
+                >
+                    Create Portfolio
+                </button>
+            </div>
         </div>
     );
 }; 
