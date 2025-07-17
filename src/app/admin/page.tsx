@@ -8,6 +8,7 @@ import "dotenv/config"
 import { Role } from "@/types/user";
 import { getCookie } from "@/lib/helper";
 import { UpdateRole } from "@/components/admin/update-role";
+import TransactionActivity from "@/components/admin/transaction-activity";
 
 // Define environment variables type-safe
 declare global {
@@ -26,25 +27,34 @@ const CLIENT_ID = process.env.NEXT_PUBLIC_CLIENT_ID;
 // API Service Layer with TypeScript
 const dashboardApi = {
   getTotalUsers: async () => {
-    const res = await fetch(`${BACKEND_URL}/admin/total-users`);
+    const res = await fetch(`${BACKEND_URL}/admin/total-registered-users`);
     if (!res.ok) throw new Error('Failed to fetch total users');
     return res.json();
   },
   getActiveUsers: async () => {
-    const res = await fetch(`${BACKEND_URL}/match-scores/connected-users`);
+    const res = await fetch(`${BACKEND_URL}/admin/total-active-users`);
     if (!res.ok) throw new Error('Failed to fetch active users');
     return res.json();
   },
   getCompanyProfit: async () => {
-    const res = await fetch(`${BACKEND_URL}/admin/company-profit`);
-    if (!res.ok) throw new Error('Failed to fetch company profit');
+    const res = await fetch(`${BACKEND_URL}/admin/company-statement`,
+      {
+
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getCookie("token")}`,
+        },
+        credentials: "include",
+      });
+    if (!res.ok) throw new Error('Failed to fetch company statement');
     return res.json();
   },
-  getCompanyLoss: async () => {
-    const res = await fetch(`${BACKEND_URL}/admin/company-loss`);
-    if (!res.ok) throw new Error('Failed to fetch company loss');
-    return res.json();
-  },
+  // getCompanyLoss: async () => {
+  //   const res = await fetch(`${BACKEND_URL}/admin/company-loss`);
+  //   if (!res.ok) throw new Error('Failed to fetch company loss');
+  //   return res.json();
+  // },
   getTeamMembers: async () => {
     const res = await fetch(`${BACKEND_URL}/admin/fetch-all-admins`, {
       method: "GET",
@@ -108,14 +118,14 @@ const useDashboardData = () => {
   const [totalActiveUsersError, setTotalActiveUsersError] = useState<string | null>(null);
 
   // Company Profit
-  const [companyProfit, setCompanyProfit] = useState<number>(0);
+  const [companyProfit, setCompanyProfit] = useState<any>(0);
   const [isCompanyProfitLoading, setIsCompanyProfitLoading] = useState<boolean>(true);
   const [companyProfitError, setCompanyProfitError] = useState<string | null>(null);
 
   // Company Loss
-  const [companyLoss, setCompanyLoss] = useState<number>(0);
-  const [isCompanyLossLoading, setIsCompanyLossLoading] = useState<boolean>(true);
-  const [companyLossError, setCompanyLossError] = useState<string | null>(null);
+  // const [companyLoss, setCompanyLoss] = useState<number>(0);
+  // const [isCompanyLossLoading, setIsCompanyLossLoading] = useState<boolean>(true);
+  // const [companyLossError, setCompanyLossError] = useState<string | null>(null);
 
   const [teamMembers, setTeamMembers] = useState<{ _id: string, name: string, role: Role }[]>([]);
   const [isTeamMembersLoading, setIsTeamMembersLoading] = useState<boolean>(true);
@@ -181,13 +191,13 @@ const useDashboardData = () => {
       'Failed to fetch company profit'
     );
 
-    fetchMetric(
-      dashboardApi.getCompanyLoss,
-      setCompanyLoss,
-      setIsCompanyLossLoading,
-      setCompanyLossError,
-      'Failed to fetch company loss'
-    );
+    // fetchMetric(
+    //   dashboardApi.getCompanyLoss,
+    //   setCompanyLoss,
+    //   setIsCompanyLossLoading,
+    //   setCompanyLossError,
+    //   'Failed to fetch company loss'
+    // );
 
     fetchMetric(
       dashboardApi.getTeamMembers,
@@ -232,9 +242,9 @@ const useDashboardData = () => {
     companyProfit,
     isCompanyProfitLoading,
     companyProfitError,
-    companyLoss,
-    isCompanyLossLoading,
-    companyLossError,
+    // companyLoss,
+    // isCompanyLossLoading,
+    // companyLossError,
     teamMembers,
     isTeamMembersLoading,
     teamMembersError,
@@ -261,9 +271,9 @@ const Dashboard = (): JSX.Element => {
     companyProfit,
     isCompanyProfitLoading,
     companyProfitError,
-    companyLoss,
-    isCompanyLossLoading,
-    companyLossError,
+    // companyLoss,
+    // isCompanyLossLoading,
+    // companyLossError,
     teamMembers,
     isTeamMembersLoading,
     teamMembersError,
@@ -292,8 +302,7 @@ const Dashboard = (): JSX.Element => {
     }
     return value;
   };
-
-  console.log("transactions", transactions);
+  console.log("companyProfit", transactions);
 
   return (
     <section className="w-full min-h-[calc(100vh-50px)]">
@@ -325,7 +334,7 @@ const Dashboard = (): JSX.Element => {
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl">
               <div className="p-6">
                 <div className="text-6xl font-light mb-2">
-                  {renderMetricValue(companyProfit, isCompanyProfitLoading, companyProfitError)}
+                  {renderMetricValue(companyProfit.totalProfits, isCompanyProfitLoading, companyProfitError)}
                 </div>
                 <div className="text-lg font-medium mb-1">Company Profit</div>
                 {/* <div className="flex items-center text-sm"> */}
@@ -340,9 +349,9 @@ const Dashboard = (): JSX.Element => {
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl">
               <div className="p-6">
                 <div className="text-6xl font-light mb-2">
-                  {renderMetricValue(companyLoss, isCompanyLossLoading, companyLossError)}
+                  {renderMetricValue(companyProfit.profitFromProfitableCuts, isCompanyProfitLoading, companyProfitError)}
                 </div>
-                <div className="text-lg font-medium mb-1">Company Loss</div>
+                <div className="text-lg font-medium mb-1">Company Profit From Profitable Cuts</div>
                 {/* <div className="flex items-center text-sm"> */}
                 {/*   <span className="text-gray-300">Last Month</span> */}
                 {/*   <span className="ml-2 text-red-500">-10</span> */}
@@ -398,79 +407,10 @@ const Dashboard = (): JSX.Element => {
           </div>
 
           {/* Transaction Activity */}
-          <div className="bg-[#181a20] border-[#1e293b] rounded-2xl">
-            <div className="p-4 sm:p-6">
-              <h2 className="text-xl font-bold mb-6">Transaction Activity</h2>
-              <div className="flex flex-col md:flex-row">
-                <div className="w-full md:w-1/3 flex justify-center items-center mb-6 md:mb-0">
-                  <div className="relative w-48 h-48">
-                    <div className="w-full h-full rounded-full bg-[#181a20] flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="text-4xl font-bold">234</div>
-                        <div className="text-sm text-gray-300">Total Transition</div>
-                      </div>
-                    </div>
-                    {/* Green progress arc - would need SVG for exact replication */}
-                    <div className="absolute inset-0 w-full h-full">
-                      <svg viewBox="0 0 100 100" className="w-full h-full">
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="45"
-                          fill="none"
-                          stroke="#9333ea"
-                          strokeWidth="1"
-                          strokeDasharray="283"
-                          strokeDashoffset="0"
-                          className="opacity-20"
-                        />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="45"
-                          fill="none"
-                          stroke="#22C55E"
-                          strokeWidth="8"
-                          strokeLinecap="round"
-                          strokeDasharray="283"
-                          strokeDashoffset="70"
-                          transform="rotate(-90 50 50)"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                <div className="w-full md:w-2/3 overflow-x-auto">
-                  <table className="w-full min-w-[400px]">
-                    <thead>
-                      <tr className="border-b border-purple-800">
-                        <th className="text-left py-3">Transaction Type</th>
-                        <th className="text-left py-3">Account</th>
-                        <th className="text-left py-3">Transaction</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-purple-800">
-                        <td className="py-3">Deposit</td>
-                        <td className="py-3">122</td>
-                        <td className="py-3">2</td>
-                      </tr>
-                      <tr className="border-b border-purple-800">
-                        <td className="py-3">Withdraw</td>
-                        <td className="py-3">122</td>
-                        <td className="py-3">2</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3">Discount</td>
-                        <td className="py-3">122</td>
-                        <td className="py-3">2</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
+          {
+            transactions && <TransactionActivity transactions={transactions} />
+          }
+
         </div>
 
         {/* Team Members Sidebar */}

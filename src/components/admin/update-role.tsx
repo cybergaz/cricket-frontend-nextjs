@@ -5,7 +5,7 @@ import { ShieldCheck, X } from "lucide-react";
 import { getCookie } from "@/lib/helper";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-type Role = 'marketing' | 'financial' | 'super_admin'
+type Role = 'marketing' | 'financial' | 'super_admin' | 'user'
 
 const UpdateRole = ({ children, user_id }: { children: React.ReactNode, user_id: string }) => {
 
@@ -82,6 +82,7 @@ const UpdateRole = ({ children, user_id }: { children: React.ReactNode, user_id:
                 <option value="marketing">Marketing Admin</option>
                 <option value="financial">Financial Admin</option>
                 <option value="super_admin">Super Admin</option>
+                <option value="user">Normal User</option>
               </select>
             </div>
             <div className="flex gap-3 mt-5">
