@@ -88,7 +88,7 @@ const TransactionActivity = ({ transactions }: { transactions: any }) => {
         <div className="mt-1 flex justify-end">
           <button
             onClick={() => setShowModal(true)}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg"
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg max-sm:scale-90"
           >
             More Details
           </button>
@@ -102,7 +102,7 @@ const TransactionActivity = ({ transactions }: { transactions: any }) => {
             onClick={() => setShowModal(false)}
             className="fixed inset-0 w-screen h-screen z-40"
           />
-          <div className="z-50 bg-[#181a20] border-2 rounded-2xl border-[#4c6590]/20  text-white shadow-lg w-full max-w-md p-6 relative">
+          <div className="z-50 bg-[#181a20] border-2 rounded-2xl border-[#4c6590]/20  text-white shadow-lg w-full max-w-md mx-1 p-6 relative">
             <h3 className="text-lg font-bold mb-4">All Transaction Details</h3>
             <div className="text-sm space-y-3 max-h-[60vh] overflow-y-auto">
               {Object.entries(transactions).map(([key, value]) => (

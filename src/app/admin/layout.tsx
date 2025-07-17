@@ -8,10 +8,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import MobileSidebar from "@/components/admin/mobile-sidebar";
 import Image from "next/image";
+import { useUserStore } from "@/store/user-store";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const user = useUserStore((state) => state.user);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -44,8 +47,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Desktop Sidebar */}
       <div className="hidden md:flex p-2 py-8 w-[16rem] border-2 border-white/10 rounded-2xl flex-col gap-10 items-center justify-between bg-[#181a20]">
         <div className="flex flex-col items-center mb-8">
-          <User className="size-8 rounded-full text-[#a259ff]" />
-          <h2 className="mt-4 text-lg text-center text-white">Very Long User Name</h2>
+          <Avatar className="size-11 border-2 transition-all duration-250 border-white/40 hover:border-accent shadow-md cursor-pointer flex justify-center items-center" >
+            {
+              user?.profileImage
+                ? <AvatarImage src={user?.profileImage} alt="User Profile" className="object-cover" />
+                : <User />
+            }
+          </Avatar>
+          <h2 className="mt-4 text-lg text-center text-white">{user?.name}</h2>
         </div>
 
         <div className="space-y-2 -mt-5 w-full">

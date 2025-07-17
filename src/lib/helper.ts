@@ -130,6 +130,7 @@ function generateAlphaCode(): string {
 interface BackendResponse {
   status: number;
   message: string;
+  username: string;
 }
 
 const isUserAdmin = async (request: NextRequest) => {
@@ -156,7 +157,7 @@ const isUserAdmin = async (request: NextRequest) => {
 
     const data: BackendResponse = await response.json();
     if (response.status === 200) {
-      return { success: true, message: "User is Admin" };
+      return { success: true, message: "User is Admin", username: data.username };
     } else {
       return { success: false, message: data.message || "User is not an admin" };
     }

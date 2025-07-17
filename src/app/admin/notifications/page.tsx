@@ -10,6 +10,7 @@ type Notification = {
   title: string;
   date: string;
   time: string;
+  sentTo?: string; // Optional field to indicate who the notification was sent to
 };
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -88,12 +89,12 @@ const NotificationPopup = ({
             onChange={(e) => setUserGroup(e.target.value)}
           >
             <option value="all">All</option>
-            <option value="loss">Users in loss</option>
-            <option value="profit">User in profit</option>
-            <option value="today">Today Login</option>
-            <option value="new">New User</option>
-            <option value="inactive">User Inactive for 24hr</option>
-            <option value="admin">All Admins</option>
+            <option value="users_in_loss">Users in loss</option>
+            <option value="users_in_profit">User in profit</option>
+            <option value="today_login">Today Login</option>
+            <option value="new_users">New User</option>
+            <option value="inactive_users">User Inactive for 24hr</option>
+            <option value="admins">All Admins</option>
           </select>
         </div>
 
@@ -135,7 +136,8 @@ export default function Notifications() {
     Array(20).fill(null).map((_, i) => ({
       title: `Notification ${i + 1}`,
       date: "10/10/2024",
-      time: "10:10 PM"
+      time: "10:10 PM",
+      sentTo: "inactive_users"
     }))
   );
 
@@ -160,7 +162,7 @@ export default function Notifications() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 text-white">
         <h1 className="text-lg font-semibold">Notifications Sent</h1>
         <Button onClick={() => setPopup(true)} className="flex gap-2 w-full sm:w-auto">
-          <CirclePlus className="fill-white text-[#193cb8]" />
+          <CirclePlus className="fill-white text-[#2f1d44]" />
           New Notification
         </Button>
 
@@ -178,6 +180,7 @@ export default function Notifications() {
               <th className="py-2 px-4">Title</th>
               <th className="py-2 px-4">Date</th>
               <th className="py-2 px-4">Time</th>
+              <th className="py-2 px-4">Sent To</th>
             </tr>
           </thead>
           <tbody>
@@ -186,6 +189,7 @@ export default function Notifications() {
                 <td className="py-2 px-4">{notification.title}</td>
                 <td className="py-2 px-4">{notification.date}</td>
                 <td className="py-2 px-4">{notification.time}</td>
+                <td className="py-2 px-4">{notification.sentTo}</td>
               </tr>
             ))}
           </tbody>

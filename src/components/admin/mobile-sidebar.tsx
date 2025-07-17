@@ -3,6 +3,8 @@ import { LogOut, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage } from "../ui/avatar";
+import { useUserStore } from "@/store/user-store";
 
 type MobileSidebarProps = {
   isOpen: boolean;
@@ -11,6 +13,7 @@ type MobileSidebarProps = {
 
 const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   const pathname = usePathname();
+  const user = useUserStore((state) => state.user);
 
   return (
     <>
@@ -26,14 +29,20 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed top-0 left-0 z-50 h-full w-[16rem] p-4 py-8 flex flex-col items-center gap-5 bg-[#001440] transition-transform duration-300 ease-in-out",
+          "fixed top-0 left-0 z-50 h-full w-[16rem] p-4 py-8 flex flex-col items-center gap-5 bg-[#181a20] transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="w-full flex justify-center mt-10">
           <div className="flex flex-col items-center gap-3">
-            <User className="size-8 rounded-full" />
-            <h2 className="text-lg text-white text-center">Very Long User Name</h2>
+            <Avatar className="size-11 border-2 transition-all duration-250 border-white/40 hover:border-accent shadow-md cursor-pointer flex justify-center items-center" >
+              {
+                user?.profileImage
+                  ? <AvatarImage src={user?.profileImage} alt="User Profile" className="object-cover" />
+                  : <User />
+              }
+            </Avatar>
+            <h2 className="mt-4 text-lg text-center text-white">{user?.name}</h2>
           </div>
         </div>
         <hr className="w-full border-white/40" />
