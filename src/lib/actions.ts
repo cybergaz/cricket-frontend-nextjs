@@ -22,7 +22,12 @@ const login = async (mobile: string, password: string): Promise<LoginResponse> =
 
     if (res.ok && data.token) {
       // localStorage.setItem("token", data.token);
-      document.cookie = `token=${data.token}; path=/; secure;`;
+
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 7);
+
+      document.cookie = `token=${data.token}; path=/; secure; expires=${expiryDate.toUTCString()}; SameSite=None`;
+      // document.cookie = `token=${data.token}; path=/; secure;`;
       toast.success("Login successful! Welcome to Dashboard.");
       setUserIntoGlobalStore(data.token)
       return { success: true, message: data.message };
@@ -69,7 +74,12 @@ const handleGoogleSuccess = async (
     const data: GoogleLoginResponse = await res.json();
 
     if (data.token) {
-      document.cookie = `token=${data.token}; path=/; secure;`;
+
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 7);
+
+      document.cookie = `token=${data.token}; path=/; secure; expires=${expiryDate.toUTCString()}; SameSite=None`;
+      // document.cookie = `token=${data.token}; path=/; secure;`;
       toast.success("Login successful! Welcome to Dashboard.");
       setUserIntoGlobalStore(data.token)
       window.location.href = "/home";
