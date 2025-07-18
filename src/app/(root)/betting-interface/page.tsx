@@ -64,13 +64,10 @@ export default function BettingPage() {
   }
 
 
-  if (!matchData) {
-    if (!matchId) {
-      return <Error message="No match data available" />;
-    } else {
-      return <YetToStart matchId={matchId} />;
-    }
-  }
+  // if (!matchData) {
+  //   return <YetToStart matchId={matchId} />;
+  // }
+
 
   if (matchData)
     return <MatchScorecard matchData={matchData} />;

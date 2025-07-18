@@ -21,6 +21,7 @@ import {
 import type { CricketMatchData, Player, BettingPlayer, MatchScorecardProps, Team, BettingTeam } from "./types"
 import { getRoleColor, formatMatchNotes, buyPlayer, sellPlayer } from "./services"
 import { toast } from "sonner"
+import { Input } from "@/components/ui/input"
 
 export default function MatchScorecard({ matchData }: MatchScorecardProps) {
   const hasData = matchData && Object.keys(matchData).length > 0;
@@ -465,10 +466,10 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                         : 25
                                     setCurrentPlayerPrice(
                                       current
-                                      - (Number(batsman.run0)  * 0.5)
-                                      + (Number(batsman.run1)  * 0.75)
-                                      + (Number(batsman.run2)  * 1.50)
-                                      + (Number(batsman.run3)  * 2.25)
+                                      - (Number(batsman.run0) * 0.5)
+                                      + (Number(batsman.run1) * 0.75)
+                                      + (Number(batsman.run2) * 1.50)
+                                      + (Number(batsman.run3) * 2.25)
                                       + (Number(batsman.fours) * 3)
                                       + (Number(batsman.sixes) * 4.5)
                                     )
@@ -1026,20 +1027,55 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
               </div>
               {/* === Quantity Selector === */}
               <div className="mt-8">
-                <label className="block mb-2 text-sm font-bold text-gray-300">Select Quantity</label>
-                <div className="flex gap-1.5 flex-wrap">
-                  {[1, 5, 10, 15, 20, 25, 30, 35].map((qty) => (
-                    <button
-                      key={qty}
-                      onClick={() => setQuantity(qty)}
-                      className={`px-[16.7px] py-2 rounded-lg text-white font-bold transition-all cursor-pointer ${quantity === qty
-                        ? "bg-green-600 border-green-700"
-                        : "bg-gray-800 hover:bg-gray-700"
-                        }`}
-                    >
-                      {qty}
-                    </button>
-                  ))}
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                  <div className="flex-1 flex flex-col">
+                    <label className="text-sm font-bold text-gray-300 mb-1" htmlFor="quantity-input">
+                      Quantity
+                    </label>
+                    <Input
+                      id="quantity-input"
+                      className="text-white border-0 font-extrabold bg-gray-800/60 rounded-lg px-4 py-2"
+                      type="number"
+                      min={1}
+                      max={Math.max(1, Math.floor(25000 / (currentPlayerPrice || 1)))}
+                      value={quantity}
+                      onChange={e => {
+                        let val = Number(e.target.value);
+                        if (val < 1) val = 1;
+                        // Enforce price upper limit
+                        const maxQty = Math.max(1, Math.floor(25000 / (currentPlayerPrice || 1)));
+                        if (val > maxQty) val = maxQty;
+                        setQuantity(val);
+                      }}
+                    />
+
+                  </div>
+                  <div className="flex-1 flex flex-col items-end">
+                    <label className="text-sm font-bold text-gray-300 mb-1" htmlFor="price-input">
+                      Total Price
+                    <span className={`text-xs mt-1 font-bold ${currentPlayerPrice * quantity > 25000 ? "text-red-500" : "text-gray-400"}`}>
+                      {currentPlayerPrice * quantity > 25000
+                        ? "Exceeds ₹25000 limit"
+                        : ` <= ₹25000`}
+                    </span>
+                    </label>
+                    <Input
+                      id="price-input"
+                      className="text-white border-0 font-extrabold bg-gray-800/60 rounded-lg px-4 py-2"
+                      placeholder={`₹${currentPlayerPrice * quantity}`}
+                      value={`₹${currentPlayerPrice * quantity}`}
+                      onChange={e => {
+                        let val = e.target.value.replace(/[^\d]/g, "");
+                        let total = Number(val);
+                        let newQty = currentPlayerPrice ? Math.floor(total / currentPlayerPrice) : 1;
+                        if (newQty < 1) newQty = 1;
+                        const maxQty = Math.max(1, Math.floor(25000 / (currentPlayerPrice || 1)));
+                        if (newQty > maxQty) newQty = maxQty;
+                        setQuantity(newQty);
+                      }}
+                    />
+
+                  </div>
                 </div>
               </div>
               {/* === CTA Buttons === */}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FeaturedBanner } from "./featured-banner";
 import { Match } from "@/types/match-schedule";
 import { MatchCard } from "@/components/betting/match-card";
+import { Loading } from "../betting-interface/components/Loading";
 
 export default function LiveMatches() {
   const [today, setToday] = useState("");
@@ -16,8 +17,9 @@ export default function LiveMatches() {
       try {
         setIsLoading(true);
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/today`);
-        if (!res.ok) throw new Error("API Error");
+        // if (!res.ok) throw new Error("API Error");
         const data = await res.json();
+        console.log(data)
         setMatches(data.data);
       } catch (e) {
         console.error("Fetch error:", e);
@@ -44,6 +46,10 @@ export default function LiveMatches() {
     setToday(`${day}${suffix} ${month} ${year}`);
     setTommorow(`${day + 1}${suffix} ${month} ${year}`);
   }, []);
+
+  if (isLoading) {
+    return <Loading />;
+  }
 
   return (
     <div className="min-h-full text-gray-100">
