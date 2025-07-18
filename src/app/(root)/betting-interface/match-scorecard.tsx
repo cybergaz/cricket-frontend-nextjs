@@ -465,10 +465,10 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                         : 25
                                     setCurrentPlayerPrice(
                                       current
-                                      - (Number(batsman.run0) * 0.5)
-                                      + (Number(batsman.run1) * 0.75)
-                                      + (Number(batsman.run2) * 1.25)
-                                      + (Number(batsman.run3) * 2)
+                                      - (Number(batsman.run0)  * 0.5)
+                                      + (Number(batsman.run1)  * 0.75)
+                                      + (Number(batsman.run2)  * 1.50)
+                                      + (Number(batsman.run3)  * 2.25)
                                       + (Number(batsman.fours) * 3)
                                       + (Number(batsman.sixes) * 4.5)
                                     )
