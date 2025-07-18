@@ -2,27 +2,13 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Zap } from "lucide-react";
 import {
-  ChevronDown,
-  ChevronRight,
   TrendingUp,
   BarChart2,
-  Activity,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-
-import { toast } from "sonner";
-import { setUserIntoGlobalStore } from "@/lib/helper";
 import Competitions, { Competition } from "./Competitions";
+import { Loading } from "../betting-interface/components/Loading";
 
 
 const CricketSchedulePage = () => {
@@ -296,7 +282,9 @@ const CricketSchedulePage = () => {
   //     localStorage.removeItem("user-storage");
   //   };
   // }, []);
-
+  if (isLoading) {
+    return <Loading />
+  }
   return (
     <div className="bg-background min-h-screen">
       <section className="relative h-[500px] overflow-hidden bg-gray-900">
