@@ -1,162 +1,87 @@
-"use client"
-
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, PlusCircle, BarChart3 } from "lucide-react"
-import { useState, useRef, useEffect } from "react"
+import { TrendingUp, PlusCircle } from "lucide-react"
+import { Match } from "@/types/match-schedule"
+import { useRouter } from "next/navigation"
 
-export function FeaturedBanner() {
-  const [chartPath1, setChartPath1] = useState("");
-  const [chartPath2, setChartPath2] = useState("");
-
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    // === Fix: Only generate inside useEffect ===
-    const chartHeight = 60;
-
-    const generateChartPoints = (count: number, height: number) => {
-      const points = [];
-      let y = height / 2;
-
-      for (let i = 0; i < count; i++) {
-        const change = (Math.random() - 0.5) * 10;
-        y = Math.max(5, Math.min(height - 5, y + change));
-        points.push({ x: (i / (count - 1)) * 100, y });
-      }
-
-      return points;
-    };
-
-    const createPath = (points: Array<{ x: number; y: number }>, height: number) => {
-      if (points.length === 0) return "";
-
-      let path = `M 0,${height} L ${points[0].x},${points[0].y}`;
-
-      for (let i = 1; i < points.length; i++) {
-        path += ` L ${points[i].x},${points[i].y}`;
-      }
-
-      path += ` L 100,${height} Z`;
-      return path;
-    };
-
-    const points1 = generateChartPoints(20, chartHeight);
-    const points2 = generateChartPoints(20, chartHeight);
-
-    setChartPath1(createPath(points1, chartHeight));
-    setChartPath2(createPath(points2, chartHeight));
-  }, []);
+export function FeaturedBanner(match: Match) {
+  const router = useRouter();
+  const {
+    competition,
+    teama,
+    teamb,
+    venue,
+    status_note,
+  } = match;
 
   return (
-    <div className="relative overflow-hidden bg-backgorund py-12 mb-8">
-      {/* Canvas background animation - stock charts only */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ zIndex: 0 }} />
-      <div className="absolute inset-0 z-0 opacity-30">
-        <motion.svg
-          width="100%"
-          height="100%"
-          viewBox="0 0 100 60"
-          preserveAspectRatio="none"
-          className="absolute inset-0"
-          initial={{ opacity: 0.2 }}
-          animate={{ opacity: [0.2, 0.4, 0.2] }}
-          transition={{ duration: 3, repeat: Infinity, repeatType: "reverse" }}
-        >
-          <motion.path
-            d={chartPath1}
-            fill="url(#gradient1)"
-            initial={{ y: 10 }}
-            animate={{
-              y: [10, 0, 10],
-              x: [0, 2, 0, -2, 0],
-            }}
-            transition={{
-              duration: 8,
-              repeat: Infinity,
-              repeatType: "reverse",
-            }}
-          />
-          <defs>
-            <linearGradient id="gradient1" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.7" />
-              <stop offset="100%" stopColor="#a78bfa" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-        </motion.svg>
-
-        <motion.svg
-          width="100%"
-          height="100%"
-          viewBox="0 0 100 60"
-          preserveAspectRatio="none"
-          className="absolute inset-0"
-          initial={{ opacity: 0.2 }}
-          animate={{ opacity: [0.2, 0.3, 0.2] }}
-          transition={{ duration: 4, repeat: Infinity, repeatType: "reverse", delay: 1 }}
-        >
-          <motion.path
-            d={chartPath2}
-            fill="url(#gradient2)"
-            initial={{ y: -5 }}
-            animate={{
-              y: [-5, 5, -5],
-              x: [0, -2, 0, 2, 0],
-            }}
-            transition={{
-              duration: 10,
-              repeat: Infinity,
-              repeatType: "reverse",
-            }}
-          />
-          <defs>
-            <linearGradient id="gradient2" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#d946ef" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-        </motion.svg>
+    <section className="relative bg-background py-16 md:py-20 lg:py-18 mb-8 overflow-hidden ">
+      {/* === Full-Background Blended Team Images === */}
+      <div className="absolute inset-0 z-10 overflow-hidden blur-lg bg-gradient-to-b from-transparent via-black/60 to-black/60">
+        <img
+          src={teama?.logo_url}
+          alt={teama?.name}
+          className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay scale-125"
+        />
+        <img
+          src={teamb?.logo_url}
+          alt={teamb?.name}
+          className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay scale-125"
+        />
       </div>
-      <div className="relative z-10 mx-auto max-w-7xl px-4">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex-1">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="bg-gradient-to-r from-[#19317b] via-[#2c256c] to-[#4b1577] animate-pulse px-4 text-xl font-extrabold py-2 rounded-md flex items-center">
-                  <TrendingUp className="h-3 w-3 mr-1" /> FEATURED MATCH
-                </span>
-              </div>
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 relative">
-                <span className="relative z-10">ICC Women's T20 World Cup Asia Qualifier</span>
-                <motion.span
-                  style={{ position: "absolute", inset: "0", background: "linear-gradient(to right, rgba(16, 185, 129, 0.2), transparent)", borderRadius: "0.5rem" }}
-                  animate={{
-                    opacity: [0.2, 0.4, 0.2],
-                    scale: [1, 1.02, 1],
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Number.POSITIVE_INFINITY,
-                    repeatType: "reverse",
-                  }}
-                />
-              </h2>
-              <p className="text-gray-300 mb-6 text-lg">
-                Don't miss the exciting match between Nepal and Hong Kong Women! Add this match to your portfolio now.
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Button
-                  size="lg"
-                  className="bg-white/50 hover:text-gray-500 hover:bg-white text-lg font-bold "
-                >
-                  <PlusCircle className="h-7 stroke-3 w-7" />
-                  Create Portfolio
-                </Button>
-              </div>
-            </motion.div>
-          </div>
+
+      {/* === Main Content === */}
+      <div className="relative z-20 mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-start justify-center gap-6 md:gap-8 text-center md:text-left">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="w-full"
+          >
+            <div className="inline-flex items-center gap-2 mb-4 mx-auto md:mx-0 px-4 py-2">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              <span className="font-extrabold text-base sm:text-lg md:text-xl">
+                FEATURED MATCH
+              </span>
+            </div>
+
+            <h2 className="relative text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+              <span className="relative z-10">{competition?.title}</span>
+              <motion.span
+                style={{
+                  position: "absolute",
+                  inset: "0",
+                  borderRadius: "0.5rem",
+                }}
+                animate={{ opacity: [0.2, 0.4, 0.2], scale: [1, 1.02, 1] }}
+                transition={{ duration: 3, repeat: Infinity, repeatType: "reverse" }}
+              />
+            </h2>
+
+            <p className="text-gray-400 mb-1 text-base sm:text-lg font-semibold">
+              {venue?.name}, {venue?.location}
+            </p>
+            <p className="text-gray-400 mb-1 text-base sm:text-lg font-semibold">
+              {status_note}
+            </p>
+            <p className="text-gray-300 mb-6 text-base sm:text-lg md:text-xl font-semibold max-w-2xl mx-auto md:mx-0">
+              Don&apos;t miss the exciting clash between {teama?.name} and {teamb?.name}! Add this match to your portfolio now.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4">
+              <Button
+                size="lg"
+                onClick={() => router.push(`/betting-interface?id=${match.match_id}`)}
+                className="bg-white/60 hover:bg-white text-gray-900 hover:text-black text-base sm:text-lg font-extrabold px-6 py-4 transition-all duration-300"
+              >
+                <PlusCircle className="h-6 w-6 mr-2 stroke-3" />
+                Create Portfolio
+              </Button>
+            </div>
+          </motion.div>
         </div>
       </div>
-    </div>
-  )
+    </section>
+  );
 }

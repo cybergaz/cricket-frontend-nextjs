@@ -12,7 +12,6 @@ import YetToStart from "./components/yet-to-start";
 export default function BettingPage() {
   const [matchData, setMatchData] = useState<CricketMatchData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams()
   const matchId = searchParams.get("id")
 
@@ -32,7 +31,6 @@ export default function BettingPage() {
 
     const fetchData = async () => {
       setLoading(true);
-      setError(null);
       try {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`
@@ -40,17 +38,14 @@ export default function BettingPage() {
         const apiData = await res.json();
         if (apiData.message && apiData.data === null) {
           setMatchData(null);
-          setError('No such match found');
         } else if (apiData.message && apiData.data && isValidMatchData(apiData.data)) {
           setMatchData(apiData.data);
         } else if (isValidMatchData(apiData)) {
           setMatchData(apiData);
         } else {
           setMatchData(null);
-          setError('No match data available');
         }
-      } catch (e: any) {
-        setError("Fetch error: " + (e?.message || e));
+      } catch {
         setMatchData(null);
       } finally {
         setLoading(false);
@@ -60,7 +55,6 @@ export default function BettingPage() {
     if (matchId) {
       fetchData();
     } else {
-      setError('Match ID is required');
       setLoading(false);
     }
   }, [matchId]);
@@ -78,9 +72,6 @@ export default function BettingPage() {
     }
   }
 
-  if (matchData) {
+  if (matchData)
     return <MatchScorecard matchData={matchData} />;
-  }
-
-  return null;
 }

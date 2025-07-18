@@ -3,20 +3,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { TrendingUp, BarChart3, Users, Trophy, Clock, Landmark, Bitcoin, DollarSign } from "lucide-react";
-import type { Metadata } from "next";
-import { useUserStore } from "@/store/user-store";
+import { TrendingUp, Users, Trophy, Landmark, DollarSign, TrendingDown, Dot } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PlayerPortfolio, TeamPortfolio } from "./types";
-import { Loading } from "../betting-interface/components/Loading";
 import { formatINR } from "@/lib/helper";
 
 function formatTimestamp(ts: Date | string | undefined): string {
@@ -70,7 +64,6 @@ export default function Portfolio() {
           toast(apiData.message)
           return
         }
-        console.log(apiData)
         setProfit(apiData.profit)
         setValue(apiData.value)
         // setProfit(apiData.p)
@@ -197,44 +190,89 @@ export default function Portfolio() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-lg transition-all duration-200 bg-gradient-to-br from-emerald-600 via-transparent to-transparent rounded-tl-[100px]">
+            <Card
+              className={`border-none shadow-lg transition-all duration-200 bg-gradient-to-br rounded-tl-[100px] ${profit < 0
+                ? "from-red-800"
+                : profit === 0
+                  ? "from-gray-600"
+                  : "from-emerald-600"
+                } via-transparent to-transparent`}
+            >
               <CardContent className="p-7 pl-10 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-emerald-400 text-sm font-bold tracking-wide uppercase mb-1">
-                      Total Profit
+                    <p
+                      className={`text-sm font-bold tracking-wide uppercase mb-1 ${profit < 0
+                        ? "text-red-500"
+                        : profit === 0
+                          ? "text-gray-400"
+                          : "text-emerald-400"
+                        }`}
+                    >
+                      Total {profit > 0 ? "Profit" : "Loss"}
                     </p>
-                    <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1">
-                      {formatINR(Number(profit))}
-
-                    </h3>
-                    <p className="text-emerald-500 text-sm flex items-center mt-1">
-                      <TrendingUp className="h-4 w-4 mr-1" />
-                      {
-                        (() => {
-                          const allPortfolios = [
-                            ...playerPortfolios,
-                            ...teamPortfolios,
-                            ...teamPortfoliosHistorys,
-                            ...playerPortfoliosHistorys
-                          ];
-                          const totalProfit = allPortfolios.reduce(
-                            (acc, curr) => acc + (parseFloat(curr.profit) || 0),
-                            0
-                          );
-                          const totalBought = allPortfolios.reduce(
-                            (acc, curr) => acc + (parseFloat(curr.boughtPrice) || 0),
-                            0
-                          );
-                          if (totalBought === 0) return "0.00%";
-                          const profitPercentage = (totalProfit / totalBought) * 100;
-                          return profitPercentage.toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
-                        })()
+                    {(() => {
+                      // Calculate total profit and percentage
+                      const allPortfolios = [
+                        ...playerPortfolios,
+                        ...teamPortfolios,
+                        ...teamPortfoliosHistorys,
+                        ...playerPortfoliosHistorys
+                      ];
+                      const totalProfit = allPortfolios.reduce(
+                        (acc, curr) => acc + (parseFloat(curr.profit) || 0),
+                        0
+                      );
+                      const totalBought = allPortfolios.reduce(
+                        (acc, curr) => acc + (parseFloat(curr.boughtPrice) || 0),
+                        0
+                      );
+                      const profitNumber = Number(profit);
+                      let profitColor = "text-white";
+                      let percentColor = "text-white";
+                      let icon = <TrendingUp className="h-4 w-4 mr-1" />;
+                      if (profitNumber < 0) {
+                        profitColor = "text-white";
+                        percentColor = "text-white";
+                        icon = <TrendingDown className="h-4 w-4 mr-1" />;
+                      } else if (profitNumber === 0) {
+                        profitColor = "text-gray-400";
+                        percentColor = "text-gray-400";
+                        icon = <Dot className="h-4 w-4 mr-1" />;
                       }
-                    </p>
+                      const profitPercentage =
+                        totalBought === 0
+                          ? "0.00%"
+                          : ((totalProfit / totalBought) * 100).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
+                      return (
+                        <>
+                          <h3 className={`text-4xl font-extrabold drop-shadow-sm tracking-tight mt-1 ${profitColor}`}>
+                            {formatINR(profitNumber)}
+                          </h3>
+                          <p className={`text-sm flex items-center mt-1 ${percentColor}`}>
+                            {icon}
+                            {profitPercentage}
+                          </p>
+                        </>
+                      );
+                    })()}
                   </div>
-                  <div className="flex items-center justify-center bg-emerald-500/20 p-4 rounded-full shadow-inner">
-                    <DollarSign className="h-8 w-8 text-emerald-400 drop-shadow" />
+                  <div
+                    className={`flex items-center justify-center p-4 rounded-full shadow-inner ${profit > 0
+                      ? "bg-emerald-500/20"
+                      : profit < 0
+                        ? "bg-red-500/20"
+                        : "bg-gray-400/20"
+                      }`}
+                  >
+                    <DollarSign
+                      className={`h-8 w-8 drop-shadow ${profit > 0
+                        ? "text-emerald-400"
+                        : profit < 0
+                          ? "text-red-700"
+                          : "text-gray-400"
+                        }`}
+                    />
                   </div>
                 </div>
               </CardContent>

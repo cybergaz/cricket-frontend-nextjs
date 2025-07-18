@@ -1,7 +1,5 @@
 import { NextRequest } from "next/server";
-import { useUserStore } from "@/store/user-store"; // adjust path
-import { getTokenFromCookies } from "./actions";
-import { resolve } from "dns";
+import { useUserStore } from "@/store/user-store";
 
 export const validatePassword = (password: string): string => {
   if (!password) return "Password is required";

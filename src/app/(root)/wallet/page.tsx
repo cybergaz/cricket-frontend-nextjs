@@ -34,7 +34,6 @@ const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL
 
 export default function MoneyTransactionsPage() {
   const searchParams = useSearchParams()
-  const payment = searchParams.get("payment")
   const odrId = searchParams.get("ODR")
   const router = useRouter()
 
@@ -103,7 +102,7 @@ export default function MoneyTransactionsPage() {
 
   }, []);
   useEffect(() => {
-    if (payment === "success") {
+    if (odrId) {
       (async () => {
         try {
           const getTokenFromCookies = () => {
@@ -142,10 +141,9 @@ export default function MoneyTransactionsPage() {
       })();
     }
     const params = new URLSearchParams(searchParams.toString());
-    params.delete("payment");
     params.delete("ODR");
     router.replace(`/wallet?${params.toString()}`, { scroll: false });
-  }, [payment, router, searchParams]);
+  }, [router, searchParams]);
 
   const exportTransactions = () => {
     if (!transactions || transactions.length === 0) {

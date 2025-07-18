@@ -16,7 +16,9 @@ export const getRoleColor = (role: string) => {
 }
 
 export const formatMatchNotes = (notes: string[][]) => {
-  return notes.flat().filter((note) => note && note.trim() !== "")
+  return notes
+    .flat()
+    .filter((note) => typeof note === "string" && note.trim() !== "");
 }
 
 export const buyPlayer = async (player: BettingPlayer, price: string, quantity: string, match_id: string) => {

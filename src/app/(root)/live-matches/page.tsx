@@ -1,14 +1,11 @@
 "use client";
 
-import { useMatchStore } from "@/store/match-store";
 import { useEffect, useState } from "react";
 import { FeaturedBanner } from "./featured-banner";
-import { useRouter } from "next/navigation";
 import { Match } from "@/types/match-schedule";
 import { MatchCard } from "@/components/betting/match-card";
 
 export default function LiveMatches() {
-  const router = useRouter();
   const [today, setToday] = useState("");
   const [tommorow, setTommorow] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -50,19 +47,28 @@ export default function LiveMatches() {
 
   return (
     <div className="min-h-full text-gray-100">
-      <FeaturedBanner />
+      {matches.length > 0 && <FeaturedBanner {...matches[Math.floor(Math.random() * matches.length)]} />}
+      {/* {matches.length > 0 && <FeaturedBanner {...matches[0]} />} */}
 
-      <main className="mx-auto max-w-7xl px-4 py-10 ">
-        <div className="mb-12 flex flex-col md:flex-row md:items-center md:justify-between">
-          {/* Timeline for Today and Tomorrow */}
-          <div className="flex items-center justify-center w-full gap-4">
-            <span className="px-4 py-2 rounded-full bg-[#19317b] text-blue-200 font-bold text-lg shadow-md">{today}</span>
-            <span className="flex-1 h-1 bg-gradient-to-r from-[#19317b] via-[#2c256c] to-[#4b1577] -mx-6 rounded-full" />
-            <span className="px-4 py-2 rounded-full bg-[#4b1577] text-purple-200 font-bold text-lg shadow-md">{tommorow}</span>
+      <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="hidden sm:block ">
+          </div>
+          <div className="flex w-full flex-col sm:flex-row items-center justify-center gap-4">
+            <span className="px-4 py-2 rounded-full bg-[#19317b] text-blue-200 font-bold text-base sm:text-lg shadow-md">
+              {today}
+            </span>
+
+            <span className="hidden sm:block flex-1 h-1 bg-gradient-to-r from-[#19317b] via-[#2c256c] to-[#4b1577] rounded-full" />
+
+            <span className="hidden sm:block px-4 py-2 rounded-full bg-[#4b1577] text-purple-200 font-bold text-base sm:text-lg shadow-md">
+              {tommorow}
+            </span>
           </div>
         </div>
 
-        <div className="gap-8">
+        {/* Matches Grid */}
+        <div>
           {matches.map((match: Match) => (
             <MatchCard key={match._id} match={match} />
           ))}
