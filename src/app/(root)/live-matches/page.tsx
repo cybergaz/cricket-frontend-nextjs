@@ -52,10 +52,9 @@ export default function LiveMatches() {
 
       <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
         <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="hidden sm:block ">
-          </div>
-          <div className="flex w-full flex-col sm:flex-row items-center justify-center gap-4">
-            <span className="px-4 py-2 rounded-full bg-[#19317b] text-blue-200 font-bold text-base sm:text-lg shadow-md">
+
+          <div className="hidden sm:flex w-full flex-col sm:flex-row items-center justify-center gap-4">
+            <span className="hidden sm:block px-4 py-2 rounded-full bg-[#19317b] text-blue-200 font-bold text-base sm:text-lg shadow-md">
               {today}
             </span>
 

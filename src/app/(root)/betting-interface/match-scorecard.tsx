@@ -458,18 +458,19 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                           ? 30
                                           : 25
                                     )
+                                    const current = batsmanNumber < 3
+                                      ? 35
+                                      : batsmanNumber < 6
+                                        ? 30
+                                        : 25
                                     setCurrentPlayerPrice(
-                                      batsmanNumber < 3
-                                        ? 35
-                                        : batsmanNumber < 6
-                                          ? 30
-                                          : 25
-                                          - (Number(batsman.run0) * 0.5)
-                                          + (Number(batsman.run1) * 0.75)
-                                          + (Number(batsman.run2) * 1.25)
-                                          + (Number(batsman.run3) * 2)
-                                          + (Number(batsman.fours) * 3)
-                                          + (Number(batsman.sixes) * 4.5)
+                                      current
+                                      - (Number(batsman.run0) * 0.5)
+                                      + (Number(batsman.run1) * 0.75)
+                                      + (Number(batsman.run2) * 1.25)
+                                      + (Number(batsman.run3) * 2)
+                                      + (Number(batsman.fours) * 3)
+                                      + (Number(batsman.sixes) * 4.5)
                                     )
                                     setIsBettingModalOpen(true)
                                   }
