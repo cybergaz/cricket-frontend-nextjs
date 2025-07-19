@@ -29,31 +29,38 @@ export default function BettingPage() {
       );
     };
 
+    setLoading(true);
     const fetchData = async () => {
-      setLoading(true);
       try {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`
         );
         const apiData = await res.json();
         if (apiData.message && apiData.data === null) {
-          setMatchData(null);
+          // setMatchData(null);
         } else if (apiData.message && apiData.data && isValidMatchData(apiData.data)) {
           setMatchData(apiData.data);
         } else if (isValidMatchData(apiData)) {
           setMatchData(apiData);
         } else {
-          setMatchData(null);
+          // setMatchData(null);
         }
       } catch {
-        setMatchData(null);
+        // setMatchData(null);
       } finally {
         setLoading(false);
       }
     };
 
     if (matchId) {
+      // i want to run fetchdata every 5 seconds
       fetchData();
+      const interval = setInterval(() => {
+        // console.log("Fetching data...");
+        fetchData();
+      }, 5000);
+      // return () => clearInterval(interval); // Cleanup interval on unmount
+      // fetchData();
     } else {
       setLoading(false);
     }
@@ -64,9 +71,9 @@ export default function BettingPage() {
   }
 
 
-  // if (!matchData) {
-  //   return <YetToStart matchId={matchId} />;
-  // }
+  if (!matchData) {
+    return <YetToStart matchId={matchId!} />;
+  }
 
 
   if (matchData)
