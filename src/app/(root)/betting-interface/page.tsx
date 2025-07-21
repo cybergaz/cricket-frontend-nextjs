@@ -5,7 +5,6 @@ import { useState, useEffect, useRef } from "react";
 import { CricketMatchData } from "./types";
 import MatchScorecard from "./match-scorecard";
 import { Loading } from "./components/Loading";
-import { Error } from "./components/Error";
 import YetToStart from "./components/yet-to-start";
 // import sample from "./sample.json"
 
@@ -28,11 +27,13 @@ export default function BettingPage() {
         const apiData = await res.json();
         if (!isMounted) return;
         if (apiData.success) {
-          console.log(apiData.data.innings[0].did_not_bat)
           setMatchData(apiData.data);
           setMatchFound(true);
-          console.log("1")
+          // console.log(apiData)
+          // console.log("Data Found")
         } else {
+          // console.log("Data Not Found")
+          // console.log(apiData)
           setMatchData(null);
           setMatchFound(false);
         }

@@ -8,17 +8,14 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Users, Trophy, Landmark, DollarSign, TrendingDown, Dot } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PlayerPortfolio, TeamPortfolio } from "./types";
 import { formatINR } from "@/lib/helper";
 import { Batsman, BettingPlayer, CricketMatchData, Team } from "../betting-interface/types";
 import { Button } from "@/components/ui/button";
 import { sellPlayer, buyPlayer, sellTeam, buyTeam } from "../betting-interface/services";
-import { redirect } from "next/navigation";
 import AnimatedNumber from "@/components/ui/animated-number";
-import AnimatedECGBackground from "@/components/ui/animated-ecg-bg";
-import AnimatedBarGraphBackground from "@/components/ui/animated-bar-graph-bg";
 import PortfolioTradeModal from "@/components/ui/portfolio-trade-modal";
 
 function formatTimestamp(ts: Date | string | undefined): string {
@@ -37,96 +34,24 @@ function formatTimestamp(ts: Date | string | undefined): string {
 
 export default function Portfolio() {
   const [loading, setLoading] = useState(false);
-  const [currentItem, setCurrentItem] = useState<PlayerPortfolio | TeamPortfolio>();
   const [playerPortfolios, setPlayerPortfolios] = useState<PlayerPortfolio[]>([]);
   const [teamPortfolios, setTeamPortfolios] = useState<TeamPortfolio[]>([]);
   const [playerPortfoliosHistorys, setPlayerPortfoliosHistorys] = useState<PlayerPortfolio[]>([]);
   const [teamPortfoliosHistorys, setTeamPortfoliosHistorys] = useState<TeamPortfolio[]>([]);
-  const [todaysPlayerPortfolios, setTodaysPlayerPortfolios] = useState<PlayerPortfolio[]>([]);
-  const [todaysTeamPortfolios, setTodaysTeamPortfolios] = useState<TeamPortfolio[]>([]);
   const [todaysProfit, setTodaysProfit] = useState()
   const [value, setValue] = useState(0);
   const [profit, setProfit] = useState(0);
-  const [totalEarning, setTotalEarning] = useState(0);
-  const [todaysEarning, setTodaysEarning] = useState(0);
-  const [scorecards, setScorecards] = useState<Record<string, any>>({});
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
-  const [autoSoldPlayers, setAutoSoldPlayers] = useState<Set<string>>(new Set());
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [tradeModalPortfolio, setTradeModalPortfolio] = useState<any>(null);
   const [tradeModalType, setTradeModalType] = useState<"player" | "team" | null>(null);
   const [matchDataById, setMatchDataById] = useState<Record<string, CricketMatchData>>({});
 
-  const currentPrice = async (portfolioPlayer: PlayerPortfolio) => {
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${portfolioPlayer.matchId}`
-      );
-      const apiData = await res.json();
-      const match: CricketMatchData = apiData.data
-      const currentInningNumber = match.latest_inning_number
-      const currentInning = match.innings[Number(currentInningNumber) - 1]
-      const batsmanNumber = currentInning.batsmen.findIndex(
-        (batsman: Batsman) => batsman.batsman_id === portfolioPlayer.playerId
-      ) + 1;
-      const inningPlayer = currentInning.batsmen.find(
-        (batsman: Batsman) => batsman.batsman_id === portfolioPlayer.playerId
-      ) as Batsman
-      const basePrice = batsmanNumber < 3
-        ? 35
-        : batsmanNumber < 6
-          ? 30
-          : 25
-      return String(basePrice
-        - (Number(inningPlayer.run0) * 0.5)
-        + (Number(inningPlayer.run1) * 0.75)
-        + (Number(inningPlayer.run2) * 1.50)
-        + (Number(inningPlayer.run3) * 2.25)
-        + (Number(inningPlayer.fours) * 3)
-        + (Number(inningPlayer.sixes) * 4.5))
-    } catch {
-      return "0"
-    }
-  }
-  const availableToSold = async (player: PlayerPortfolio) => {
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${player.matchId}`
-      );
-      const apiData = await res.json();
-      const match: CricketMatchData = apiData.data;
 
-      // 1. Check if match is over
-      const matchStatus = (match.live || "").toLowerCase();
-      const overStatuses = ["won", "loss", "draw", "abandoned", "no result", "cancelled", "tie", "postponed", "completed", "finished"];
-      console.log(matchStatus)
-      if (overStatuses.includes(matchStatus)) {
-        toast.success("Match is Over")
-        return true;
-      }
-
-      // 2. Check if batsman is not batting
-      const currentInningNumber = match.latest_inning_number;
-      const currentInning = match.innings[Number(currentInningNumber) - 1];
-      const isBatting = currentInning.batsmen.some(
-        (batsman: Batsman) =>
-          batsman.batsman_id === player.playerId && batsman.batting == "true"
-      );
-      if (!isBatting) {
-        toast.success(`${player.playerName} Got Out`);
-        return true
-      }
-      return false
-    } catch {
-      return false;
-    }
-  };
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
 
     const fetchPortfolios = async () => {
       try {
-        // Get token from cookies
         const getTokenFromCookies = () => {
           if (typeof document === "undefined") return null;
           const cookies = document.cookie.split("; ");
@@ -151,11 +76,7 @@ export default function Portfolio() {
         }
         setProfit(apiData.profit)
         setValue(apiData.value)
-        setTotalEarning(apiData.totalEarnings)
         setTodaysProfit(apiData.totalPortfolioProfit)
-        setTodaysEarning(apiData.todaysEarnings)
-        setTodaysPlayerPortfolios(apiData.todaysPlayerPortfolios || []);
-        setTodaysTeamPortfolios(apiData.todaysTeamPortfolios || []);
         function splitByStatus<T extends { status?: string }>(arr: T[]): { active: T[]; history: T[] } {
           const active: T[] = [];
           const history: T[] = [];
@@ -215,18 +136,10 @@ export default function Portfolio() {
       }
     };
   }, []);
-
-  // Polling for scorecards of all active matchIds
-  // This useEffect will run every time playerPortfolios changes.
-  // That means: 
-  // - The first time playerPortfolios is set (e.g., after fetching), this effect will run, setting up the interval.
-  // - If playerPortfolios changes (e.g., new portfolios are added/removed), the effect will clean up the old interval and set up a new one.
-  // - The interval itself will run every 10 seconds, using the latest playerPortfolios value at the time the effect ran.
-  // - If playerPortfolios never changes, the interval will only be set up once.
   useEffect(() => {
     playerPortfolios.forEach(async (playerPortfolio) => {
       const isAvailable = await availableToSold(playerPortfolio);
-      if (isAvailable) {
+      if (isAvailable.success) {
         const portfolio: BettingPlayer = {
           name: playerPortfolio.playerName,
           batsman_id: playerPortfolio.playerId,
@@ -251,12 +164,74 @@ export default function Portfolio() {
           second_fielder_id: "",
           third_fielder_id: "",
         };
-        await sellPlayer(portfolio, String(Number(playerPortfolio.boughtPrice) / 2), playerPortfolio.quantity, playerPortfolio.matchId)
+        if (isAvailable.code === 1) {
+          await sellPlayer(portfolio, String(playerPortfolio.currentPrice), playerPortfolio.quantity, playerPortfolio.matchId)
+        } else {
+          await sellPlayer(portfolio, String(Number(playerPortfolio.boughtPrice) / 2), playerPortfolio.quantity, playerPortfolio.matchId)
+        }
       }
     });
   }, [playerPortfolios]);
 
-  // Helper to map PlayerPortfolio to BettingPlayer
+  const currentPrice = async (portfolioPlayer: PlayerPortfolio) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${portfolioPlayer.matchId}`
+      );
+      const apiData = await res.json();
+      const match: CricketMatchData = apiData.data
+      const currentInningNumber = match.latest_inning_number
+      const currentInning = match.innings[Number(currentInningNumber) - 1]
+      const batsmanNumber = currentInning.batsmen.findIndex(
+        (batsman: Batsman) => batsman.batsman_id === portfolioPlayer.playerId
+      ) + 1;
+      const inningPlayer = currentInning.batsmen.find(
+        (batsman: Batsman) => batsman.batsman_id === portfolioPlayer.playerId
+      ) as Batsman
+      const basePrice = batsmanNumber < 3
+        ? 35
+        : batsmanNumber < 6
+          ? 30
+          : 25
+      return String(basePrice
+        - (Number(inningPlayer.run0) * 0.5)
+        + (Number(inningPlayer.run1) * 0.75)
+        + (Number(inningPlayer.run2) * 1.50)
+        + (Number(inningPlayer.run3) * 2.25)
+        + (Number(inningPlayer.fours) * 3)
+        + (Number(inningPlayer.sixes) * 4.5))
+    } catch {
+      return "0"
+    }
+  }
+  const availableToSold = async (player: PlayerPortfolio) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${player.matchId}`
+      );
+      const apiData = await res.json();
+      if (!apiData.data) {
+        toast.success("Match is Over")
+        return { success: true, code: 1 }
+      }
+
+      const match: CricketMatchData = apiData.data;
+      // Check if batsman is not batting
+      const currentInningNumber = match.latest_inning_number;
+      const currentInning = match.innings[Number(currentInningNumber) - 1];
+      const isBatting = currentInning.batsmen.some(
+        (batsman: Batsman) =>
+          batsman.batsman_id === player.playerId && batsman.batting == "true"
+      );
+      if (!isBatting) {
+        toast.success(`${player.playerName} Got Out`);
+        return { success: true, code: 0 }
+      }
+      return { success: false, code: 0 }
+    } catch {
+      return { success: false, code: 0 }
+    }
+  };
   const mapPlayerPortfolioToBettingPlayer = (p: PlayerPortfolio): BettingPlayer => ({
     name: p.playerName,
     batsman_id: p.playerId,
@@ -281,8 +256,6 @@ export default function Portfolio() {
     second_fielder_id: "",
     third_fielder_id: "",
   });
-
-  // Helper to map TeamPortfolio to Team using match data if available
   const mapTeamPortfolioToTeam = (t: TeamPortfolio): Team => {
     const match = matchDataById[t.matchId];
     if (match) {
@@ -301,7 +274,6 @@ export default function Portfolio() {
       overs: "",
     };
   };
-  // Helper to map PlayerPortfolio to Team (minimal, as we don't have full match data here)
   const mapPlayerPortfolioToTeam = (p: PlayerPortfolio): Team => ({
     team_id: p.team,
     name: p.team,
@@ -312,8 +284,6 @@ export default function Portfolio() {
     scores: "",
     overs: "",
   });
-
-  // Modal handlers
   const handleBuy = async (quantity: number) => {
     if (!tradeModalPortfolio) return;
     setLoading(true);
@@ -356,7 +326,6 @@ export default function Portfolio() {
       setLoading(false);
     }
   };
-
 
   if (loading) {
     return (
@@ -617,41 +586,37 @@ export default function Portfolio() {
               )
             })()}
             <Card
-              className={`border-none shadow-lg transition-all duration-200 bg-gradient-to-br rounded-tl-[100px] ${
-                Number(todaysProfit) < 0
-                  ? "from-red-700 via-transparent to-transparent"
-                  : "from-emerald-700 via-transparent to-transparent"
-              }`}
+              className={`border-none shadow-lg transition-all duration-200 bg-gradient-to-br rounded-tl-[100px] ${Number(todaysProfit) < 0
+                ? "from-red-700 via-transparent to-transparent"
+                : "from-emerald-700 via-transparent to-transparent"
+                }`}
             >
               <CardContent className="p-7 pl-10 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <p
-                      className={`text-lg font-bold tracking-wide mb-1 ${
-                        Number(todaysProfit) < 0
-                          ? "text-red-600"
-                          : "text-emerald-600"
-                      }`}
+                      className={`text-lg font-bold tracking-wide mb-1 ${Number(todaysProfit) < 0
+                        ? "text-red-600"
+                        : "text-emerald-600"
+                        }`}
                     >
-                      Today's P&L
+                      Total P&L
                     </p>
                     <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1">
                       {formatINR(Number(todaysProfit))}
                     </h3>
                   </div>
                   <div
-                    className={`flex items-center justify-center p-4 rounded-full shadow-inner ${
-                      Number(todaysProfit) < 0
-                        ? "bg-red-700/20"
-                        : "bg-emerald-600/20"
-                    }`}
+                    className={`flex items-center justify-center p-4 rounded-full shadow-inner ${Number(todaysProfit) < 0
+                      ? "bg-red-700/20"
+                      : "bg-emerald-600/20"
+                      }`}
                   >
                     <Trophy
-                      className={`h-8 w-8 drop-shadow ${
-                        Number(todaysProfit) < 0
-                          ? "text-red-400"
-                          : "text-emerald-400"
-                      }`}
+                      className={`h-8 w-8 drop-shadow ${Number(todaysProfit) < 0
+                        ? "text-red-400"
+                        : "text-emerald-400"
+                        }`}
                     />
                   </div>
                 </div>
@@ -709,25 +674,30 @@ export default function Portfolio() {
                                 Player
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                Quantity(s)
+                                <span className="hidden xl:inline">Quantity(s)</span>
+                                <span className="inline xl:hidden">Qt(s)</span>
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                Buy Price
+                                <span className="hidden xl:inline">Buy Price</span>
+                                <span className="inline xl:hidden">Buy @</span>
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                <span>Current Price</span>
+                                <span className="hidden xl:inline">Profit / Loss</span>
+                                <span className="inline xl:hidden">P&amp;L</span>
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                <span>Profit / Loss</span>
+                                <span className="hidden xl:inline">Percentage</span>
+                                <span className="inline xl:hidden">%</span>
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
                                 Status
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                Timestamp
+                                <span className="hidden lg:inline">Timestamp</span>
+                                <span className="inline lg:hidden">Time</span>
                               </th>
-                              <th></th>
                             </tr>
+
                           </thead>
                           <tbody>
                             {playerPortfolios && playerPortfolios.length > 0 && playerPortfolios.map((p, idx) => {
@@ -799,7 +769,7 @@ export default function Portfolio() {
                                           : pnl < 0
                                             ? "text-red-500 font-bold"
                                             : "text-gray-300 font-bold";
-                                        return <span className={pnlClass}>{pnl >= 0 ? "+" : "-"}₹{Math.abs(pnl).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>;
+                                        return <span className={pnlClass}>{`${pnl >= 0 ? "+" : "-"}${Math.abs(pnl).toLocaleString("en-IN", { maximumFractionDigits: 2 })}%`}</span>;
                                       })()
                                     )}
                                   </td>
@@ -811,8 +781,16 @@ export default function Portfolio() {
                                       {p.status || "--"}
                                     </Badge>
                                   </td>
-                                  <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
-                                    {formatTimestamp(p.timestamp)}
+                                  <td className="px-4 py-4 text-right text-xs lg:text-sm text-gray-300 font-bold">
+                                    {(() => {
+                                      const date = new Date(p.timestamp);
+                                      let hours = date.getHours();
+                                      const minutes = date.getMinutes().toString().padStart(2, '0');
+                                      const ampm = hours >= 12 ? 'PM' : 'AM';
+                                      hours = hours % 12;
+                                      hours = hours ? hours : 1; // the hour '0' should be '1'
+                                      return `${hours}:${minutes}${ampm}`;
+                                    })()}
                                   </td>
                                 </tr>
                               );
@@ -907,7 +885,7 @@ export default function Portfolio() {
                                   variant="outline"
                                   className="border-0 bg-white/20 text-white font-bold"
                                 >
-                                  {p.status}
+                                  {((p.status?.toLowerCase() === "sold" || p.status?.toLowerCase() === "sell") && (String(parseFloat(p.profitPercentage)) === "-50")) ? "Auto-Sold" : p.status}
                                 </Badge>
                               </td>
                               <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
@@ -954,25 +932,31 @@ export default function Portfolio() {
                                 Player
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                Quantity(s)
+                                <span className="hidden xl:inline">Quantity(s)</span>
+                                <span className="inline xl:hidden">Qt(s)</span>
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                Buy Price
+                                <span className="hidden xl:inline">Buy Price</span>
+                                <span className="inline xl:hidden">Buy @</span>
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                Sell Price
+                                <span className="hidden xl:inline">Sell Price</span>
+                                <span className="inline xl:hidden">Sell @</span>
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                Profit / Loss
+                                <span className="hidden xl:inline">Profit / Loss</span>
+                                <span className="inline xl:hidden">P&amp;L</span>
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                Percentage
+                                <span className="hidden xl:inline">Percentage</span>
+                                <span className="inline xl:hidden">%</span>
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
                                 Status
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                Timestamp
+                                <span className="hidden lg:inline">Timestamp</span>
+                                <span className="inline lg:hidden">Time</span>
                               </th>
                             </tr>
                           </thead>
@@ -1007,7 +991,7 @@ export default function Portfolio() {
                                     variant="outline"
                                     className="border-0 bg-white/20 text-white font-bold"
                                   >
-                                    {t.status}
+                                    {((t.status?.toLowerCase() === "sold" || t.status?.toLowerCase() === "sell") && (parseFloat(t.profitPercentage) === -50)) ? "Auto-Sold" : t.status}
                                   </Badge>
                                 </td>
                                 <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
@@ -1066,25 +1050,31 @@ export default function Portfolio() {
                             Player
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            Quantity(s)
+                            <span className="hidden xl:inline">Quantity(s)</span>
+                            <span className="inline xl:hidden">Qt(s)</span>
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            Buy Price
+                            <span className="hidden xl:inline">Buy Price</span>
+                            <span className="inline xl:hidden">Buy @</span>
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            Sell Price
+                            <span className="hidden xl:inline">Sell Price</span>
+                            <span className="inline xl:hidden">Sell @</span>
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            Profit / Loss
+                            <span className="hidden xl:inline">Profit / Loss</span>
+                            <span className="inline xl:hidden">P&amp;L</span>
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            Percentage
+                            <span className="hidden xl:inline">Percentage</span>
+                            <span className="inline xl:hidden">%</span>
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
                             Status
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            Timestamp
+                            <span className="hidden lg:inline">Timestamp</span>
+                            <span className="inline lg:hidden">Time</span>
                           </th>
                         </tr>
                       </thead>

@@ -5,23 +5,16 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Separator } from "@/components/ui/separator"
 import {
   Target,
   TrendingUp,
   Users,
-  MapPin,
-  Thermometer,
-  Droplets,
-  BarChart3,
   Star,
   HardHat,
   Radio,
-  Files,
-  BarChart,
   Mic2,
 } from "lucide-react"
-import type { CricketMatchData, Player, BettingPlayer, MatchScorecardProps, Team, BettingTeam } from "./types"
+import type { CricketMatchData, Player, BettingPlayer, MatchScorecardProps, Team } from "./types"
 import { getRoleColor, formatMatchNotes, buyPlayer, sellPlayer } from "./services"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
@@ -29,7 +22,6 @@ import { MatchInfoTicker } from "./components/match-info-ticker"
 import { cn } from "@/lib/utils"
 
 export default function MatchScorecard({ matchData }: MatchScorecardProps) {
-  const hasData = matchData && Object.keys(matchData).length > 0;
 
   // const patchedSample = {
   //     ...sample,
@@ -44,27 +36,22 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
   // }
   // const data: CricketMatchData = patchedSample as CricketMatchData
 
+  const hasData = matchData && Object.keys(matchData).length > 0;
   const data: CricketMatchData | null = hasData ? matchData : null;
   const [isCommentaryOpen, setIsCommentaryOpen] = useState(false)
   const [tradeSubTab, setTradeSubTab] = useState("batsmen")
   const [activeTab, setActiveTab] = useState<string>("live")
   const [bettingNumber, setBettingNumber] = useState(0)
   const [currentPlayerPrice, setCurrentPlayerPrice] = useState(0)
-  const [currentTeamPrice, setCurrentTeamPrice] = useState(0)
   const [isBettingModalOpen, setIsBettingModalOpen] = useState(false)
   const [quantity, setQuantity] = useState("");
-
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   const [bettingPlayer, setBettingPlayer] = useState<BettingPlayer | null>(null)
-
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
-  // Team betting modal state
   const [teamQuantity, setTeamQuantity] = useState(1);
   const [teamPrice, setTeamPrice] = useState(0);
-
-  // Defensive: fallback values if no data
   const [match_id, setMatchId] = useState<string>(data && data.match_id ? data.match_id : "");
   const [currentInnings, setCurrentInnings] = useState<any>(
     data && data.innings && data.innings.length > 0 ? data.innings[data.innings.length - 1] : null
@@ -86,7 +73,8 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
         : [[data.match_notes as string]])
       : [[]]
   );
-
+  const [isYetToComeOpen, setIsYetToComeOpen] = useState(false)
+  const [basePrice, setBasePrice] = useState(0);
   const allUsedBowlers = useMemo(() => {
     if (!data?.innings) return []
 
@@ -142,18 +130,17 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
         : [[]]
     );
   }, [data]);
-
-  const [basePrice, setBasePrice] = useState(0);
-
   useEffect(() => {
     if (bettingNumber < 3) setBasePrice(35);
     else if (bettingNumber < 6) setBasePrice(30);
     else setBasePrice(25);
   }, [bettingNumber]);
   useEffect(() => {
-    if (data) console.log(data)
-  }, [])
-  const [isYetToComeOpen, setIsYetToComeOpen] = useState(false)
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
+  }, []);
+
   return (
     <div className="min-h-full bg-gradient-to-br from-sky-600 via-transparent to-transparent">
       <div className="container max-w-[100rem] mx-auto px-3 py-4 space-y-4 overflow-x-hidden">
@@ -293,7 +280,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                   <TabsTrigger
                     key={value}
                     value={value}
-                    className={cn(`flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base lg:text-lg font-bold py-2 md:py-3 px-3 md:px-4 transition-colors duration-300 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 hover:bg-white/40 rounded-lg whitespace-nowrap flex-shrink-0 cursor-pointer `, value === "tradenow" && "border-green-400/30 bg-green-400/10 animate-pulse data-[state=active]:animate-none data-[state=active]:border-none")}
+                    className={cn(`flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base lg:text-lg font-bold py-2 md:py-3 px-3 md:px-4 transition-colors duration-300 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 hover:bg-white/40 rounded-lg whitespace-nowrap flex-shrink-0 cursor-pointer `, value == "stradenow" && "border-green-400/30 bg-green-400/10 animate-pulse data-[state=active]:animate-none data-[state=active]:border-none")}
                   >
                     <Icon className="hidden md:inline w-7 h-7 md:w-4 md:h-4 lg:w-5 lg:h-5" />
                     <span className="">{label}</span>
@@ -359,17 +346,52 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     <div className="flex flex-col gap-1 md:gap-2 p-2">
                       {currentInnings.batsmen
                         ?.filter((b: any) => b.batting === "true")
-                        .map((batsman: any) => (
-                          <div
-                            key={batsman.batsman_id}
-                            className="flex items-center justify-between text-xs md:text-base p-1"
-                          >
-                            <span className="font-bold text-white">{batsman.name}</span>
-                            <span className="text-gray-300">
-                              {batsman.runs}({batsman.balls_faced})
-                            </span>
-                          </div>
-                        ))}
+                        .map((batsman: any) => {
+                          const isOut = batsman.how_out !== "Not out";
+                          // Find the index of the current batsman in currentInnings.batsmen array
+                          const batsmanNumber = currentInnings.batsmen.findIndex((b: any) => b.batting === "true");
+                          return (
+                            <div
+                              key={batsman.batsman_id}
+                              className="flex items-center justify-between text-xs md:text-base p-1"
+                              onClick={() => {
+                                if (!isOut) {
+                                  setBettingPlayer(batsman);
+                                  setBettingNumber(batsmanNumber);
+                                  setBasePrice(
+                                    batsmanNumber < 3
+                                      ? 35
+                                      : batsmanNumber < 6
+                                        ? 30
+                                        : 25
+                                  );
+                                  const current =
+                                    batsmanNumber < 3
+                                      ? 35
+                                      : batsmanNumber < 6
+                                        ? 30
+                                        : 25;
+                                  setCurrentPlayerPrice(
+                                    current -
+                                    Number(batsman.run0) * 0.5 +
+                                    Number(batsman.run1) * 0.75 +
+                                    Number(batsman.run2) * 1.5 +
+                                    Number(batsman.run3) * 2.25 +
+                                    Number(batsman.fours) * 3 +
+                                    Number(batsman.sixes) * 4.5
+                                  );
+                                  setIsBettingModalOpen(true);
+                                }
+                              }}
+
+                            >
+                              <span className="font-bold text-white">{batsman.name}</span>
+                              <span className="text-gray-300">
+                                {batsman.runs}({batsman.balls_faced})
+                              </span>
+                            </div>
+                          )
+                        })}
                     </div>
                   </div>
                   {/* Current Bowler */}
@@ -395,7 +417,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
               )}
 
               {/* Yet-to-come Batsmen TBA (Animated Slide Down) */}
-              {currentInnings && currentInnings.did_not_bat && currentInnings.did_not_bat.length > 0 && (
+              {currentInnings && currentInnings.did_not_bat && currentInnings.did_not_bat.length > 0 ? (
                 <div className="bg-slate-800/40 rounded-lg p-2 md:p-4 mt-2">
                   <button
                     type="button"
@@ -445,7 +467,15 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     </motion.div>
                   </AnimatePresence>
                 </div>
-              )}
+              ) :
+                <Card className="bg-slate-800/50">
+                  <CardContent>
+                    <div className="p-2 text-center">
+                      <p className="text-gray-300 text-sm font-bold">Match Is Not Started Yet</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              }
 
               {/* Compact Info Bar: Pitch, Weather, Toss, Umpires */}
               <div className="w-full mt-2">
@@ -755,8 +785,8 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                   <Card className="bg-slate-800/50 col-span-full">
                     <CardContent>
                       <div className="p-2 text-center">
-                        <p className="text-gray-300 text-sm font-bold">
-                          Match has not started yet or no bowlers data available.
+                        <p className="text-gray-300 text-xl font-bold">
+                          Match Has Not Started Yet
                         </p>
                       </div>
                     </CardContent>
@@ -838,7 +868,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
 
 
           {selectedPlayer && isPlayerModalOpen && (
-            <div className="fixed inset-0 w-full h-full z-50 flex items-center justify-center bg-black/70 p-4">
+            <div className="fixed inset-0 w-full h-full z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
               <div className="w-full max-w-md transform rounded-xl bg-gradient-to-br from-gray-900/80 via-gray-900/90 to-gray-900 p-6 shadow-lg transition-all duration-300">
                 <div className="mb-4 flex items-start justify-between">
                   <h2 className="text-2xl font-bold text-white">
@@ -920,9 +950,9 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     }
                     className="w-16 h-16 sm:w-20 sm:h-20 rounded-full shadow-xl"
                   />
-                  <h2 className="text-xl sm:text-2xl md:text-4xl flex items-center gap-2 sm:gap-4 font-extrabold text-white text-right">
+                  <h2 className="text-xl sm:text-2xl md:text-4xl flex items-center gap-2 sm:gap-4 font-extrabold text-white text-center">
                     {bettingPlayer.name}
-                    <span className="text-xs sm:text-sm text-gray-500 capitalize">{bettingPlayer.position}</span>
+                    <span className="text-xs sm:text-sm text-gray-500 capitalize mx-5">{bettingPlayer.position}</span>
                   </h2>
                   <button
                     onClick={() => {

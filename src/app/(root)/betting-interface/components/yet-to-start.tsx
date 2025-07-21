@@ -7,13 +7,7 @@ import {
   Target,
   TrendingUp,
   Users,
-  MapPin,
-  Thermometer,
-  Droplets,
-  BarChart3,
-  HardHat,
   Radio,
-  Files,
 } from "lucide-react"
 import type { CricketMatchData } from "../types"
 import { Loading } from "./Loading"
@@ -23,18 +17,16 @@ import { MatchInfoTicker } from "./match-info-ticker"
 export default function YetToStart({ matchId }: { matchId: string }) {
   const [data, setData] = useState<CricketMatchData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true)
-        setError(null)
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/match/${matchId}`)
         const res_data = await res.json()
         setData(res_data.data.response)
       } catch (e) {
-        setError("Failed to fetch match data")
+        console.log(e)
       } finally {
         setIsLoading(false)
       }
@@ -42,6 +34,11 @@ export default function YetToStart({ matchId }: { matchId: string }) {
 
     fetchData()
   }, [])
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
+  }, []);
 
   const [activeTab, setActiveTab] = useState<string>("live")
 
@@ -53,6 +50,7 @@ export default function YetToStart({ matchId }: { matchId: string }) {
     <div className="min-h-full bg-gradient-to-br from-sky-600 via-transparent to-transparent">
       <div className="container mx-auto px-3 py-4 space-y-4 max-w-full overflow-x-hidden">
         {/* Status Note */}
+        {data?.status_note}
         {data?.status_note && (
           <div className="absolute top-19 left-1/2 transform -translate-x-1/2 flex justify-center w-full px-4">
             <div className="pr-3 pl-3 py-2 rounded-b-xl bg-[#7c8fa4] text-white text-sm md:text-base lg:text-xl font-bold shadow-lg flex items-center gap-2 max-w-[90vw]">
@@ -63,9 +61,8 @@ export default function YetToStart({ matchId }: { matchId: string }) {
             </div>
           </div>
         )}
-
         {/* Title & Teams */}
-        <div className="text-center mt-15">
+        <div className={`text-center ${data?.status_note ? "mt-15" : "mt-5"}`}>
           <div className="flex flex-col items-center justify-center mb-6 gap-4">
             <h1 className="text-2xl md:text-4xl lg:text-6xl font-bold text-white px-4">
               {data?.competition?.title || "No match data found"}

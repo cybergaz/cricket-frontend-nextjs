@@ -63,7 +63,7 @@ export default function MatchStartTimer({ startTime, onComplete }: MatchStartTim
     const seconds = absDiff % 60;
 
     return (
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-br from-white/50 via-white/5 to-transparent shadow-lg">
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-br from-sky-600/50 via-sky-600/5 to-transparent shadow-lg">
             <span className="font-mono text-xl md:text-2xl text-sky-100 px-3 py-1 rounded-lg tracking-widest animate-pulse">
                 {pad(hours)}:{pad(minutes)}:{pad(seconds)}
             </span>

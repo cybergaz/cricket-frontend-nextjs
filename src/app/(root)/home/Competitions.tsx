@@ -53,7 +53,7 @@ export default function Competitions({ matches, isLoading }: CompetitionsProps) 
           {sortedMonthKeys.map((monthKey) => (
             <div key={monthKey} className="w-full">
               {/* Month Heading */}
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-6 px-5 sm:px-1">
                 <Calendar className="w-6 h-6 text-sky-400" />
                 <h2 className="text-2xl md:text-3xl font-bold text-sky-200 tracking-wide">
                   {isValid(parseISO(monthKey + "-01")) ? format(parseISO(monthKey + "-01"), "MMMM yyyy") : monthKey}
@@ -64,7 +64,7 @@ export default function Competitions({ matches, isLoading }: CompetitionsProps) 
                 {Object.keys(competitionsByMonth[monthKey]).sort().map((dateKey) => (
                   <div key={dateKey} className="w-full">
                     {/* Competitions for this date */}
-                    <div className="flex flex-col gap-6 w-full  bg-white/5 rounded-xl">
+                    <div className="flex flex-col gap-6 w-full">
                       {competitionsByMonth[monthKey][dateKey].map((match) => (
                         <div
                           key={match.cid}

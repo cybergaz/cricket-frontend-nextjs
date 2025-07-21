@@ -3,27 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { useSocketStore } from "@/store/socket-store";
-
 import { Button } from "@/components/ui/button";
 import { StockAnimationBackground } from "@/components/about-us/stock-animation-background";
 import { CricketStockChart } from "@/components/about-us/cricket-stock-chart";
-import { useEffect } from "react";
 
 export default function AboutPage() {
-
-  // const fetchMatches = useMatchesStore((s) => s.fetchMatches);
-  //
-  // const matchData = useMatchesStore((s) => s.matchData);;
-  // console.log("matchData :", matchData)
-  //
-  // useEffect(() => {
-  //   fetchMatches();
-  //   return () => {
-  //     useSocketStore.getState().disconnectSocket();
-  //   };
-  // }, []);
-
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Hero Section */}
