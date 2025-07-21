@@ -801,21 +801,23 @@ export default function AuthPage() {
             </form>
           )}
 
-          <div className="mt-6 pt-6 border-t border-gray-700">
-            <div className="flex items-center justify-center">
-              <span className="text-sm text-gray-400">Or continue with</span>
-            </div>
-            <div className="mt-4 flex justify-center">
-              <GoogleOAuthProvider clientId={CLIENT_ID!}>
-                <Button className="flex justify-start cursor-pointer border-gray-700 p-2 rounded-lg text-xl items-center outline-2 outline-gray-500 text-gray-400">
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={() => toast.error("Google Login Failed")}
-                  />
-                </Button>
-              </GoogleOAuthProvider>
-            </div>
-          </div>
+          {/* google login */}
+          {/* <div className="mt-6 pt-6 border-t border-gray-700"> */}
+          {/*   <div className="flex items-center justify-center"> */}
+          {/*     <span className="text-sm text-gray-400">Or continue with</span> */}
+          {/*   </div> */}
+          {/*   <div className="mt-4 flex justify-center"> */}
+          {/*     <GoogleOAuthProvider clientId={CLIENT_ID!}> */}
+          {/*       <Button className="flex justify-start cursor-pointer border-gray-700 p-2 rounded-lg text-xl items-center outline-2 outline-gray-500 text-gray-400"> */}
+          {/*         <GoogleLogin */}
+          {/*           onSuccess={handleGoogleSuccess} */}
+          {/*           onError={() => toast.error("Google Login Failed")} */}
+          {/*         /> */}
+          {/*       </Button> */}
+          {/*     </GoogleOAuthProvider> */}
+          {/*   </div> */}
+          {/* </div> */}
+
         </div>
 
         <div className="text-center mt-6 text-gray-400 text-sm animate-slide-up-sm">

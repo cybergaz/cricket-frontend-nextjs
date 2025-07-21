@@ -26,6 +26,7 @@ import { getRoleColor, formatMatchNotes, buyPlayer, sellPlayer } from "./service
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { MatchInfoTicker } from "./components/match-info-ticker"
+import { cn } from "@/lib/utils"
 
 export default function MatchScorecard({ matchData }: MatchScorecardProps) {
   const hasData = matchData && Object.keys(matchData).length > 0;
@@ -155,7 +156,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
   const [isYetToComeOpen, setIsYetToComeOpen] = useState(false)
   return (
     <div className="min-h-full bg-gradient-to-br from-sky-600 via-transparent to-transparent">
-      <div className="container mx-auto px-3 py-4 space-y-4 max-w-full overflow-x-hidden">
+      <div className="container max-w-[100rem] mx-auto px-3 py-4 space-y-4 overflow-x-hidden">
         {/* Status Note */}
         {data?.status_note && (
           <div className="absolute top-19 left-1/2 transform -translate-x-1/2 flex justify-center w-full px-4">
@@ -169,7 +170,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
         )}
 
         {/* Title & Teams */}
-        <div className="text-center mt-8">
+        <div className="text-center mt-20 max-sm:mt-10">
           <div className="flex flex-col items-center justify-center mb-5 gap-4">
             <h1 className="text-2xl md:text-4xl lg:text-6xl font-bold text-white px-4">
               {data?.competition?.title || "No match data found"}
@@ -266,7 +267,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-6 md:mt-10">
             {/* Scrollable Tabs List */}
             <div className="relative mb-4 md:mb-6">
-              <TabsList className="flex w-full overflow-x-auto scrollbar-hide h-auto gap-1 md:gap-2 p-1 bg-white/5 rounded-xl">
+              <TabsList className="flex w-full overflow-x-auto scrollbar-hide h-auto gap-1 md:gap-5 p-1.5 bg-white/5 rounded-xl">
                 {[
                   {
                     value: "live",
@@ -292,7 +293,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                   <TabsTrigger
                     key={value}
                     value={value}
-                    className={`flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base lg:text-lg font-bold py-2 md:py-3 px-3 md:px-4 transition-colors duration-300 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 hover:bg-white/40 rounded-lg whitespace-nowrap flex-shrink-0 cursor-pointer `}
+                    className={cn(`flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base lg:text-lg font-bold py-2 md:py-3 px-3 md:px-4 transition-colors duration-300 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 hover:bg-white/40 rounded-lg whitespace-nowrap flex-shrink-0 cursor-pointer `, value === "tradenow" && "border-green-400/30 bg-green-400/10 animate-pulse data-[state=active]:animate-none data-[state=active]:border-none")}
                   >
                     <Icon className="hidden md:inline w-7 h-7 md:w-4 md:h-4 lg:w-5 lg:h-5" />
                     <span className="">{label}</span>

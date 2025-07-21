@@ -25,7 +25,7 @@ export default function HomeLayout({
 
           <div className="flex items-center gap-4">
             <Button className="hidden sm:flex group bg-purple-700 text-base border-b border-transparent hover:rounded-none hover:border-purple-500 justify-center items-center rounded-sm" asChild>
-              <Link href={"/login"} className="flex justify-center items-center">
+              <Link href={"/login"} className="flex justify-center items-center animate-bounce hover:animate-none">
                 <span>Trade Now</span>
                 <Image src="/images/trade.svg" alt="trade now" width={50} height={50} className="invert size-0 group-hover:size-6 transition-all duration-400" />
               </Link>

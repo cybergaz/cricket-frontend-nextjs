@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Sparkles, TrendingUp, Target, Zap, Shield } from "lucide-react";
+import { ArrowRight, Sparkles, TrendingUp, Target, Zap, Shield, Brain } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StockAnimationBackground } from "@/components/about-us/stock-animation-background";
@@ -17,7 +17,7 @@ export default function AboutPage() {
       <section className="w-full py-12 md:py-24 lg:py-32 relative overflow-hidden flex items-center justify-center text-center">
         <StockAnimationBackground />
         <div className="relative z-10 max-w-[95rem] mx-auto px-4 md:px-6">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
@@ -25,7 +25,7 @@ export default function AboutPage() {
           >
             <span className="text-gray-300">Driven by Passion, Backed by Data.</span>
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
@@ -46,7 +46,7 @@ export default function AboutPage() {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl font-bold tracking-tighter text-white sm:text-4xl md:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
               About Cricstock11
             </h2>
             <div className="mt-8 space-y-6">
@@ -199,6 +199,10 @@ export default function AboutPage() {
                   <Shield className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
                   <p className="text-gray-300 text-lg">Secure transactions, verified user identities, and a fair play ecosystem</p>
                 </div>
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 backdrop-blur-sm border border-white/10">
+                  <Brain className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
+                  <p className="text-gray-300 text-lg">Unlimited thrills & use of your built up cricket knowledge </p>
+                </div>
               </div>
               <div className="mt-12 space-y-6">
                 <p className="text-gray-300 md:text-xl/relaxed leading-relaxed">
@@ -207,8 +211,8 @@ export default function AboutPage() {
                 <p className="text-gray-300 md:text-xl/relaxed font-semibold">
                   Cricstock11 isn't just fantasy gaming. It's fantasy stock trading – powered by cricket.
                 </p>
-                <p className="text-gray-300 md:text-xl/relaxed font-semibold">
-                  Watch. Predict. Trade. Win.
+                <p className="text-white text-4xl font-semibold mt-10">
+                  Watch. Analyse. Trade. Win.
                 </p>
               </div>
             </div>

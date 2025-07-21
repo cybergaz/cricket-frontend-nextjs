@@ -16,35 +16,35 @@ const testimonials = [
       "No luck in this game, really requires thinking and analysis. Can't get over how exciting it is to use my cricket knowledge to trade stocks of my favorite cricketers.",
     name: "Aakash J",
     designation: "Meant For Real Analysts",
-    src: "/images/userdp.jpg",
+    src: "/images/dp1.avif",
   },
   {
     quote:
       "Really changing how to think about player performance and fantasy. Scoring takes into account so many factors, makes it really interesting to predict.",
     name: "Preeti K",
     designation: "Incredible UI",
-    src: "/images/userdpf.jpg",
+    src: "/images/dp2.jpg",
   },
   {
     quote:
       "I have been on CricStock11 for the past three years, and my portfolio has increased by over 800%. I love the concept of the app with an incredible UI and excellent customer support.",
     name: "Aarsh T",
     designation: "Love The Concept",
-    src: "/images/userdp.jpg",
+    src: "/images/dp3.avif",
   },
   {
     quote:
       "CricStock11 has completely transformed my fantasy cricket experience. The trading aspect adds a whole new level of excitement and strategy. Highly recommend it!",
     name: "Rahul S",
     designation: "Game Changer",
-    src: "/images/userdp.jpg",
+    src: "/images/dp4.jpg",
   },
   {
     quote:
       "The app is user-friendly and the customer support is top-notch. I love how I can trade players just like stocks. It's addictive!",
     name: "Sneha M",
     designation: "User-Friendly & Addictive",
-    src: "/images/userdpf.jpg",
+    src: "/images/dp5.webp",
   }
 
 ];
@@ -71,7 +71,7 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-4">
             <Button className="hidden sm:flex group bg-purple-700 text-base border-b border-transparent hover:rounded-none hover:border-purple-500 justify-center items-center rounded-sm" asChild>
-              <Link href={"/login"} className="flex justify-center items-center">
+              <Link href={"/login"} className="flex justify-center items-center animate-bounce hover:animate-none">
                 <span>Trade Now</span>
                 <TrendingUp className="size-0 group-hover:size-5 transition-all duration-300" />
               </Link>
@@ -98,18 +98,21 @@ export default function LandingPage() {
                   <p className="text-sm text-slate-300">Download our app for the best trading experience</p>
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-4 items-center w-full sm:w-auto">
-                <a href="#" className="transform flex justify-center items-center hover:scale-105 transition-transform duration-300 w-full sm:w-auto">
+              <div className=" flex gap-4 items-center">
+                <div className="group relative transform hover:scale-105 transition-transform duration-300">
+                  <div className="absolute w-full h-full rounded-lg group-hover:bg-black/20 hidden group-hover:flex group-hover:backdrop-blur-md justify-center items-center " >
+                    Coming Soon
+                  </div>
                   <Image
                     src="/images/playstore.png"
                     alt="Get it on Google Play"
                     width={150}
                     height={32}
-                    className="max-sm:w-30"
+                    className=""
                   />
-                </a>
-                <div className="hidden sm:block h-8 w-px bg-white/30"></div>
-                <Button variant="ghost" className="w-full sm:w-auto text-purple-400 hover:text-purple-300 hover:bg-white/5" asChild>
+                </div>
+                <div className="h-8 w-px bg-white/30"></div>
+                <Button variant="ghost" className="text-purple-400 hover:text-purple-300 hover:bg-white/5 py-6" asChild>
                   <Link href="/login">
                     <span>Continue on Web</span>
                     <ChevronRight className="w-4 h-4 ml-1" />
@@ -173,12 +176,12 @@ export default function LandingPage() {
                 desc: "Fully compliant, secure platform with robust fraud detection and user verification. Transparent rules and equal opportunity for all players.",
                 gradient: "from-teal-500/20 to-cyan-500/20",
               },
-              {
-                icon: <Trophy className="w-8 h-8" />,
-                title: "Win Rewards & Climb the Leaderboard",
-                desc: "Compete in daily, weekly, and seasonal contests to win exciting prizes. Prove your trading and cricket skills against other users.",
-                gradient: "from-amber-500/20 to-yellow-500/20",
-              },
+              // {
+              //   icon: <Trophy className="w-8 h-8" />,
+              //   title: "Win Rewards & Climb the Leaderboard",
+              //   desc: "Compete in daily, weekly, and seasonal contests to win exciting prizes. Prove your trading and cricket skills against other users.",
+              //   gradient: "from-amber-500/20 to-yellow-500/20",
+              // },
               {
                 icon: <Smartphone className="w-8 h-8" />,
                 title: "User-Friendly Interface",
@@ -342,44 +345,25 @@ export default function LandingPage() {
           <div className="relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-purple-900/30 via-blue-900/30 to-indigo-900/30 rounded-3xl"></div>
             <div className="relative flex flex-col lg:flex-row items-center justify-between gap-12 bg-gradient-to-br from-slate-900 via-purple-900 to-blue-900 rounded-3xl p-8 lg:p-16 shadow-2xl">
-              <div className="flex-1 z-10">
+              <div className="flex-1 z-10 lg:w-[60%] w-full">
                 <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20 backdrop-blur-sm border border-purple-500/30 rounded-full px-4 py-2 mb-6">
                   <Sparkles className="w-4 h-4 text-purple-400" />
-                  <span className="text-sm font-medium text-purple-200">Download Now</span>
+                  <span className="text-sm font-medium text-purple-200">Trade Now</span>
                 </div>
 
-                <h2 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-transparent mb-6">
-                  Get the CricStock11 App
+                <h2 className="text-4xl leading-14 lg:text-5xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-transparent mb-6">
+                  Put Your Cricket Knowledge to use
+                  & WIN BIG
                 </h2>
 
                 <p className="text-xl text-slate-300 mb-8 leading-relaxed">
-                  Trade on the go with our mobile app. Experience seamless trading with real-time updates and
-                  notifications.
+                  Join the revolution in fantasy cricket with CricStock11. Trade players like stocks, analyze performances, and build your portfolio to win exciting rewards.
                 </p>
 
-                <div className="flex gap-4 items-center">
-                  <a href="#" className="transform hover:scale-105 transition-transform duration-300">
-                    <Image
-                      src="/images/playstore.png"
-                      alt="Get it on Google Play"
-                      width={150}
-                      height={32}
-                      className=""
-                    />
-                  </a>
-                  <div className="h-8 w-px bg-white/30"></div>
-                  <Button variant="ghost" className="text-purple-400 hover:text-purple-300 hover:bg-white/5" asChild>
-                    <Link href="/login">
-                      <span>Continue on Web</span>
-                      <ChevronRight className="w-4 h-4 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
 
-                <p className="text-slate-400">Available for Android • Free Download</p>
               </div>
 
-              <div className="flex-1 flex justify-center lg:justify-end">
+              <div className="flex flex-col gap-10 justify-center items-center lg:items-end lg:justify-end lg:w-[40%] w-full">
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 to-blue-500/30 rounded-3xl blur-2xl transform rotate-6"></div>
                   <Image
@@ -390,11 +374,33 @@ export default function LandingPage() {
                     className="relative rounded-3xl shadow-2xl object-cover border border-white/20"
                   />
                 </div>
+
+                <div className=" flex gap-4 items-center">
+                  <div className="group relative transform hover:scale-105 transition-transform duration-300">
+                    <div className="absolute w-full h-full rounded-lg group-hover:bg-black/20 hidden group-hover:flex group-hover:backdrop-blur-md justify-center items-center " >
+                      Coming Soon
+                    </div>
+                    <Image
+                      src="/images/playstore.png"
+                      alt="Get it on Google Play"
+                      width={150}
+                      height={32}
+                      className=""
+                    />
+                  </div>
+                  <div className="h-8 w-px bg-white/30"></div>
+                  <Button variant="ghost" className="text-purple-400 hover:text-purple-300 hover:bg-white/5 py-6" asChild>
+                    <Link href="/login">
+                      <span>Continue on Web</span>
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </section>
-      </main>
+      </main >
 
       <Footer />
     </>
