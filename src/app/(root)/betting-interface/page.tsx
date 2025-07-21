@@ -28,6 +28,7 @@ export default function BettingPage() {
         const apiData = await res.json();
         if (!isMounted) return;
         if (apiData.success) {
+          console.log(apiData.data.innings[0].did_not_bat)
           setMatchData(apiData.data);
           setMatchFound(true);
           console.log("1")
@@ -50,7 +51,7 @@ export default function BettingPage() {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      intervalRef.current = setInterval(fetchData, 10000);
+      intervalRef.current = setInterval(fetchData, 60 * 60 * 1000);
     } else {
       setLoading(true);
       setMatchFound(false);

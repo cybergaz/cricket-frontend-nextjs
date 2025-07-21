@@ -54,27 +54,15 @@ export default function Footer() {
             <h4 className="text-white font-medium text-lg">Quick Links</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
+                <Link href="/live-matches" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
                   <Trophy className="w-4 h-4" />
                   <span>Live Matches</span>
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
+                <Link href="/positions" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
                   <BarChart2 className="w-4 h-4" />
                   <span>Player Stocks</span>
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  <span>Upcoming Events</span>
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  <span>Fantasy Leagues</span>
                 </Link>
               </li>
             </ul>
@@ -85,25 +73,13 @@ export default function Footer() {
             <h4 className="text-white font-medium text-lg">Resources</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
+                <Link href="/contact-us" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
                   <HelpCircle className="w-4 h-4" />
                   <span>Help Center</span>
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Community</span>
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  <span>Security</span>
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
+                <Link href="/invite" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
                   <Gift className="w-4 h-4" />
                   <span>Referral Program</span>
                 </Link>
@@ -119,38 +95,13 @@ export default function Footer() {
                 <Mail className="w-4 h-4 text-accent group-hover:text-accent/80" />
                 <span className="group-hover:text-gray-300 transition-colors">support@cricstock11.com</span>
               </div>
-              <div className="flex items-center gap-3 text-gray-400 group">
-                <Phone className="w-4 h-4 text-accent group-hover:text-accent/80" />
-                <span className="group-hover:text-gray-300 transition-colors">+91 7877804889</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-400 group">
+              <div className="flex items-center gap-3 text-gray-400 group select-none">
                 <Globe className="w-4 h-4 text-accent group-hover:text-accent/80" />
-                <span className="group-hover:text-gray-300 transition-colors">www.cricstock11.com</span>
+                <span className="transition-colors">www.cricstock11.com</span>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Newsletter Demo Component */}
-        <div className="w-full p-6 rounded-lg mb-10">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-              <h4 className="text-white font-medium text-lg">Subscribe to our Newsletter</h4>
-              <p className="text-gray-400 text-sm">Stay updated with the latest cricket stocks and market trends</p>
-            </div>
-            <div className="flex w-full md:w-auto">
-              <input
-                type="email"
-                placeholder="Your email address"
-                className="px-4 py-2 border-1 border-accent/50 focus:border-accent/80 text-white rounded-l-md focus:outline-none w-full md:w-64"
-              />
-              <button className="bg-accent/50 hover:bg-accent/80  text-white font-bold text-lg px-4 py-2 rounded-r-md transition-colors">
-                Subscribe
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* Copyright Section */}
         <div className="flex flex-col md:flex-row justify-between items-center text-gray-500 text-sm pt-6">
           <div>© {new Date().getFullYear()} CricStock11. All rights reserved.</div>
@@ -161,9 +112,7 @@ export default function Footer() {
             <Link href="terms-and-conditions" className="hover:text-accent transition-colors">
               Terms of Service
             </Link>
-            <Link href="#" className="hover:text-accent transition-colors">
-              Cookie Policy
-            </Link>
+
           </div>
         </div>
       </div>

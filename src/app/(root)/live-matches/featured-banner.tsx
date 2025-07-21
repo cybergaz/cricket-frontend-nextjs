@@ -73,7 +73,7 @@ export function FeaturedBanner(match: Match) {
               <Button
                 size="lg"
                 onClick={() => router.push(`/betting-interface?id=${match.match_id}`)}
-                className="bg-white/60 hover:bg-white text-gray-900 hover:text-black text-base sm:text-lg font-extrabold px-6 py-4 transition-all duration-300"
+                className="bg-green-400/30 hover:bg-green-800 text-white/80 hover:text-white text-base sm:text-lg font-bold px-6 py-4 transition-all duration-300"
               >
                 <PlusCircle className="h-6 w-6 mr-2 stroke-3" />
                 Create Portfolio
