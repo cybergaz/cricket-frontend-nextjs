@@ -51,7 +51,7 @@ export default function BettingPage() {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      intervalRef.current = setInterval(fetchData, 60 * 60 * 1000);
+      intervalRef.current = setInterval(fetchData,10000);
     } else {
       setLoading(true);
       setMatchFound(false);

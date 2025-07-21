@@ -563,134 +563,155 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                 </TabsList>
                 <TabsContent value="batsmen" className="mt-4">
                   <div className="space-y-2">
-                    {data?.innings?.map((inning, inningNumber) =>
-                      inning.batsmen?.map((batsman, batsmanNumber) => {
-                        const isBatting = batsman.batting === "true"
-                        const isOut = batsman.how_out !== "Not out"
-                        return (
-                          <div
-                            key={batsman.batsman_id}
-                            className={`flex items-center justify-between p-2 rounded-md transition text-xs sm:text-base ${!isOut && inningNumber == Number(data?.latest_inning_number) - 1
-                              ? "bg-gray-700/20 hover:bg-gray-700/60 cursor-pointer"
-                              : isOut
-                                ? "opacity-50 cursor-not-allowed"
-                                : ""
-                              }`}
-                            onClick={() => {
-                              if (!isOut && inningNumber == Number(data?.latest_inning_number) - 1) {
-                                setBettingPlayer(batsman)
-                                setBettingNumber(batsmanNumber)
-                                setBasePrice(batsmanNumber < 3 ? 35 : batsmanNumber < 6 ? 30 : 25)
-                                const current = batsmanNumber < 3 ? 35 : batsmanNumber < 6 ? 30 : 25
-                                setCurrentPlayerPrice(
-                                  current -
-                                  Number(batsman.run0) * 0.5 +
-                                  Number(batsman.run1) * 0.75 +
-                                  Number(batsman.run2) * 1.5 +
-                                  Number(batsman.run3) * 2.25 +
-                                  Number(batsman.fours) * 3 +
-                                  Number(batsman.sixes) * 4.5
-                                )
-                                setIsBettingModalOpen(true)
-                              }
-                            }}
-                          >
-                            <div>
-                              <h3 className="flex items-center gap-2 text-sm sm:text-lg font-bold text-white">
-                                {batsman.name}
-                                {isBatting && <Badge className="text-xs p-1 text-white">*</Badge>}
-                              </h3>
-                              <p className="text-xs sm:text-sm font-bold text-gray-400">
-                                {batsman.runs} ({batsman.balls_faced})
-                              </p>
-                              {isOut && (
-                                <p className="text-xs sm:text-sm font-bold text-red-400">{batsman.how_out}</p>
-                              )}
-                            </div>
-                            <div className="text-right flex gap-5">
+                    {data?.innings &&
+                      data?.innings[Number(data.latest_inning_number) - 1]?.batsmen?.map(
+                        (batsman: any, batsmanNumber: any) => {
+                          const isBatting = batsman.batting === "true";
+                          const isOut = batsman.how_out !== "Not out";
+                          return (
+                            <div
+                              key={batsman.batsman_id}
+                              className={`flex items-center justify-between p-2 rounded-md transition text-xs sm:text-base ${!isOut
+                                ? "bg-gray-700/20 hover:bg-gray-700/60 cursor-pointer"
+                                : "opacity-50 cursor-not-allowed"
+                                }`}
+                              onClick={() => {
+                                if (!isOut) {
+                                  setBettingPlayer(batsman);
+                                  setBettingNumber(batsmanNumber);
+                                  setBasePrice(
+                                    batsmanNumber < 3
+                                      ? 35
+                                      : batsmanNumber < 6
+                                        ? 30
+                                        : 25
+                                  );
+                                  const current =
+                                    batsmanNumber < 3
+                                      ? 35
+                                      : batsmanNumber < 6
+                                        ? 30
+                                        : 25;
+                                  setCurrentPlayerPrice(
+                                    current -
+                                    Number(batsman.run0) * 0.5 +
+                                    Number(batsman.run1) * 0.75 +
+                                    Number(batsman.run2) * 1.5 +
+                                    Number(batsman.run3) * 2.25 +
+                                    Number(batsman.fours) * 3 +
+                                    Number(batsman.sixes) * 4.5
+                                  );
+                                  setIsBettingModalOpen(true);
+                                }
+                              }}
+                            >
                               <div>
-                                <p className="text-xs sm:text-base font-bold text-white">SR: {batsman.strike_rate}</p>
+                                <h3 className="flex items-center gap-2 text-sm sm:text-lg font-bold text-white">
+                                  {batsman.name}
+                                  {isBatting && (
+                                    <Badge className="text-xs p-1 text-white">*</Badge>
+                                  )}
+                                </h3>
                                 <p className="text-xs sm:text-sm font-bold text-gray-400">
-                                  {batsman.fours}x4, {batsman.sixes}x6
+                                  {batsman.runs} ({batsman.balls_faced})
                                 </p>
+                                {isOut && (
+                                  <p className="text-xs sm:text-sm font-bold text-red-400">
+                                    {batsman.how_out}
+                                  </p>
+                                )}
                               </div>
-                              {!isOut && (
-                                <button
-                                  onClick={() => {
-                                    setBettingPlayer(batsman)
-                                    setBettingNumber(batsmanNumber)
-                                    setBasePrice(batsmanNumber < 3 ? 35 : batsmanNumber < 6 ? 30 : 25)
-                                    const current = batsmanNumber < 3 ? 35 : batsmanNumber < 6 ? 30 : 25
-                                    setCurrentPlayerPrice(
-                                      current -
-                                      Number(batsman.run0) * 0.5 +
-                                      Number(batsman.run1) * 0.75 +
-                                      Number(batsman.run2) * 1.5 +
-                                      Number(batsman.run3) * 2.25 +
-                                      Number(batsman.fours) * 3 +
-                                      Number(batsman.sixes) * 4.5
-                                    )
-                                    setIsBettingModalOpen(true)
-                                  }}
-                                  className="bg-green-700 text-white text-[12px] sm:text-xs font-bold px-2 py-1 rounded-md hover:bg-emerald-700 transition"
-                                >
-                                  Trade
-                                </button>
-                              )}
-                              {isOut && (
-                                <button
-                                  onClick={() => {
-                                    setBettingPlayer(batsman)
-                                    setBettingNumber(batsmanNumber)
-                                    setBasePrice(batsmanNumber < 3 ? 35 : batsmanNumber < 6 ? 30 : 25)
-                                    const current = batsmanNumber < 3 ? 35 : batsmanNumber < 6 ? 30 : 25
-                                    setCurrentPlayerPrice(
-                                      current -
-                                      Number(batsman.run0) * 0.5 +
-                                      Number(batsman.run1) * 0.75 +
-                                      Number(batsman.run2) * 1.5 +
-                                      Number(batsman.run3) * 2.25 +
-                                      Number(batsman.fours) * 3 +
-                                      Number(batsman.sixes) * 4.5
-                                    )
-                                    setIsBettingModalOpen(true)
-                                  }}
-                                  disabled
-                                  className="bg-green-700/70 text-white text-[12px] sm:text-xs font-bold px-2 py-1 rounded-md hover:bg-emerald-700 transition"
-                                >
-                                  Trade
-                                </button>
-                              )}
-
+                              <div className="text-right flex gap-5">
+                                <div>
+                                  <p className="text-xs sm:text-base font-bold text-white">
+                                    SR: {batsman.strike_rate}
+                                  </p>
+                                  <p className="text-xs sm:text-sm font-bold text-gray-400">
+                                    {batsman.fours}x4, {batsman.sixes}x6
+                                  </p>
+                                </div>
+                                {!isOut ? (
+                                  <button
+                                    onClick={() => {
+                                      setBettingPlayer(batsman);
+                                      setBettingNumber(batsmanNumber);
+                                      setBasePrice(
+                                        batsmanNumber < 3
+                                          ? 35
+                                          : batsmanNumber < 6
+                                            ? 30
+                                            : 25
+                                      );
+                                      const current =
+                                        batsmanNumber < 3
+                                          ? 35
+                                          : batsmanNumber < 6
+                                            ? 30
+                                            : 25;
+                                      setCurrentPlayerPrice(
+                                        current -
+                                        Number(batsman.run0) * 0.5 +
+                                        Number(batsman.run1) * 0.75 +
+                                        Number(batsman.run2) * 1.5 +
+                                        Number(batsman.run3) * 2.25 +
+                                        Number(batsman.fours) * 3 +
+                                        Number(batsman.sixes) * 4.5
+                                      );
+                                      setIsBettingModalOpen(true);
+                                    }}
+                                    className="bg-green-700 text-white text-[12px] sm:text-xs font-bold px-2 py-1 rounded-md hover:bg-emerald-700 transition"
+                                  >
+                                    Trade
+                                  </button>
+                                ) : (
+                                  <button
+                                    disabled
+                                    className="bg-green-700/70 text-white text-[12px] sm:text-xs font-bold px-2 py-1 rounded-md hover:bg-emerald-700 transition"
+                                  >
+                                    Trade
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )
-                      })
-                    )}
+                          );
+                        }
+                      )}
                   </div>
                 </TabsContent>
                 <TabsContent value="bowlers" className="mt-4">
                   <div className="space-y-2">
                     {data?.innings?.map(inning =>
-                      inning.bowlers.map(bowler => (
-                        <div
-                          key={bowler.bowler_id}
-                          className="flex items-center justify-between p-2 rounded-md"
-                        >
-                          <div>
-                            <h3 className="flex items-center gap-2 text-sm sm:text-lg font-bold text-white">
-                              {bowler.name}
-                              {bowler.bowling === "true" && <Badge className="text-xs p-1 text-red-400">*</Badge>}
-                            </h3>
-                            <p className="text-xs sm:text-sm text-gray-400">
-                              {bowler.overs} ov, {bowler.maidens} m, {bowler.runs_conceded} r, {bowler.wickets} w
-                            </p>
+                      inning.bowlers.map(bowler => {
+                        const isCurrentBowler = bowler.bowling === "true";
+                        return (
+                          <div
+                            key={bowler.bowler_id}
+                            onClick={() => toast("Bowler's Stocks Coming Soon..")}
+                            className={`flex items-center justify-between p-2 rounded-md transition
+                              ${isCurrentBowler
+                                ? "bg-slate-700/40"
+                                : "bg-transparent opacity-60 pointer-events-none select-none"
+                              }`}
+                          >
+                            <div>
+                              <h3 className={`flex items-center gap-2 text-sm sm:text-lg font-bold
+                                ${isCurrentBowler ? "text-white" : "text-gray-400"}
+                              `}>
+                                {bowler.name}
+                                {isCurrentBowler && <Badge className="text-xs p-1 text-red-400">*</Badge>}
+                              </h3>
+                              <p className={`text-xs sm:text-sm ${isCurrentBowler ? "text-gray-400" : "text-gray-500"}`}>
+                                {bowler.overs} ov, {bowler.maidens} m, {bowler.runs_conceded} r, {bowler.wickets} w
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-xs sm:text-base font-bold ${isCurrentBowler ? "text-white" : "text-gray-400"}`}>
+                                Econ: {bowler.econ}
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs sm:text-base font-bold text-white">Econ: {bowler.econ}</p>
-                          </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </TabsContent>

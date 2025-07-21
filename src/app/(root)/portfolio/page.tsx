@@ -44,6 +44,7 @@ export default function Portfolio() {
   const [teamPortfoliosHistorys, setTeamPortfoliosHistorys] = useState<TeamPortfolio[]>([]);
   const [todaysPlayerPortfolios, setTodaysPlayerPortfolios] = useState<PlayerPortfolio[]>([]);
   const [todaysTeamPortfolios, setTodaysTeamPortfolios] = useState<TeamPortfolio[]>([]);
+  const [todaysProfit, setTodaysProfit] = useState()
   const [value, setValue] = useState(0);
   const [profit, setProfit] = useState(0);
   const [totalEarning, setTotalEarning] = useState(0);
@@ -151,6 +152,7 @@ export default function Portfolio() {
         setProfit(apiData.profit)
         setValue(apiData.value)
         setTotalEarning(apiData.totalEarnings)
+        setTodaysProfit(apiData.totalPortfolioProfit)
         setTodaysEarning(apiData.todaysEarnings)
         setTodaysPlayerPortfolios(apiData.todaysPlayerPortfolios || []);
         setTodaysTeamPortfolios(apiData.todaysTeamPortfolios || []);
@@ -395,8 +397,8 @@ export default function Portfolio() {
               <CardContent className="p-7 pl-10 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-purple-400 text-sm font-bold tracking-wide uppercase mb-1">
-                      Total Balance
+                    <p className="text-purple-400 text-lg font-bold tracking-wide mb-1">
+                      Available Balance
                     </p>
                     <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1">
                       {formatINR(Number(value))}
@@ -412,7 +414,7 @@ export default function Portfolio() {
               <CardContent className="p-7 pl-10 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-cyan-400 text-sm font-bold tracking-wide uppercase mb-1">
+                    <p className="text-sky-400 text-lg font-bold tracking-wide mb-1">
                       Active Holdings
                     </p>
                     {playerPortfolios && teamPortfolios && (playerPortfolios.length + teamPortfolios.length > 0) ? (
@@ -438,24 +440,6 @@ export default function Portfolio() {
                     </span>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-lg transition-all duration-200 bg-gradient-to-br from-amber-600 via-transparent to-transparent rounded-tl-[100px]">
-              <CardContent className="p-7 pl-10 flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-amber-400 text-sm font-bold tracking-wide uppercase mb-1">
-                      Total Earning
-                    </p>
-                    <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1">
-                      {formatINR(Number(totalEarning))}
-                    </h3>
-                  </div>
-                  <div className="flex items-center justify-center bg-amber-500/20 p-4 rounded-full shadow-inner">
-                    <Trophy className="h-8 w-8 text-amber-400 drop-shadow" />
-                  </div>
-                </div>
               </CardContent>
             </Card>
             {(() => {
@@ -536,7 +520,7 @@ export default function Portfolio() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p
-                              className={`text-sm font-bold tracking-wide uppercase mb-1 ${profitPending
+                              className={`text-lg font-bold tracking-wide mb-1 ${profitPending
                                 ? "text-gray-400"
                                 : profitNumber < 0
                                   ? "text-red-700"
@@ -547,7 +531,7 @@ export default function Portfolio() {
                             >
                               {profitPending
                                 ? "Calculating P&L..."
-                                : `Total ${profitNumber > 0 ? "Profit" : profitNumber < 0 ? "Loss" : "P&L"}`
+                                : `Current ${profitNumber > 0 ? "Profit" : profitNumber < 0 ? "Loss" : "P&L"}`
                               }
                             </p>
                             {profitPending ?
@@ -632,21 +616,62 @@ export default function Portfolio() {
                 </>
               )
             })()}
+            <Card
+              className={`border-none shadow-lg transition-all duration-200 bg-gradient-to-br rounded-tl-[100px] ${
+                Number(todaysProfit) < 0
+                  ? "from-red-700 via-transparent to-transparent"
+                  : "from-emerald-700 via-transparent to-transparent"
+              }`}
+            >
+              <CardContent className="p-7 pl-10 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p
+                      className={`text-lg font-bold tracking-wide mb-1 ${
+                        Number(todaysProfit) < 0
+                          ? "text-red-600"
+                          : "text-emerald-600"
+                      }`}
+                    >
+                      Today's P&L
+                    </p>
+                    <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1">
+                      {formatINR(Number(todaysProfit))}
+                    </h3>
+                  </div>
+                  <div
+                    className={`flex items-center justify-center p-4 rounded-full shadow-inner ${
+                      Number(todaysProfit) < 0
+                        ? "bg-red-700/20"
+                        : "bg-emerald-600/20"
+                    }`}
+                  >
+                    <Trophy
+                      className={`h-8 w-8 drop-shadow ${
+                        Number(todaysProfit) < 0
+                          ? "text-red-400"
+                          : "text-emerald-400"
+                      }`}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Portfolio Tabs */}
           <Tabs defaultValue="player" className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <TabsList className="">
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
+              <TabsList className="flex w-full sm:w-auto">
                 <TabsTrigger
                   value="player"
-                  className="p-4 h-10 w-50 text-lg bg-gray-900 data-[state=active]:bg-purple-500 text-white transition-colors ease-in-out duration-600 rounded-bl-full rounded-tl-full rounded-br-none rounded-tr-none cursor-pointer"
+                  className="flex-1 sm:flex-none p-3 sm:p-4 h-10 w-full sm:w-48 text-base sm:text-lg bg-gray-900 data-[state=active]:bg-purple-500 text-white transition-colors ease-in-out duration-600 rounded-bl-full rounded-tl-full rounded-br-none rounded-tr-none cursor-pointer"
                 >
                   Player Portfolio
                 </TabsTrigger>
                 <TabsTrigger
                   value="team"
-                  className="p-4 h-10 w-50 text-lg bg-gray-900 data-[state=active]:bg-purple-500 text-white transition-colors ease-in-out duration-600 rounded-br-full rounded-tr-full rounded-bl-none rounded-tl-none cursor-pointer"
+                  className="flex-1 sm:flex-none p-3 sm:p-4 h-10 w-full sm:w-48 text-base sm:text-lg bg-gray-900 data-[state=active]:bg-purple-500 text-white transition-colors ease-in-out duration-600 rounded-br-full rounded-tr-full rounded-bl-none rounded-tl-none cursor-pointer"
                 >
                   Team Portfolio
                 </TabsTrigger>
@@ -723,7 +748,7 @@ export default function Portfolio() {
                                             setTradeModalOpen(true);
                                           }}
                                         >
-                                          Trade
+                                          Buy / Sell
                                         </Button>
                                       </div>
                                     </div>
