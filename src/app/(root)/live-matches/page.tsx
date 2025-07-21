@@ -17,10 +17,15 @@ export default function LiveMatches() {
       try {
         setIsLoading(true);
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/today`);
-        // if (!res.ok) throw new Error("API Error");
+        if (!res.ok) throw new Error("API Error");
         const data = await res.json();
-        console.log(data)
-        setMatches(data.data);
+        const unwantedWords = ["won", "loss", "draw", "abandoned", "no result", "cancelled", "tie", "postponed", "completed", "finished"];
+        const matches = data.data.filter(
+          (match: any) =>
+            typeof match.live === "string" &&
+            !unwantedWords.some(word => match.live.toLowerCase().includes(word))
+        );
+        setMatches(matches);
       } catch (e) {
         console.error("Fetch error:", e);
       } finally {
@@ -74,7 +79,7 @@ export default function LiveMatches() {
 
         {/* Matches Grid */}
         <div>
-          {matches.map((match: Match) => (
+          {matches && matches.map((match) => (
             <MatchCard key={match._id} match={match} />
           ))}
         </div>

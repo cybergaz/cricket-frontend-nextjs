@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CricketMatchData } from "./types";
 import MatchScorecard from "./match-scorecard";
 import { Loading } from "./components/Loading";
@@ -11,71 +11,71 @@ import YetToStart from "./components/yet-to-start";
 
 export default function BettingPage() {
   const [matchData, setMatchData] = useState<CricketMatchData | null>(null);
+  const [matchFound, setMatchFound] = useState(false);
   const [loading, setLoading] = useState(true);
-  const searchParams = useSearchParams()
-  const matchId = searchParams.get("id")
+  const searchParams = useSearchParams();
+  const matchId = searchParams.get("id");
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const isValidMatchData = (data: any): data is CricketMatchData => {
-      return (
-        typeof data === 'object' &&
-        data !== null &&
-        'competition' in data &&
-        'teama' in data &&
-        'teamb' in data &&
-        'venue' in data &&
-        'innings' in data &&
-        Array.isArray(data.innings)
-      );
-    };
+    let isMounted = true;
 
-    setLoading(true);
     const fetchData = async () => {
       try {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`
         );
         const apiData = await res.json();
-        if (apiData.message && apiData.data === null) {
-          // setMatchData(null);
-        } else if (apiData.message && apiData.data && isValidMatchData(apiData.data)) {
+        if (!isMounted) return;
+        if (apiData.success) {
           setMatchData(apiData.data);
-        } else if (isValidMatchData(apiData)) {
-          setMatchData(apiData);
+          setMatchFound(true);
+          console.log("1")
         } else {
-          // setMatchData(null);
+          setMatchData(null);
+          setMatchFound(false);
         }
+        setLoading(false);
       } catch {
-        // setMatchData(null);
-      } finally {
+        if (!isMounted) return;
+        setMatchData(null);
+        setMatchFound(false);
         setLoading(false);
       }
     };
 
     if (matchId) {
-      // i want to run fetchdata every 5 seconds
+      setLoading(true);
       fetchData();
-      const interval = setInterval(() => {
-        // console.log("Fetching data...");
-        fetchData();
-      }, 5000);
-      // return () => clearInterval(interval); // Cleanup interval on unmount
-      // fetchData();
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      intervalRef.current = setInterval(fetchData, 10000);
     } else {
-      setLoading(false);
+      setLoading(true);
+      setMatchFound(false);
+      setMatchData(null);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     }
+
+    return () => {
+      isMounted = false;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
   }, [matchId]);
 
   if (loading) {
     return <Loading />;
   }
 
-
-  if (!matchData) {
+  if (!matchFound) {
     return <YetToStart matchId={matchId!} />;
   }
 
-
-  if (matchData)
-    return <MatchScorecard matchData={matchData} />;
+  if (matchFound)
+    return <MatchScorecard matchData={matchData!} />;
 }

@@ -38,6 +38,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
   //             : [[""]])
   // }
   // const data: CricketMatchData = patchedSample as CricketMatchData
+
   const data: CricketMatchData | null = hasData ? matchData : null;
 
   const [activeTab, setActiveTab] = useState<string>("live")
@@ -111,14 +112,14 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
     else if (bettingNumber < 6) setBasePrice(30);
     else setBasePrice(25);
   }, [bettingNumber]);
-  // useEffect(() => {
-  //   if (data) console.log(data)
-  // }, [data])
+  useEffect(() => {
+    if (data) console.log(data)
+  }, [])
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-600 via-transparent to-transparent">
       <div className="container mx-auto px-3 py-4 space-y-4">
         {data?.status_note && (
-          <div className="fixed top-23 left-1/2 transform -translate-x-1/2 z-50 flex justify-center w-full px-4">
+          <div className="absolute top-23 left-1/2 transform -translate-x-1/2 z-50 flex justify-center w-full px-4">
             <div className="pr-5 pl-3 py-3 rounded-full bg-[#7c8fa4] text-white text-base md:text-xl font-bold shadow-lg flex items-center gap-2">
               <span className="text-red-500 text-shadow-sm bg-white px-4 rounded-4xl animate-pulse">Live</span>
               <span className="whitespace-nowrap">{data.status_note}</span>
@@ -138,7 +139,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
               <>
                 <div className="flex items-center gap-4 group cursor-pointer" onClick={() => { if (data?.teama) { setSelectedTeam(data.teama); setIsTeamModalOpen(true); } }}>
                   <img
-                    src={data?.teama?.logo_url || "/placeholder.svg?height=48&width=48"}
+                    src={data?.teama?.logo_url}
                     alt={data?.teama?.name ?? "Team A"}
                     className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md hover:scale-105 transition-transform duration-500"
                   />
@@ -154,7 +155,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     <span className="text-base md:text-lg text-gray-500 font-bold block">{data?.teamb?.scores_full || "Yet to bat"}</span>
                   </div>
                   <img
-                    src={data?.teamb?.logo_url || "/placeholder.svg?height=48&width=48"}
+                    src={data?.teamb?.logo_url}
                     alt={data?.teamb?.name ?? "Team B"}
                     className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md hover:scale-105 transition-transform duration-500"
                   />
@@ -164,7 +165,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
               <div className="flex items-center justify-center gap-8 sm:gap-12 text-white">
                 <div className="flex items-center gap-4 group">
                   <img
-                    src={data?.teama?.logo_url || "/placeholder.svg?height=48&width=48"}
+                    src={data?.teama?.logo_url}
                     alt={data?.teama?.name ?? "Team A"}
                     className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md"
                   />
@@ -180,7 +181,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     <span className="text-base md:text-lg text-gray-500 font-bold block">Yet to bat</span>
                   </div>
                   <img
-                    src={data?.teamb?.logo_url || "/placeholder.svg?height=48&width=48"}
+                    src={data?.teamb?.logo_url}
                     alt={data?.teamb?.name ?? "Team B"}
                     className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md"
                   />
@@ -262,12 +263,12 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
               <Card className="relative bg-gradient-to-r from-transparent to-transparent overflow-hidden rounded-none shadow-none">
                 <div className="absolute inset-0 z-10 overflow-hidden">
                   <img
-                    src={data?.teama?.logo_url || "/placeholder.svg?height=48&width=48"}
+                    src={data?.teama?.logo_url}
                     alt={data?.teama?.name}
                     className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay scale-125 blur-sm"
                   />
                   <img
-                    src={data?.teamb?.logo_url || "/placeholder.svg?height=48&width=48"}
+                    src={data?.teamb?.logo_url}
                     alt={data?.teamb?.name}
                     className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay scale-125 blur-sm"
                   />
@@ -287,7 +288,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     <CardHeader className="pb-2 -mb-5">
                       <CardTitle className="text-3xl flex items-center gap-3 text-white">
                         <img
-                          src={data?.teama?.logo_url || "/placeholder.svg?height=48&width=48"}
+                          src={data?.teama?.logo_url}
                           alt={data?.teama?.name}
                           className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md hover:scale-105 transition-transform duration-500"
                         />
@@ -338,7 +339,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     <CardHeader className="pb-2 -mb-5">
                       <CardTitle className="text-3xl flex items-center gap-3 text-white">
                         <img
-                          src={data?.teamb?.logo_url || "/placeholder.svg?height=48&width=48"}
+                          src={data?.teamb?.logo_url}
                           alt={data?.teamb?.name}
                           className="w-12 h-12 md:w-17 md:h-17 rounded-full shadow-lg backdrop-blur-md hover:scale-105 transition-transform duration-500"
                         />
@@ -1051,17 +1052,15 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
 
                   </div>
                   <div className="flex-1 flex flex-col items-end">
-                    <label className="text-sm font-bold text-gray-300 mb-1" htmlFor="price-input">
-                      Total Price
-                    <span className={`text-xs mt-1 font-bold ${currentPlayerPrice * quantity > 25000 ? "text-red-500" : "text-gray-400"}`}>
-                      {currentPlayerPrice * quantity > 25000
-                        ? "Exceeds ₹25000 limit"
-                        : ` <= ₹25000`}
-                    </span>
+                    <label className="text-md font-bold text-gray-300 mb-1" htmlFor="price-input">
+                      Price
+                      <span className={`ml-2 text-xs mt-1 font-bold ${currentPlayerPrice * quantity > 25000 ? "text-red-500" : "text-gray-400"}`}>
+                        ₹25000
+                      </span>
                     </label>
                     <Input
                       id="price-input"
-                      className="text-white border-0 font-extrabold bg-gray-800/60 rounded-lg px-4 py-2"
+                      className="text-white border-0 font-extrabold bg-transparent rounded-lg px-4 py-2 text-end"
                       placeholder={`₹${currentPlayerPrice * quantity}`}
                       value={`₹${currentPlayerPrice * quantity}`}
                       onChange={e => {
@@ -1073,6 +1072,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                         if (newQty > maxQty) newQty = maxQty;
                         setQuantity(newQty);
                       }}
+                      disabled
                     />
 
                   </div>

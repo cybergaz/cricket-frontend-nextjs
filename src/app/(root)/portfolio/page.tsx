@@ -8,10 +8,18 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Users, Trophy, Landmark, DollarSign, TrendingDown, Dot } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import { PlayerPortfolio, TeamPortfolio } from "./types";
 import { formatINR } from "@/lib/helper";
+import { Batsman, BettingPlayer, CricketMatchData, Team } from "../betting-interface/types";
+import { Button } from "@/components/ui/button";
+import { sellPlayer, buyPlayer, sellTeam, buyTeam } from "../betting-interface/services";
+import { redirect } from "next/navigation";
+import AnimatedNumber from "@/components/ui/animated-number";
+import AnimatedECGBackground from "@/components/ui/animated-ecg-bg";
+import AnimatedBarGraphBackground from "@/components/ui/animated-bar-graph-bg";
+import PortfolioTradeModal from "@/components/ui/portfolio-trade-modal";
 
 function formatTimestamp(ts: Date | string | undefined): string {
   if (!ts) return "--";
@@ -28,19 +36,91 @@ function formatTimestamp(ts: Date | string | undefined): string {
 }
 
 export default function Portfolio() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [currentItem, setCurrentItem] = useState<PlayerPortfolio | TeamPortfolio>();
   const [playerPortfolios, setPlayerPortfolios] = useState<PlayerPortfolio[]>([]);
   const [teamPortfolios, setTeamPortfolios] = useState<TeamPortfolio[]>([]);
   const [playerPortfoliosHistorys, setPlayerPortfoliosHistorys] = useState<PlayerPortfolio[]>([]);
   const [teamPortfoliosHistorys, setTeamPortfoliosHistorys] = useState<TeamPortfolio[]>([]);
   const [value, setValue] = useState(0);
   const [profit, setProfit] = useState(0);
+  const [scorecards, setScorecards] = useState<Record<string, any>>({});
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const [autoSoldPlayers, setAutoSoldPlayers] = useState<Set<string>>(new Set());
+  const [tradeModalOpen, setTradeModalOpen] = useState(false);
+  const [tradeModalPortfolio, setTradeModalPortfolio] = useState<any>(null);
+  const [tradeModalType, setTradeModalType] = useState<"player" | "team" | null>(null);
+  const [matchDataById, setMatchDataById] = useState<Record<string, CricketMatchData>>({});
 
+  const currentPrice = async (portfolioPlayer: PlayerPortfolio) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${portfolioPlayer.matchId}`
+      );
+      const apiData = await res.json();
+      const match: CricketMatchData = apiData.data
+      const currentInningNumber = match.latest_inning_number
+      const currentInning = match.innings[Number(currentInningNumber) - 1]
+      const batsmanNumber = currentInning.batsmen.findIndex(
+        (batsman: Batsman) => batsman.batsman_id === portfolioPlayer.playerId
+      ) + 1;
+      const inningPlayer = currentInning.batsmen.find(
+        (batsman: Batsman) => batsman.batsman_id === portfolioPlayer.playerId
+      ) as Batsman
+      const basePrice = batsmanNumber < 3
+        ? 35
+        : batsmanNumber < 6
+          ? 30
+          : 25
+      return String(basePrice
+        - (Number(inningPlayer.run0) * 0.5)
+        + (Number(inningPlayer.run1) * 0.75)
+        + (Number(inningPlayer.run2) * 1.50)
+        + (Number(inningPlayer.run3) * 2.25)
+        + (Number(inningPlayer.fours) * 3)
+        + (Number(inningPlayer.sixes) * 4.5))
+    } catch {
+      return "0"
+    }
+  }
+  const availableToSold = async (player: PlayerPortfolio) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${player.matchId}`
+      );
+      const apiData = await res.json();
+      const match: CricketMatchData = apiData.data;
 
+      // 1. Check if match is over
+      const matchStatus = (match.live || "").toLowerCase();
+      const overStatuses = ["won", "loss", "draw", "abandoned", "no result", "cancelled", "tie", "postponed", "completed", "finished"];
+      console.log(matchStatus)
+      if (overStatuses.includes(matchStatus)) {
+        toast.success("Match is Over")
+        return true;
+      }
+
+      // 2. Check if batsman is not batting
+      const currentInningNumber = match.latest_inning_number;
+      const currentInning = match.innings[Number(currentInningNumber) - 1];
+      const isBatting = currentInning.batsmen.some(
+        (batsman: Batsman) =>
+          batsman.batsman_id === player.playerId && batsman.batting == "true"
+      );
+      if (!isBatting) {
+        toast.success(`${player.playerName} Got Out`);
+        return true
+      }
+      return false
+    } catch {
+      return false;
+    }
+  };
   useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
     const fetchPortfolios = async () => {
       try {
-        setLoading(true)
         // Get token from cookies
         const getTokenFromCookies = () => {
           if (typeof document === "undefined") return null;
@@ -66,8 +146,6 @@ export default function Portfolio() {
         }
         setProfit(apiData.profit)
         setValue(apiData.value)
-        // setProfit(apiData.p)
-        // Helper to split active/history
         function splitByStatus<T extends { status?: string }>(arr: T[]): { active: T[]; history: T[] } {
           const active: T[] = [];
           const history: T[] = [];
@@ -79,29 +157,195 @@ export default function Portfolio() {
               active.push(item);
             }
           });
-          setLoading(false)
           return { active, history };
         }
 
         // Player portfolios
         const playerResult = splitByStatus<PlayerPortfolio>(apiData.playerPortfolios || []);
-        setPlayerPortfolios(playerResult.active);
+        const playerPortfoliosWithPrice = await Promise.all(
+          playerResult.active.map(async (p) => ({
+            ...p,
+            currentPrice: await currentPrice(p)
+          }))
+        );
+        setPlayerPortfolios(playerPortfoliosWithPrice);
         setPlayerPortfoliosHistorys(playerResult.history);
 
         // Team portfolios
         const teamResult = splitByStatus<TeamPortfolio>(apiData.teamPortfolios || []);
         setTeamPortfolios(teamResult.active);
         setTeamPortfoliosHistorys(teamResult.history);
-        setLoading(false)
+
+        // Fetch match data for all unique matchIds
+        const allPortfolios = [...(apiData.playerPortfolios || []), ...(apiData.teamPortfolios || [])];
+        const uniqueMatchIds = Array.from(new Set(allPortfolios.map((p: any) => p.matchId)));
+        const matchDataObj: Record<string, CricketMatchData> = {};
+        await Promise.all(uniqueMatchIds.map(async (matchId: string) => {
+          try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`);
+            const apiData = await res.json();
+            if (apiData.data) {
+              matchDataObj[matchId] = apiData.data;
+            }
+          } catch { }
+        }));
+        setMatchDataById(matchDataObj);
 
       } catch (e: any) {
         toast("Fetch error: " + (e?.message || e));
-        setLoading(false)
       }
     };
+
     fetchPortfolios();
+    intervalId = setInterval(fetchPortfolios, 5000);
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, []);
 
+  // Polling for scorecards of all active matchIds
+  // This useEffect will run every time playerPortfolios changes.
+  // That means: 
+  // - The first time playerPortfolios is set (e.g., after fetching), this effect will run, setting up the interval.
+  // - If playerPortfolios changes (e.g., new portfolios are added/removed), the effect will clean up the old interval and set up a new one.
+  // - The interval itself will run every 10 seconds, using the latest playerPortfolios value at the time the effect ran.
+  // - If playerPortfolios never changes, the interval will only be set up once.
+  useEffect(() => {
+    playerPortfolios.forEach(async (playerPortfolio) => {
+      const isAvailable = await availableToSold(playerPortfolio);
+      if (isAvailable) {
+        const portfolio: BettingPlayer = {
+          name: playerPortfolio.playerName,
+          batsman_id: playerPortfolio.playerId,
+          batting: "",
+          position: "",
+          role: "",
+          role_str: "",
+          runs: "",
+          balls_faced: "",
+          fours: "",
+          sixes: "",
+          run0: "",
+          run1: "",
+          run2: "",
+          run3: "",
+          run5: "",
+          how_out: "",
+          dismissal: "",
+          strike_rate: "",
+          bowler_id: "",
+          first_fielder_id: "",
+          second_fielder_id: "",
+          third_fielder_id: "",
+        };
+        await sellPlayer(portfolio, String(Number(playerPortfolio.boughtPrice) / 2), playerPortfolio.quantity, playerPortfolio.matchId)
+      }
+    });
+  }, [playerPortfolios]);
+
+  // Helper to map PlayerPortfolio to BettingPlayer
+  const mapPlayerPortfolioToBettingPlayer = (p: PlayerPortfolio): BettingPlayer => ({
+    name: p.playerName,
+    batsman_id: p.playerId,
+    batting: "",
+    position: "",
+    role: "",
+    role_str: "",
+    runs: "",
+    balls_faced: "",
+    fours: "",
+    sixes: "",
+    run0: "",
+    run1: "",
+    run2: "",
+    run3: "",
+    run5: "",
+    how_out: "",
+    dismissal: "",
+    strike_rate: "",
+    bowler_id: "",
+    first_fielder_id: "",
+    second_fielder_id: "",
+    third_fielder_id: "",
+  });
+
+  // Helper to map TeamPortfolio to Team using match data if available
+  const mapTeamPortfolioToTeam = (t: TeamPortfolio): Team => {
+    const match = matchDataById[t.matchId];
+    if (match) {
+      if (match.teama && (match.teama.team_id === t.team || match.teama.name === t.team || match.teama.name === t.teamName)) return match.teama;
+      if (match.teamb && (match.teamb.team_id === t.team || match.teamb.name === t.team || match.teamb.name === t.teamName)) return match.teamb;
+    }
+    // fallback
+    return {
+      team_id: t.team,
+      name: t.teamName,
+      short_name: t.teamName,
+      logo_url: "",
+      thumb_url: "",
+      scores_full: "",
+      scores: "",
+      overs: "",
+    };
+  };
+  // Helper to map PlayerPortfolio to Team (minimal, as we don't have full match data here)
+  const mapPlayerPortfolioToTeam = (p: PlayerPortfolio): Team => ({
+    team_id: p.team,
+    name: p.team,
+    short_name: p.team,
+    logo_url: "",
+    thumb_url: "",
+    scores_full: "",
+    scores: "",
+    overs: "",
+  });
+
+  // Modal handlers
+  const handleBuy = async (quantity: number) => {
+    if (!tradeModalPortfolio) return;
+    setLoading(true);
+    try {
+      let response;
+      if (tradeModalType === "player") {
+        const player = mapPlayerPortfolioToBettingPlayer(tradeModalPortfolio);
+        response = await buyPlayer(player, tradeModalPortfolio.currentPrice, String(quantity), tradeModalPortfolio.matchId);
+      } else if (tradeModalType === "team") {
+        const team = mapTeamPortfolioToTeam(tradeModalPortfolio);
+        response = await buyTeam(team, tradeModalPortfolio.currentPrice, String(quantity), tradeModalPortfolio.matchId);
+      }
+      toast.success(response?.message || "Buy successful");
+      setTradeModalOpen(false);
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (e: any) {
+      toast.error(e?.message || "Buy failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleSell = async (quantity: number) => {
+    if (!tradeModalPortfolio) return;
+    setLoading(true);
+    try {
+      let response;
+      if (tradeModalType === "player") {
+        const player = mapPlayerPortfolioToBettingPlayer(tradeModalPortfolio);
+        response = await sellPlayer(player, tradeModalPortfolio.currentPrice, String(quantity), tradeModalPortfolio.matchId);
+      } else if (tradeModalType === "team") {
+        const team = mapTeamPortfolioToTeam(tradeModalPortfolio);
+        response = await sellTeam(team, tradeModalPortfolio.currentPrice, String(quantity), tradeModalPortfolio.matchId);
+      }
+      toast.success(response?.message || "Sell successful");
+      setTradeModalOpen(false);
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (e: any) {
+      toast.error(e?.message || "Sell failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   if (loading) {
@@ -190,93 +434,180 @@ export default function Portfolio() {
               </CardContent>
             </Card>
 
-            <Card
-              className={`border-none shadow-lg transition-all duration-200 bg-gradient-to-br rounded-tl-[100px] ${profit < 0
-                ? "from-red-800"
-                : profit === 0
-                  ? "from-gray-600"
-                  : "from-emerald-600"
-                } via-transparent to-transparent`}
-            >
-              <CardContent className="p-7 pl-10 flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p
-                      className={`text-sm font-bold tracking-wide uppercase mb-1 ${profit < 0
-                        ? "text-red-500"
-                        : profit === 0
-                          ? "text-gray-400"
-                          : "text-emerald-400"
-                        }`}
-                    >
-                      Total {profit > 0 ? "Profit" : "Loss"}
-                    </p>
-                    {(() => {
-                      // Calculate total profit and percentage
-                      const allPortfolios = [
-                        ...playerPortfolios,
-                        ...teamPortfolios,
-                        ...teamPortfoliosHistorys,
-                        ...playerPortfoliosHistorys
-                      ];
-                      const totalProfit = allPortfolios.reduce(
-                        (acc, curr) => acc + (parseFloat(curr.profit) || 0),
-                        0
-                      );
-                      const totalBought = allPortfolios.reduce(
-                        (acc, curr) => acc + (parseFloat(curr.boughtPrice) || 0),
-                        0
-                      );
-                      const profitNumber = Number(profit);
-                      let profitColor = "text-white";
-                      let percentColor = "text-white";
-                      let icon = <TrendingUp className="h-4 w-4 mr-1" />;
-                      if (profitNumber < 0) {
-                        profitColor = "text-white";
-                        percentColor = "text-white";
-                        icon = <TrendingDown className="h-4 w-4 mr-1" />;
-                      } else if (profitNumber === 0) {
-                        profitColor = "text-gray-400";
-                        percentColor = "text-gray-400";
-                        icon = <Dot className="h-4 w-4 mr-1" />;
-                      }
-                      const profitPercentage =
-                        totalBought === 0
-                          ? "0.00%"
-                          : ((totalProfit / totalBought) * 100).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
-                      return (
-                        <>
-                          <h3 className={`text-4xl font-extrabold drop-shadow-sm tracking-tight mt-1 ${profitColor}`}>
-                            {formatINR(profitNumber)}
-                          </h3>
-                          <p className={`text-sm flex items-center mt-1 ${percentColor}`}>
-                            {icon}
-                            {profitPercentage}
-                          </p>
-                        </>
-                      );
-                    })()}
-                  </div>
-                  <div
-                    className={`flex items-center justify-center p-4 rounded-full shadow-inner ${profit > 0
-                      ? "bg-emerald-500/20"
-                      : profit < 0
-                        ? "bg-red-500/20"
-                        : "bg-gray-400/20"
-                      }`}
+            {(() => {
+              // Check if any current holding is still fetching price
+              const profitPending = [
+                ...playerPortfolios,
+                ...teamPortfolios
+              ].some(p => !p.currentPrice || p.currentPrice === "0");
+
+              // Calculate profit for current holdings (playerPortfolios and teamPortfolios)
+              const currentHoldingsProfit = [
+                ...playerPortfolios,
+                ...teamPortfolios
+              ].reduce((acc, curr) => {
+                const quantity = parseFloat(curr.quantity) || 0;
+                const boughtPrice = parseFloat(curr.boughtPrice) || 0;
+                const currentPrice = parseFloat(curr.currentPrice) || 0;
+                // (currentPrice - boughtPrice) * quantity
+                return acc + (currentPrice - boughtPrice) * quantity;
+              }, 0);
+
+              // Calculate total bought amount for all portfolios (for percentage)
+              const totalBought = [
+                ...playerPortfolios,
+                ...teamPortfolios,
+                ...playerPortfoliosHistorys,
+                ...teamPortfoliosHistorys
+              ].reduce((acc, curr) => acc + (parseFloat(curr.boughtPrice) || 0), 0);
+
+              // Use currentHoldingsProfit if there are holdings, else use backend profit
+              const hasCurrentHoldings = playerPortfolios.length > 0 || teamPortfolios.length > 0;
+              let profitNumberRaw = hasCurrentHoldings ? currentHoldingsProfit : profit;
+              // Defensive: ensure profitNumber is always a number
+              const profitNumber = typeof profitNumberRaw === "string" ? parseFloat(profitNumberRaw) : profitNumberRaw;
+
+              let profitColor = "text-white";
+              let percentColor = "text-emerald-400";
+              let icon = <TrendingUp className="h-4 w-4 mr-1" />;
+              if (profitNumber < 0) {
+                profitColor = "text-white";
+                percentColor = "text-red-700 font-bold";
+                icon = <TrendingDown className="h-4 w-4 mr-1" />;
+              } else if (profitNumber === 0) {
+                profitColor = "text-gray-400";
+                percentColor = "text-gray-400";
+                icon = <Dot className="h-4 w-4 mr-1" />;
+              }
+              const profitPercentage =
+                totalBought === 0
+                  ? "0.00%"
+                  : ((profitNumber / totalBought) * 100).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
+              return (
+                <>
+                  <Card
+                    className={`border-none shadow-lg transition-all duration-200 bg-gradient-to-br rounded-tl-[100px] ${profitPending
+                      ? "from-gray-600"
+                      : (typeof profitNumber !== "undefined" ? profitNumber : profit) === 0
+                        ? "from-gray-600"
+                        : (typeof profitNumber !== "undefined" ? profitNumber : profit) < 0
+                          ? "from-red-800"
+                          : "from-emerald-600"
+                      } via-transparent to-transparent`}
                   >
-                    <DollarSign
-                      className={`h-8 w-8 drop-shadow ${profit > 0
-                        ? "text-emerald-400"
-                        : profit < 0
-                          ? "text-red-700"
-                          : "text-gray-400"
-                        }`}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    <CardContent className="p-7 pl-10 flex flex-col gap-2 relative overflow-hidden">
+                      {/* Animated Bar Graph background */}
+                      {/* <AnimatedBarGraphBackground
+                        color={
+                          profitPending
+                            ? "#9ca3af"
+                            : profitNumber < 0
+                              ? "#ef4444"
+                              : profitNumber === 0
+                                ? "#9ca3af"
+                                : "#34d399"
+                        }
+                      /> */}
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p
+                              className={`text-sm font-bold tracking-wide uppercase mb-1 ${profitPending
+                                ? "text-gray-400"
+                                : profitNumber < 0
+                                  ? "text-red-700"
+                                  : profitNumber === 0
+                                    ? "text-gray-400"
+                                    : "text-emerald-400"
+                                }`}
+                            >
+                              {profitPending
+                                ? "Calculating P&L..."
+                                : `Total ${profitNumber > 0 ? "Profit" : profitNumber < 0 ? "Loss" : "P&L"}`
+                              }
+                            </p>
+                            {profitPending ?
+                              <div
+                                className="text-4xl font-extrabold drop-shadow-sm tracking-tight mt-1 text-gray-400"
+                              >
+                                Calculating...
+                              </div>
+                              :
+                              <AnimatedNumber value={profitNumber}>
+                                {(val, { isChanged }) => (
+                                  <span
+                                    className={`text-4xl font-extrabold drop-shadow-sm tracking-tight mt-1 ${profitPending
+                                      ? "text-gray-400"
+                                      : profitNumber < 0
+                                        ? "text-white"
+                                        : profitNumber === 0
+                                          ? "text-gray-400"
+                                          : "text-white"
+                                      } ${isChanged ? "animate-pulse" : ""}`}
+                                  >
+                                    {formatINR(val)}
+                                  </span>
+                                )}
+                              </AnimatedNumber>}
+                            <p
+                              className={`text-sm flex items-center mt-1 ${profitPending
+                                ? "text-gray-400"
+                                : percentColor
+                                }`}
+                            >
+                              {!profitPending && icon}
+                              {profitPending ? <span className="ml-2 text-xs">Calculating...</span>
+                                :
+                                profitPercentage
+                              }
+                            </p>
+                          </div>
+
+                          <div
+                            className={`flex items-center justify-center p-4 rounded-full shadow-inner ${profitPending
+                              ? "bg-transparent"
+                              : (typeof profitNumber !== "undefined" && profitNumber !== null
+                                ? profitNumber
+                                : profit) > 0
+                                ? "bg-emerald-400/20"
+                                : (typeof profitNumber !== "undefined" && profitNumber !== null
+                                  ? profitNumber
+                                  : profit) < 0
+                                  ? "bg-red-700/20"
+                                  : "bg-transparent"
+                              }`}
+                          >
+                            {profitPending ?
+                              <div className="relative">
+                                <svg className="absolute -top-5 -right-1 animate-spin h-12 w-12 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                                </svg>
+                              </div>
+                              :
+                              <DollarSign
+                                className={`h-8 w-8 drop-shadow ${profitPending
+                                  ? "text-gray-400"
+                                  : (typeof profitNumber !== "undefined" && profitNumber !== null
+                                    ? profitNumber
+                                    : profit) > 0
+                                    ? "text-emerald-400"
+                                    : (typeof profitNumber !== "undefined" && profitNumber !== null
+                                      ? profitNumber
+                                      : profit) < 0
+                                      ? "text-red-700"
+                                      : "text-gray-400"
+                                  }`}
+                              />
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card >
+                </>
+              )
+            })()}
           </div>
 
           {/* Portfolio Tabs */}
@@ -335,41 +666,108 @@ export default function Portfolio() {
                                 Buy Price
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                                <span>Current Price</span>
+                              </th>
+                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                                <span>Profit / Loss</span>
+                              </th>
+                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
                                 Status
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
                                 Timestamp
                               </th>
+                              <th></th>
                             </tr>
                           </thead>
                           <tbody>
-                            {playerPortfolios && playerPortfolios.length > 0 && playerPortfolios.map((p, idx) => (
-                              <tr key={idx}>
-                                <td className="px-4 py-4">
-                                  <div className="flex items-center gap-3">
-                                    <p className="font-bold text-white">{p.playerName}</p>
-                                    <p className="text-xs text-gray-400 font-bold">{p.team}</p>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
-                                  {p.quantity ? `${p.quantity}` : "--"}
-                                </td>
-                                <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
-                                  {p.boughtPrice ? `₹${p.boughtPrice}` : "--"}
-                                </td>
-                                <td className="px-4 py-4 text-right">
-                                  <Badge
-                                    variant="outline"
-                                    className="border-0 bg-white/20 text-white font-bold"
-                                  >
-                                    {p.status || "--"}
-                                  </Badge>
-                                </td>
-                                <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
-                                  {formatTimestamp(p.timestamp)}
-                                </td>
-                              </tr>
-                            ))}
+                            {playerPortfolios && playerPortfolios.length > 0 && playerPortfolios.map((p, idx) => {
+                              return (
+                                <tr key={idx}>
+                                  <td className="px-4 py-4">
+                                    <div className="flex items-center gap-3">
+                                      <p className="font-bold text-white">{p.playerName}</p>
+                                      <div className="flex gap-2">
+                                        <Button
+                                          variant="secondary"
+                                          size="sm"
+                                          className="font-bold text-xs bg-white/20 hover:bg-white/30 hover:text-white transition-colors duration-300"
+                                          disabled={p.currentPrice == "0"}
+                                          onClick={() => {
+                                            setTradeModalPortfolio(p);
+                                            setTradeModalType("player");
+                                            setTradeModalOpen(true);
+                                          }}
+                                        >
+                                          Trade
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                                    {p.quantity ? `${p.quantity}` : "--"}
+                                  </td>
+                                  <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                                    {p.boughtPrice && p.quantity ? (
+                                      <div className="text-gray-300 font-bold">
+                                        ₹{Number(p.boughtPrice).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                                      </div>
+                                    ) : "--"}
+                                  </td>
+                                  <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                                    {p.currentPrice == "0" ?
+                                      (
+                                        <div className="relative">
+                                          <svg className="absolute -top-3 right-0 animate-spin h-5 w-5 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                                          </svg>
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-col items-end">
+                                          <span className={
+                                            Number(p.currentPrice) > Number(p.boughtPrice)
+                                              ? "text-emerald-400 font-bold"
+                                              : Number(p.currentPrice) < Number(p.boughtPrice)
+                                                ? "text-red-500 font-bold"
+                                                : "text-gray-300 font-bold"
+                                          }>
+                                            ₹{Number(p.currentPrice).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                                          </span>
+                                        </div>
+                                      )}
+                                  </td>
+                                  <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                                    {p.currentPrice == "0" ? (
+                                      <span className="text-xs text-gray-400 font-bold">Calculating...</span>
+                                    ) : (
+                                      (() => {
+                                        const totalBuy = Number(p.quantity) * Number(p.boughtPrice);
+                                        const totalCurrent = Number(p.quantity) * Number(p.currentPrice);
+                                        const pnl = totalCurrent - totalBuy;
+                                        const pnlClass = pnl > 0
+                                          ? "text-emerald-400 font-bold"
+                                          : pnl < 0
+                                            ? "text-red-500 font-bold"
+                                            : "text-gray-300 font-bold";
+                                        return <span className={pnlClass}>{pnl >= 0 ? "+" : "-"}₹{Math.abs(pnl).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>;
+                                      })()
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-4 text-right">
+                                    <Badge
+                                      variant="outline"
+                                      className="border-0 bg-white/20 text-white font-bold"
+                                    >
+                                      {p.status || "--"}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                                    {formatTimestamp(p.timestamp)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -393,25 +791,31 @@ export default function Portfolio() {
                             Player
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            Quantity(s)
+                            <span className="hidden xl:inline">Quantity(s)</span>
+                            <span className="inline xl:hidden">Qt(s)</span>
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            Buy Price
+                            <span className="hidden xl:inline">Buy Price</span>
+                            <span className="inline xl:hidden">Buy @</span>
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            Sell Price
+                            <span className="hidden xl:inline">Sell Price</span>
+                            <span className="inline xl:hidden">Sell @</span>
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            Profit / Loss
+                            <span className="hidden xl:inline">Profit / Loss</span>
+                            <span className="inline xl:hidden">P&amp;L</span>
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            Percentage
+                            <span className="hidden xl:inline">Percentage</span>
+                            <span className="inline xl:hidden">%</span>
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
                             Status
                           </th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            Timestamp
+                            <span className="hidden lg:inline">Timestamp</span>
+                            <span className="inline lg:hidden">Time</span>
                           </th>
                         </tr>
                       </thead>
@@ -436,7 +840,7 @@ export default function Portfolio() {
                                 ₹{p.boughtPrice}
                               </td>
                               <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
-                                ₹{p.soldPrice}
+                                ₹{(Number(p.boughtPrice) + (Number(p.profit) / Number(p.quantity))).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                               </td>
                               <td className="px-4 py-4 text-right text-sm font-bold text-emerald-500">
                                 <span className={parseFloat(p.profit) >= 0 ? "text-emerald-500" : "text-red-500"}>
@@ -560,6 +964,34 @@ export default function Portfolio() {
                                 <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
                                   {formatTimestamp(t.timestamp)}
                                 </td>
+                                <td className="px-4 py-4 text-right">
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant="secondary"
+                                      size="sm"
+                                      className="font-bold text-xs bg-white/20 hover:bg-emerald-600 hover:text-white transition-colors duration-300"
+                                      onClick={() => {
+                                        setTradeModalPortfolio(t);
+                                        setTradeModalType("team");
+                                        setTradeModalOpen(true);
+                                      }}
+                                    >
+                                      Buy
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      className="font-bold text-xs bg-white/30 hover:bg-red-600 hover:text-white transition-colors duration-300"
+                                      onClick={() => {
+                                        setTradeModalPortfolio(t);
+                                        setTradeModalType("team");
+                                        setTradeModalOpen(true);
+                                      }}
+                                    >
+                                      Sell
+                                    </Button>
+                                  </div>
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -660,8 +1092,16 @@ export default function Portfolio() {
               </div>
             </TabsContent>
           </Tabs>
-        </main>
-      </div>
+        </main >
+        <PortfolioTradeModal
+          open={tradeModalOpen}
+          onClose={() => setTradeModalOpen(false)}
+          portfolio={tradeModalPortfolio}
+          team={tradeModalPortfolio ? (tradeModalType === "player" ? mapPlayerPortfolioToTeam(tradeModalPortfolio) : mapTeamPortfolioToTeam(tradeModalPortfolio)) : { team_id: '', name: '', short_name: '', logo_url: '', thumb_url: '', scores_full: '', scores: '', overs: '' }}
+          onBuy={handleBuy}
+          onSell={handleSell}
+        />
+      </div >
     );
   }
 }

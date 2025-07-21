@@ -5,6 +5,7 @@ export interface PlayerPortfolio {
     playerName: string;
     quantity: string;
     boughtPrice: string;
+    currentPrice: string;
     soldPrice: string;
     profit: string;
     profitPercentage: string;
@@ -19,6 +20,7 @@ export interface TeamPortfolio {
     teamName: string;
     quantity: string;
     boughtPrice: string;
+    currentPrice: string;
     soldPrice: string;
     profit: string;
     profitPercentage: string;
