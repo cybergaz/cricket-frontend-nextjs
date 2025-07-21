@@ -322,9 +322,6 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                         </div>
                       </div>
                     </div>
-                    <h2 className="text-2xl md:text-6xl font-extrabold tracking-widest bg-gradient-to-r from-sky-200 via-white to-white/10 bg-clip-text text-transparent drop-shadow-2xl">
-                      {battingTeam.name}
-                    </h2>
                   </CardContent>
                 </Card>
               ) : (
