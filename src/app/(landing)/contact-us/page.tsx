@@ -25,40 +25,40 @@ export default function ContactPage() {
               </p>
 
               <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <MapPin className="mt-1 h-6 w-6 text-accent-light" />
-                  <p className="text-gray-300 leading-relaxed text-sm sm:text-base">
-                    flat no- 734 silver crown apartments
-                    <br />
-                    Vaishali nagar, Jaipur 302021
-                  </p>
-                </div>
-
+                {/* <div className="flex items-start gap-4"> */}
+                {/*   <MapPin className="mt-1 h-6 w-6 text-accent-light" /> */}
+                {/*   <p className="text-gray-300 leading-relaxed text-sm sm:text-base"> */}
+                {/*     flat no- 734 silver crown apartments */}
+                {/*     <br /> */}
+                {/*     Vaishali nagar, Jaipur 302021 */}
+                {/*   </p> */}
+                {/* </div> */}
+                {/**/}
+                {/* <div className="flex items-center gap-4"> */}
+                {/*   <Phone className="h-6 w-6 text-accent-light" /> */}
+                {/*   <a */}
+                {/*     href="tel:+917877804889" */}
+                {/*     className="text-gray-300 hover:text-accent-light transition-colors text-sm sm:text-base" */}
+                {/*   > */}
+                {/*     +91 7877804889 */}
+                {/*   </a> */}
+                {/* </div> */}
+                {/**/}
                 <div className="flex items-center gap-4">
-                  <Phone className="h-6 w-6 text-accent-light" />
+                  <Mail className="sm:size-7 size-6 text-accent-light" />
                   <a
-                    href="tel:+917877804889"
-                    className="text-gray-300 hover:text-accent-light transition-colors text-sm sm:text-base"
+                    href="mailto:support@cricstock11.com"
+                    className=" hover:text-accent-light transition-colors text-base sm:text-lg text-white"
                   >
-                    +91 7877804889
-                  </a>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <Mail className="h-6 w-6 text-accent-light" />
-                  <a
-                    href="mailto:contact@cricstock11.com"
-                    className="text-gray-300 hover:text-accent-light transition-colors text-sm sm:text-base"
-                  >
-                    contact@cricstock11.com
+                    support@cricstock11.com
                   </a>
                 </div>
               </div>
             </div>
 
             {/* Right Side - Form */}
-            <div className="rounded-2xl shadow-lg p-2 sm:p-8">
-              <h2 className="text-5xl font-semibold text-accent-light">Send us a message</h2>
+            <div className="rounded-2xl shadow-lg p-0 bg-gradient-to-br from-accent-light to-white bg-clip-text">
+              <h2 className="text-5xl font-semibold text-transparent">Send us a message</h2>
               <ContactForm />
             </div>
           </div>

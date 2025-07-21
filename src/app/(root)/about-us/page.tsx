@@ -83,37 +83,37 @@ export default function AboutPage() {
       </section>
 
       {/* Team Section */}
-      <section className="w-full py-12 md:py-24 lg:py-32 relative overflow-hidden flex items-center justify-center text-center">
-        <div className="relative z-10 max-w-[95rem] mx-auto px-4 md:px-6">
-          <div className="inline-block rounded-lg px-3 py-1 text-sm text-gray-300">Our Leaders</div>
-          <h2 className="text-3xl font-bold tracking-tighter text-white sm:text-4xl md:text-5xl">
-            Meet the Experts Behind CricStock11
-          </h2>
-          <p className="max-w-[900px] text-gray-400 mx-auto">
-            Our diverse team brings together expertise in cricket, blockchain technology, data science, and user experience design.
-          </p>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 mt-12">
-            <TeamMember
-              name="Rahul Sharma"
-              role="Co-Founder & CEO"
-              description="Former cricket analyst with 10+ years of experience in sports technology"
-              image="/professional-male-headshot.png"
-            />
-            <TeamMember
-              name="Priya Patel"
-              role="Co-Founder & CTO"
-              description="Blockchain expert with background in developing decentralized applications"
-              image="/professional-headshot-female.png"
-            />
-            <TeamMember
-              name="Vikram Singh"
-              role="Head of Data Science"
-              description="AI specialist focused on predictive analytics for sports performance"
-              image="/placeholder.svg"
-            />
-          </div>
-        </div>
-      </section>
+      {/* <section className="w-full py-12 md:py-24 lg:py-32 relative overflow-hidden flex items-center justify-center text-center"> */}
+      {/*   <div className="relative z-10 max-w-[95rem] mx-auto px-4 md:px-6"> */}
+      {/*     <div className="inline-block rounded-lg px-3 py-1 text-sm text-gray-300">Our Leaders</div> */}
+      {/*     <h2 className="text-3xl font-bold tracking-tighter text-white sm:text-4xl md:text-5xl"> */}
+      {/*       Meet the Experts Behind CricStock11 */}
+      {/*     </h2> */}
+      {/*     <p className="max-w-[900px] text-gray-400 mx-auto"> */}
+      {/*       Our diverse team brings together expertise in cricket, blockchain technology, data science, and user experience design. */}
+      {/*     </p> */}
+      {/*     <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 mt-12"> */}
+      {/*       <TeamMember */}
+      {/*         name="Rahul Sharma" */}
+      {/*         role="Co-Founder & CEO" */}
+      {/*         description="Former cricket analyst with 10+ years of experience in sports technology" */}
+      {/*         image="/professional-male-headshot.png" */}
+      {/*       /> */}
+      {/*       <TeamMember */}
+      {/*         name="Priya Patel" */}
+      {/*         role="Co-Founder & CTO" */}
+      {/*         description="Blockchain expert with background in developing decentralized applications" */}
+      {/*         image="/professional-headshot-female.png" */}
+      {/*       /> */}
+      {/*       <TeamMember */}
+      {/*         name="Vikram Singh" */}
+      {/*         role="Head of Data Science" */}
+      {/*         description="AI specialist focused on predictive analytics for sports performance" */}
+      {/*         image="/placeholder.svg" */}
+      {/*       /> */}
+      {/*     </div> */}
+      {/*   </div> */}
+      {/* </section> */}
 
       {/* CTA Section */}
       <section className="w-full py-12 md:py-24 lg:py-32 relative overflow-hidden flex items-center justify-center text-center">
@@ -130,7 +130,7 @@ export default function AboutPage() {
               asChild
             >
               <Link href="/live-matches" className="flex items-center gap-2">
-                Get Started
+                Start Trading Now
                 <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
             </Button>

@@ -22,6 +22,9 @@ const formSchema = z.object({
   name: z.string().min(2, {
     message: "Name must be at least 2 characters.",
   }),
+  phone: z.string().min(10, {
+    message: "Please enter a valid phone number.",
+  }),
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
@@ -42,6 +45,7 @@ export default function ContactForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      phone: "",
       email: "",
       subject: "",
       message: "",
@@ -60,11 +64,11 @@ export default function ContactForm() {
   }
 
   return (
-    <div className="mt-2">
+    <div className="mt-12">
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-6 p-6 rounded-2xl shadow-md"
+          className="space-y-6 p-1 rounded-2xl shadow-md"
         >
           {/* Name */}
           <FormField
@@ -77,7 +81,27 @@ export default function ContactForm() {
                   <Input
                     placeholder="Your name"
                     {...field}
-                    className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500 focus-visible:ring-accent-dark"
+                    className="border-gray-700 py-5 bg-gray-800 text-white placeholder:text-gray-500 focus-visible:ring-accent-dark"
+                  />
+                </FormControl>
+                <FormMessage className="text-red-400" />
+              </FormItem>
+            )}
+          />
+
+          {/* Email */}
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-gray-300">Phone</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="+91 xxxxxx9999"
+                    type="phone"
+                    {...field}
+                    className="border-gray-700 py-5 bg-gray-800 text-white placeholder:text-gray-500 focus-visible:ring-accent-dark"
                   />
                 </FormControl>
                 <FormMessage className="text-red-400" />
@@ -97,7 +121,7 @@ export default function ContactForm() {
                     placeholder="your.email@example.com"
                     type="email"
                     {...field}
-                    className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500 focus-visible:ring-accent-dark"
+                    className="border-gray-700 py-5 bg-gray-800 text-white placeholder:text-gray-500 focus-visible:ring-accent-dark"
                   />
                 </FormControl>
                 <FormMessage className="text-red-400" />
@@ -116,7 +140,7 @@ export default function ContactForm() {
                   <Input
                     placeholder="What is this regarding?"
                     {...field}
-                    className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500 focus-visible:ring-accent-dark"
+                    className="border-gray-700 py-5 bg-gray-800 text-white placeholder:text-gray-500 focus-visible:ring-accent-dark"
                   />
                 </FormControl>
                 <FormMessage className="text-red-400" />
@@ -146,7 +170,7 @@ export default function ContactForm() {
           {/* Submit Button */}
           <Button
             type="submit"
-            className="w-full bg-accent-light hover:bg-accent-dark text-white font-medium transition-colors duration-300"
+            className="w-full py-6 bg-accent-light hover:bg-accent-dark text-white font-medium transition-colors duration-300"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
