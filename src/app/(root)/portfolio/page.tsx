@@ -42,8 +42,12 @@ export default function Portfolio() {
   const [teamPortfolios, setTeamPortfolios] = useState<TeamPortfolio[]>([]);
   const [playerPortfoliosHistorys, setPlayerPortfoliosHistorys] = useState<PlayerPortfolio[]>([]);
   const [teamPortfoliosHistorys, setTeamPortfoliosHistorys] = useState<TeamPortfolio[]>([]);
+  const [todaysPlayerPortfolios, setTodaysPlayerPortfolios] = useState<PlayerPortfolio[]>([]);
+  const [todaysTeamPortfolios, setTodaysTeamPortfolios] = useState<TeamPortfolio[]>([]);
   const [value, setValue] = useState(0);
   const [profit, setProfit] = useState(0);
+  const [totalEarning, setTotalEarning] = useState(0);
+  const [todaysEarning, setTodaysEarning] = useState(0);
   const [scorecards, setScorecards] = useState<Record<string, any>>({});
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const [autoSoldPlayers, setAutoSoldPlayers] = useState<Set<string>>(new Set());
@@ -146,6 +150,10 @@ export default function Portfolio() {
         }
         setProfit(apiData.profit)
         setValue(apiData.value)
+        setTotalEarning(apiData.totalEarnings)
+        setTodaysEarning(apiData.todaysEarnings)
+        setTodaysPlayerPortfolios(apiData.todaysPlayerPortfolios || []);
+        setTodaysTeamPortfolios(apiData.todaysTeamPortfolios || []);
         function splitByStatus<T extends { status?: string }>(arr: T[]): { active: T[]; history: T[] } {
           const active: T[] = [];
           const history: T[] = [];
@@ -382,7 +390,7 @@ export default function Portfolio() {
           </div>
 
           {/* Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <Card className="border-none shadow-lg transition-all duration-200 bg-gradient-to-br from-purple-600 via-transparent to-transparent rounded-tl-[100px]">
               <CardContent className="p-7 pl-10 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
@@ -400,7 +408,6 @@ export default function Portfolio() {
                 </div>
               </CardContent>
             </Card>
-
             <Card className="border-none shadow-lg transition-all duration-200 bg-gradient-to-br from-sky-600 via-transparent to-transparent rounded-tl-[100px]">
               <CardContent className="p-7 pl-10 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
@@ -434,6 +441,23 @@ export default function Portfolio() {
               </CardContent>
             </Card>
 
+            <Card className="border-none shadow-lg transition-all duration-200 bg-gradient-to-br from-amber-600 via-transparent to-transparent rounded-tl-[100px]">
+              <CardContent className="p-7 pl-10 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-amber-400 text-sm font-bold tracking-wide uppercase mb-1">
+                      Total Earning
+                    </p>
+                    <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1">
+                      {formatINR(Number(totalEarning))}
+                    </h3>
+                  </div>
+                  <div className="flex items-center justify-center bg-amber-500/20 p-4 rounded-full shadow-inner">
+                    <Trophy className="h-8 w-8 text-amber-400 drop-shadow" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             {(() => {
               // Check if any current holding is still fetching price
               const profitPending = [
