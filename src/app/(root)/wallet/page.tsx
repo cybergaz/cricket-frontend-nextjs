@@ -398,7 +398,7 @@ export default function MoneyTransactionsPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:gap-6 mb-6 sm:mb-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 mb-6 sm:mb-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
           <Card className="bg-gradient-to-br from-emerald-600 via-transparent to-transparent rounded-none rounded-tl-[80px] pl-10">
             <CardHeader className="px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4">
               <CardTitle className="text-2xl text-white">Available Balance</CardTitle>
@@ -420,35 +420,6 @@ export default function MoneyTransactionsPage() {
                         return `${hours} hrs ${minutes} mins ago`
                       })()
                       : "N/A"}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-sky-600 via-transparent to-transparent rounded-none rounded-tl-[80px] pl-10">
-            <CardHeader className="px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4">
-              <CardTitle className="text-2xl text-white">Total Deposited</CardTitle>
-              <CardDescription className="text-lg text-gray-400">All-time deposits to platform</CardDescription>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-4 md:p-6">
-              <div className="flex items-center">
-                <ArrowDownLeft className="h-10 w-10 mr-3 text-blue-400" />
-                <div>
-                  <div className="text-3xl font-bold text-white">
-                    {formatINR(
-                      (transactions ?? [])
-                        .filter((transaction) => transaction.type === "Deposit" && transaction.status === "Completed")
-                        .reduce((sum, transaction) => {
-                          const amount = Number(
-                            (transaction.amount ?? "0").toString().replace(/,/g, "")
-                          );
-                          return sum + (isNaN(amount) ? 0 : amount);
-                        }, 0),
-                    )}
-                  </div>
-                  <p className="mt-1 text-sm text-gray-400">
-                    Across {(transactions ?? [])
-                      .filter((transaction) => transaction.type === "Deposit").length} deposits
                   </p>
                 </div>
               </div>
@@ -552,17 +523,17 @@ export default function MoneyTransactionsPage() {
                   </div>
                 </div>
 
-                <div className="rounded-md border border-gray-700 overflow-hidden">
+                <div className="rounded-md border border-gray-700 overflow-hidden mt-5">
                   <div className="overflow-x-auto -mx-4 sm:mx-0">
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-gray-700 bg-gray-800/50">
-                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Date & Time</th>
+                          <th className="pl-8 py-3 text-left text-sm font-medium text-gray-300">Date & Time</th>
                           <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Transaction ID</th>
                           <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Payment Method</th>
                           <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">Amount</th>
                           <th className="px-4 py-3 text-center text-sm font-medium text-gray-300">Type</th>
-                          <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">Status</th>
+                          <th className="pr-8 py-3 text-right text-sm font-medium text-gray-300">Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -573,7 +544,7 @@ export default function MoneyTransactionsPage() {
                               className="border-b border-gray-700 bg-gray-800/20 hover:bg-gray-700/30 cursor-pointer"
                               onClick={() => handleTransactionClick(transaction)}
                             >
-                              <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-300">
+                              <td className="whitespace-nowrap pl-8 py-4 text-sm text-gray-300">
                                 {new Date(transaction.txnDate).toLocaleString("en-IN", {
                                   year: "numeric",
                                   month: "short",
@@ -615,7 +586,7 @@ export default function MoneyTransactionsPage() {
                                   </span>
                                 </Badge>
                               </td>
-                              <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
+                              <td className="pr-8 whitespace-nowrap px-4 py-4 text-right text-sm">
                                 <Badge className={`${gettxnStatusColor(transaction.status)}`}>
                                   {transaction.status}
                                 </Badge>
