@@ -125,7 +125,11 @@ export default function UserProfile() {
     // Remove only the "token" cookie
 
     // await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/logout`, { method: 'POST', credentials: "include" });
-    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
     router.replace("/login");
   };
 

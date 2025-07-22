@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Zap, Trophy, Smartphone, Globe } from 'lucide-react';
+import { Shield, Zap, Trophy, Smartphone } from 'lucide-react';
 
 const GameRules = () => {
   return (
@@ -20,8 +20,8 @@ const GameRules = () => {
           <section className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20 rounded-2xl p-8 border border-white/10 animate-scale-in-lg">
             <h2 className="text-2xl font-semibold mb-4 text-purple-300">Overview</h2>
             <p className="text-slate-300">
-              Cricket Fantasy is a game of skill where you can purchase and sell virtual stocks attached to real-world cricket players. 
-              By participating in the game, you confirm to have agreed to our Terms and Conditions and Privacy Policy.
+              CricStock11 is a skill-based fantasy trading game where users buy and sell virtual stocks tied to real-world cricket players.
+              Playing signifies acceptance of the platform’s Terms & Conditions and Privacy Policy.
             </p>
           </section>
 
@@ -32,15 +32,15 @@ const GameRules = () => {
               <ul className="space-y-3 text-slate-300">
                 <li className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                  Mobile number with OTP validation
+                  Verify via mobile number and OTP
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                  Optional referral code
+                  Optional referral code for bonuses
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                  Quick and easy process
+                  Quick registration process
                 </li>
               </ul>
             </div>
@@ -50,15 +50,15 @@ const GameRules = () => {
               <ul className="space-y-3 text-slate-300">
                 <li className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                  Minimum: ₹100
+                  Minimum: ₹100 | Maximum: ₹20,00,000 per month
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                  Maximum: ₹20,00,000/month
+                  Max ₹25,000 stock per player per match
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                  Multiple payment methods
+                  No limit on team stock
                 </li>
               </ul>
             </div>
@@ -66,231 +66,118 @@ const GameRules = () => {
 
           {/* Account Types Section */}
           <section>
-            <h2 className="text-2xl font-semibold mb-6 text-purple-300">Account Types</h2>
+            <h2 className="text-2xl font-semibold mb-6 text-purple-300">Account Balances</h2>
             <div className="grid md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20 rounded-2xl p-6 border border-white/10 hover:border-purple-500/30 transition-all duration-300">
+              <div className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20 rounded-2xl p-6 border border-white/10">
                 <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4">
                   <Trophy className="w-6 h-6 text-purple-400" />
                 </div>
                 <h3 className="text-xl font-medium mb-2 text-purple-300">Deposits</h3>
                 <p className="text-slate-300">
-                  Credits from deposits (after GST deduction). Can be used for purchases but not for withdrawal.
+                  Funds added after GST deduction. Used to buy stocks but not withdrawable.
                 </p>
               </div>
-
-              <div className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20 rounded-2xl p-6 border border-white/10 hover:border-purple-500/30 transition-all duration-300">
+              <div className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20 rounded-2xl p-6 border border-white/10">
                 <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4">
                   <Zap className="w-6 h-6 text-purple-400" />
                 </div>
                 <h3 className="text-xl font-medium mb-2 text-purple-300">Winnings</h3>
                 <p className="text-slate-300">
-                  Proceeds from stock sales. Can be used for further purchases or withdrawn to your bank account.
+                  Earnings from stock trades. Can be used again or withdrawn.
                 </p>
               </div>
-
-              <div className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20 rounded-2xl p-6 border border-white/10 hover:border-purple-500/30 transition-all duration-300">
+              <div className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20 rounded-2xl p-6 border border-white/10">
                 <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4">
                   <Smartphone className="w-6 h-6 text-purple-400" />
                 </div>
                 <h3 className="text-xl font-medium mb-2 text-purple-300">Discount Bonus</h3>
                 <p className="text-slate-300">
-                  Equivalent to GST deduction at deposit. Can be earned through promo codes, referrals, and contests.
+                  Earned via promos, referrals, or contests. Covers GST on deposits. Can only be used for purchases.
                 </p>
               </div>
             </div>
           </section>
 
-          {/* Trading Rules Section */}
+          {/* Trading Rules */}
           <section className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20 rounded-2xl p-8 border border-white/10">
             <h2 className="text-2xl font-semibold mb-6 text-purple-300">Trading Rules</h2>
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="text-slate-300 space-y-8">
+              {/* Portfolio Creation */}
               <div>
-                <h3 className="text-xl font-medium mb-4 text-purple-300">Portfolio Creation</h3>
-                <ul className="space-y-3 text-slate-300">
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    Minimum 3 players in first portfolio
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    Multiplier option available after first portfolio
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    Minimum 3 unique stocks required
-                  </li>
+                <h3 className="text-xl font-medium mb-3 text-purple-300">Portfolio Creation</h3>
+                <p>
+                  To begin trading, users must create a portfolio by selecting players whose virtual stocks will fluctuate based on real-time performance. Player selection and strategy are crucial for maximizing gains.
+                </p>
+              </div>
+
+              {/* Stock Goes Up */}
+              <div>
+                <h3 className="text-xl font-medium mb-3 text-purple-300">Stock Goes Up</h3>
+                <ul className="space-y-2 list-disc list-inside">
+                  <li>+₹0.75 for every 1 run scored</li>
+                  <li>+₹1.50 for 2 runs</li>
+                  <li>+₹2.25 for 3 runs</li>
+                  <li>+₹3.00 for 4 runs</li>
+                  <li>+₹3.75 for 5 runs</li>
+                  <li>+₹4.50 for 6 runs</li>
                 </ul>
               </div>
 
+              {/* Stock Goes Down */}
               <div>
-                <h3 className="text-xl font-medium mb-4 text-purple-300">Stock Types</h3>
-                <ul className="space-y-3 text-slate-300">
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    Up Stocks: For players expected to perform well
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    Down Stocks: For players expected to perform poorly
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    Multiplier: Increases potential score
-                  </li>
+                <h3 className="text-xl font-medium mb-3 text-purple-300">Stock Goes Down</h3>
+                <ul className="space-y-2 list-disc list-inside">
+                  <li>-₹0.50 for each dot ball (no run scored)</li>
+                  <li>-50% of the stock's buying price if the player gets out</li>
                 </ul>
+              </div>
 
-                {/* Up/Down Stock Example Table */}
-                <div className="overflow-x-auto mt-8">
-                  <h4 className="text-lg font-semibold text-purple-200 mb-2">Example: Up & Down Stock</h4>
-                  <table className="min-w-full text-center border border-white/10 rounded-lg overflow-hidden">
-                    <thead className="bg-white/5">
-                      <tr>
-                        <th className="px-4 py-2">Participant</th>
-                        <th className="px-4 py-2">Stock Type</th>
-                        <th className="px-4 py-2">Buy Price</th>
-                        <th className="px-4 py-2">Sell Price</th>
-                        <th className="px-4 py-2">Profit/Loss</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white/2 text-slate-200">
-                      <tr className="border-t border-white/10">
-                        <td className="px-4 py-2">A</td>
-                        <td className="px-4 py-2">Up</td>
-                        <td className="px-4 py-2">₹10</td>
-                        <td className="px-4 py-2">₹12</td>
-                        <td className="px-4 py-2">+₹2 or +20%</td>
-                      </tr>
-                      <tr className="border-t border-white/10">
-                        <td className="px-4 py-2">B</td>
-                        <td className="px-4 py-2">Down</td>
-                        <td className="px-4 py-2">₹10</td>
-                        <td className="px-4 py-2">₹12</td>
-                        <td className="px-4 py-2">-₹2 or -20%</td>
-                      </tr>
-                      <tr className="border-t border-white/10">
-                        <td className="px-4 py-2">C</td>
-                        <td className="px-4 py-2">Up</td>
-                        <td className="px-4 py-2">₹10</td>
-                        <td className="px-4 py-2">₹8</td>
-                        <td className="px-4 py-2">-₹2 or -20%</td>
-                      </tr>
-                      <tr className="border-t border-white/10">
-                        <td className="px-4 py-2">D</td>
-                        <td className="px-4 py-2">Down</td>
-                        <td className="px-4 py-2">₹10</td>
-                        <td className="px-4 py-2">₹8</td>
-                        <td className="px-4 py-2">+₹2 or +20%</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+              {/* Team Stock Working */}
+              <div>
+                <h3 className="text-xl font-medium mb-3 text-purple-300">Team Stock Mechanism</h3>
+                <ul className="space-y-2 list-disc list-inside">
+                  <li>Each player contributes between 10%–50% of their real-world performance to team stock value</li>
+                  <li>If a player gets out, the team stock drops by 10% of the total stock value</li>
+                </ul>
+              </div>
 
-                {/* Multiplier Example Table */}
-                <div className="overflow-x-auto mt-8">
-                  <h4 className="text-lg font-semibold text-purple-200 mb-2">Example: Multiplier</h4>
-                  <table className="min-w-full text-center border border-white/10 rounded-lg overflow-hidden">
-                    <thead className="bg-white/5">
-                      <tr>
-                        <th className="px-4 py-2">Participant</th>
-                        <th className="px-4 py-2">Stock Type</th>
-                        <th className="px-4 py-2">Multiplier</th>
-                        <th className="px-4 py-2">Buy Price</th>
-                        <th className="px-4 py-2">Sell Price</th>
-                        <th className="px-4 py-2">Profit/Loss</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white/2 text-slate-200">
-                      <tr className="border-t border-white/10">
-                        <td className="px-4 py-2">A</td>
-                        <td className="px-4 py-2">Down</td>
-                        <td className="px-4 py-2">1x</td>
-                        <td className="px-4 py-2">₹10</td>
-                        <td className="px-4 py-2">₹8</td>
-                        <td className="px-4 py-2">+₹2 or +20%</td>
-                      </tr>
-                      <tr className="border-t border-white/10">
-                        <td className="px-4 py-2">B</td>
-                        <td className="px-4 py-2">Down</td>
-                        <td className="px-4 py-2">2x</td>
-                        <td className="px-4 py-2">₹10</td>
-                        <td className="px-4 py-2">₹8</td>
-                        <td className="px-4 py-2">+₹4 or +40%</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+              {/* Example */}
+              <div className="pt-4">
+                <h4 className="text-lg font-semibold text-purple-200 mb-2">Illustrative Example</h4>
+                <p className="italic text-slate-400">
+                  You buy a stock at ₹10. If the player hits a six, the stock value rises by ₹4.50. You can now sell it at ₹14.50 — gaining ₹4.50 profit (+45%).
+                </p>
               </div>
             </div>
           </section>
 
-          {/* Trading Limits Section */}
-          <section className="grid md:grid-cols-2 gap-6">
-            <div className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20 rounded-2xl p-6 border border-white/10 hover:border-purple-500/30 transition-all duration-300">
-              <h3 className="text-xl font-medium mb-4 text-purple-300">Transaction Limits</h3>
-              <p className="text-slate-300">
-                Maximum number of stocks per trade varies based on market conditions and your account type.
-              </p>
-            </div>
-
-            <div className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20 rounded-2xl p-6 border border-white/10 hover:border-purple-500/30 transition-all duration-300">
-              <h3 className="text-xl font-medium mb-4 text-purple-300">Holding Limits</h3>
-              <p className="text-slate-300">
-                Maximum number of stocks in portfolio is determined by account type and market conditions.
-              </p>
-            </div>
-          </section>
-
-          {/* Withdrawal Section */}
+          {/* Withdrawal */}
           <section className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20 rounded-2xl p-8 border border-white/10">
             <h2 className="text-2xl font-semibold mb-6 text-purple-300">Withdrawal</h2>
-            <div className="grid md:grid-cols-2 gap-8">
-              <div>
-                <h3 className="text-xl font-medium mb-4 text-purple-300">Limits</h3>
-                <ul className="space-y-3 text-slate-300">
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    Minimum: ₹25
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    Maximum: ₹1,00,000 per day
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    Maximum 10 withdrawals per day
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-medium mb-4 text-purple-300">Requirements</h3>
-                <ul className="space-y-3 text-slate-300">
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    KYC verification required
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    TDS applicable as per regulations
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    Bank account verification
-                  </li>
-                </ul>
-              </div>
-            </div>
+            <ul className="space-y-3 text-slate-300 list-disc list-inside">
+              <li>Minimum: ₹25 | Maximum: ₹1,00,000 per day</li>
+              <li>Maximum 10 withdrawals per day</li>
+              <li>KYC, bank verification, and TDS compliance required</li>
+            </ul>
           </section>
 
-          {/* Important Notice Section */}
+          {/* Responsible Gaming Notice */}
           <section className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-blue-900/20 rounded-2xl p-8 border border-white/10">
             <div className="flex items-center gap-4 mb-4">
               <Shield className="w-8 h-8 text-purple-400" />
-              <h2 className="text-2xl font-semibold text-purple-300">Important Notice</h2>
+              <h2 className="text-2xl font-semibold text-purple-300">Responsible Gaming</h2>
             </div>
-            <p className="text-slate-300">
-              This game involves an element of financial risk and may be addictive. Please play responsibly at your own risk.
-            </p>
+
+            <ul className="space-y-3 text-slate-300 list-disc list-inside">
+              <li>
+                We are not liable for any natural events, such as rain, or any unforeseen circumstances
+                that may occur during the match.
+              </li>
+              <li>
+                This game involves financial risk and potential addiction. Please play responsibly and at
+                your own.
+              </li>
+            </ul>
           </section>
         </div>
       </div>

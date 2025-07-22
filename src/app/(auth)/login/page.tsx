@@ -47,7 +47,7 @@ type Step = "form" | "otp";
 interface FormState {
   name: string;
   phone: string;
-  email?: string;
+  email: string;
   password: string;
   new_password?: string;
   referral_code?: string;
@@ -206,7 +206,7 @@ export default function AuthPage() {
         setInfo("Password Reset successful! Please login.");
         setMode("login");
         setStep("form");
-        setForm({ name: "", phone: form.phone, password: "" });
+        setForm({ name: "", phone: form.phone, email: "", password: "" });
         setOtp("");
       } else if (res.status === 400) {
         setError("Invalid OTP. Please try again.");
@@ -288,6 +288,7 @@ export default function AuthPage() {
         setForm({
           name: "",
           phone: form.phone,
+          email: "",
           password: "",
           new_password: "",
         });
@@ -643,7 +644,7 @@ export default function AuthPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="signup-email" className="text-gray-300">
-                    Email (Optional)
+                    Email
                   </Label>
                   <Input
                     type="email"
