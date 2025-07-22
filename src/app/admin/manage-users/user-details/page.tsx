@@ -6,76 +6,22 @@ import { Button } from "@/components/ui/button";
 import { LoaderCircle, ChevronDown, X, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { UpdateRole } from "@/components/admin/update-role";
+import { Transaction, UserV2 } from "@/types/user";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 // TypeScript interfaces
-interface Transaction {
-  OID: string;
-  amount: number;
-  status: 'SUCCESS' | 'FAILED' | 'PENDING';
-  time: string;
-}
-
-interface PlayerTransaction {
-  type: 'buy' | 'sell';
-  quantity: number;
-  price: number;
-  timestamp: string;
-  autoSold?: boolean;
-  reason?: string;
-}
-
-interface PlayerPortfolioItem {
-  playerName: string;
-  team: string;
-  initialPrice: number;
-  currentHoldings: number;
-  transactions: PlayerTransaction[];
-}
-
-interface TeamTransaction {
-  type: 'buy' | 'sell';
-  quantity: number;
-  price: number;
-  timestamp: string;
-  autoSold?: boolean;
-  reason?: string;
-}
-
-interface TeamPortfolioItem {
-  teamName: string;
-  initialPrice: number;
-  currentHoldings: number;
-  transactions: TeamTransaction[];
-}
-
-interface UserDetails {
-  _id: string;
-  name: string;
-  email: string | null;
-  mobile: string | null;
-  amount: number;
-  isAdmin: boolean;
-  lastSeen: string;
-  transactions: Transaction[];
-  playerPortfolios: PlayerPortfolioItem[];
-  teamPortfolios: TeamPortfolioItem[];
-}
-
 interface AccordionSections {
   transactions: boolean;
   playerPortfolio: boolean;
   teamPortfolio: boolean;
 }
 
-type Role = 'marketing' | 'financial' | 'super_admin' | 'user'
-
 export default function UserDetails() {
   const userId = useSearchParams().get('id');
   console.log("userId ->", userId);
 
-  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
+  const [userDetails, setUserDetails] = useState<UserV2 | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -178,7 +124,7 @@ export default function UserDetails() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                   <div>
                     <p className="text-gray-500">Order ID</p>
-                    <p className="font-medium">{transaction.OID}</p>
+                    <p className="font-medium">{transaction.oID}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Amount</p>
@@ -186,7 +132,7 @@ export default function UserDetails() {
                   </div>
                   <div>
                     <p className="text-gray-500">Status</p>
-                    <p className={`font-medium ${transaction.status === 'SUCCESS' ? 'text-green-600' :
+                    <p className={`font-medium ${transaction.status === 'Completed' ? 'text-green-600' :
                       transaction.status === 'FAILED' ? 'text-red-600' :
                         'text-yellow-600'
                       }`}>
@@ -195,7 +141,7 @@ export default function UserDetails() {
                   </div>
                   <div className="col-span-1 sm:col-span-3">
                     <p className="text-gray-500">Time</p>
-                    <p className="font-medium">{new Date(transaction.time).toLocaleString()}</p>
+                    <p className="font-medium">{new Date(transaction.txnDate).toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -220,148 +166,153 @@ export default function UserDetails() {
         <div className={`space-y-4 overflow-hidden transition-all duration-300 
           ${openSections.playerPortfolio ? 'max-h-[2000px] mt-4 p-4 sm:p-6' : 'max-h-0'}`}
         >
-          {userDetails.playerPortfolios.length === 0 ? (
-            <div className="text-gray-400 text-center py-4">No player portfolio found</div>
-          ) : (
-            userDetails.playerPortfolios.map((item, index) => (
-              <div key={index} className="border rounded-lg p-3 sm:p-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-                  <div>
-                    <p className="text-gray-500">Player Name</p>
-                    <p className="font-medium text-gray-300">{item.playerName}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Team</p>
-                    <p className="font-medium text-gray-300">{item.team}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Initial Price</p>
-                    <p className="font-medium text-gray-300">₹{item.initialPrice}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Current Holdings</p>
-                    <p className="font-medium text-gray-300">{item.currentHoldings}</p>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <h3 className="font-semibold mb-2">Transactions</h3>
-                  <div className="space-y-2">
-                    {item.transactions.map((transaction, tIndex) => (
-                      <div key={tIndex} className="bg-gray-50/5 p-3 rounded">
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
-                          <div>
-                            <p className="text-gray-500">Type</p>
-                            <p className={`font-medium ${transaction.type === 'buy' ? 'text-green-600' : 'text-red-600'
-                              }`}>
-                              {transaction.type.toUpperCase()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Quantity</p>
-                            <p className="font-medium text-gray-300">{transaction.quantity}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Price</p>
-                            <p className="font-medium text-gray-300">₹{transaction.price}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Time</p>
-                            <p className="font-medium text-gray-300">{new Date(transaction.timestamp).toLocaleString()}</p>
-                          </div>
-                          {transaction.autoSold && (
-                            <div className="col-span-1 sm:col-span-4">
-                              <p className="text-gray-500">Auto-sold Reason</p>
-                              <p className="font-medium text-gray-300">{transaction.reason}</p>
-                            </div>
-                          )}
+          {
+            userDetails.playerPortfolios.length === 0
+              ? <div className="text-gray-400 text-center py-4">No player portfolio found</div>
+              : <>
+                {
+                  userDetails.playerPortfolios.map((item, index) => (
+                    <div key={index} className="border rounded-lg p-3 sm:p-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
+                        <div>
+                          <p className="text-gray-500">Player Name</p>
+                          <p className="font-medium text-gray-300">{item.playerName}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Quantity</p>
+                          <p className="font-medium text-gray-300">{item.quantity}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Bought Price</p>
+                          <p className="font-medium text-gray-300">₹{item.boughtPrice}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Sold Price</p>
+                          <p className="font-medium text-gray-300">{item.soldPrice}</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
+
+                    </div>
+                  ))
+
+                }
+                {
+                  userDetails.transactions.map((trx, index) => (
+                    < div className="mt-4">
+                      <h3 className="font-semibold mb-2">Transactions</h3>
+                      <div className="space-y-2">
+                        <div key={index} className="bg-gray-50/5 p-3 rounded">
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
+                            <div>
+                              <p className="text-gray-500">Type</p>
+                              <p className={`font-medium ${trx.type === 'Completed' ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                {trx.type.toUpperCase()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Amount</p>
+                              <p className="font-medium text-gray-300">{trx.amount}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Status</p>
+                              <p className="font-medium text-gray-300">₹{trx.status}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Type</p>
+                              <p className="font-medium text-gray-300">₹{trx.type}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Time</p>
+                              <p className="font-medium text-gray-300">{new Date(trx.txnDate).toLocaleString()}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                }
+              </>
+          }
         </div>
       </div>
 
       {/* Team Portfolio Accordion */}
-      <div className="bg-white/5 rounded-lg shadow-md">
-        <button
-          onClick={() => toggleSection('teamPortfolio')}
-          className="w-full text-left flex justify-between items-center p-6 cursor-pointer"
-        >
-          <h2 className="text-xl font-semibold">Team Portfolio</h2>
-          <span className="transform transition-transform duration-200" style={{
-            transform: openSections.teamPortfolio ? 'rotate(180deg)' : 'rotate(0deg)'
-          }}>
-            <ChevronDown className="w-5 h-5" />
-          </span>
-        </button>
-        <div className={`space-y-4 overflow-hidden transition-all duration-300 ${openSections.teamPortfolio ? 'max-h-[2000px] mt-4 p-4 sm:p-6' : 'max-h-0'
-          }`}>
-          {userDetails.teamPortfolios.length === 0 ? (
-            <div className="text-gray-400 text-center py-4">No team portfolio found</div>
-          ) : (
-            userDetails.teamPortfolios.map((item, index) => (
-              <div key={index} className="border rounded-lg p-3 sm:p-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-                  <div>
-                    <p className="text-gray-500">Team Name</p>
-                    <p className="font-medium text-gray-300">{item.teamName}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Initial Price</p>
-                    <p className="font-medium text-gray-300">₹{item.initialPrice}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Current Holdings</p>
-                    <p className="font-medium text-gray-300">{item.currentHoldings}</p>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <h3 className="font-semibold mb-2">Transactions</h3>
-                  <div className="space-y-2">
-                    {item.transactions.map((transaction, tIndex) => (
-                      <div key={tIndex} className="bg-gray-50/5 p-3 rounded">
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
-                          <div>
-                            <p className="text-gray-500">Type</p>
-                            <p className={`font-medium ${transaction.type === 'buy' ? 'text-green-600' : 'text-red-600'
-                              }`}>
-                              {transaction.type.toUpperCase()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Quantity</p>
-                            <p className="font-medium text-gray-300">{transaction.quantity}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Price</p>
-                            <p className="font-medium text-gray-300">₹{transaction.price}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Time</p>
-                            <p className="font-medium text-gray-300">{new Date(transaction.timestamp).toLocaleString()}</p>
-                          </div>
-                          {transaction.autoSold && (
-                            <div className="col-span-1 sm:col-span-4">
-                              <p className="text-gray-500">Auto-sold Reason</p>
-                              <p className="font-medium text-gray-300">{transaction.reason}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
+      {/* <div className="bg-white/5 rounded-lg shadow-md"> */}
+      {/*   <button */}
+      {/*     onClick={() => toggleSection('teamPortfolio')} */}
+      {/*     className="w-full text-left flex justify-between items-center p-6 cursor-pointer" */}
+      {/*   > */}
+      {/*     <h2 className="text-xl font-semibold">Team Portfolio</h2> */}
+      {/*     <span className="transform transition-transform duration-200" style={{ */}
+      {/*       transform: openSections.teamPortfolio ? 'rotate(180deg)' : 'rotate(0deg)' */}
+      {/*     }}> */}
+      {/*       <ChevronDown className="w-5 h-5" /> */}
+      {/*     </span> */}
+      {/*   </button> */}
+      {/*   <div className={`space-y-4 overflow-hidden transition-all duration-300 ${openSections.teamPortfolio ? 'max-h-[2000px] mt-4 p-4 sm:p-6' : 'max-h-0' */}
+      {/*     }`}> */}
+      {/*     {userDetails.teamPortfolios.length === 0 ? ( */}
+      {/*       <div className="text-gray-400 text-center py-4">No team portfolio found</div> */}
+      {/*     ) : ( */}
+      {/*       userDetails.teamPortfolios.map((item, index) => ( */}
+      {/*         <div key={index} className="border rounded-lg p-3 sm:p-4"> */}
+      {/*           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4"> */}
+      {/*             <div> */}
+      {/*               <p className="text-gray-500">Team Name</p> */}
+      {/*               <p className="font-medium text-gray-300">{item.}</p> */}
+      {/*             </div> */}
+      {/*             <div> */}
+      {/*               <p className="text-gray-500">Initial Price</p> */}
+      {/*               <p className="font-medium text-gray-300">₹{item.initialPrice}</p> */}
+      {/*             </div> */}
+      {/*             <div> */}
+      {/*               <p className="text-gray-500">Current Holdings</p> */}
+      {/*               <p className="font-medium text-gray-300">{item.currentHoldings}</p> */}
+      {/*             </div> */}
+      {/*           </div> */}
+      {/**/}
+      {/*           <div className="mt-4"> */}
+      {/*             <h3 className="font-semibold mb-2">Transactions</h3> */}
+      {/*             <div className="space-y-2"> */}
+      {/*               {item.transactions.map((transaction, tIndex) => ( */}
+      {/*                 <div key={tIndex} className="bg-gray-50/5 p-3 rounded"> */}
+      {/*                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4"> */}
+      {/*                     <div> */}
+      {/*                       <p className="text-gray-500">Type</p> */}
+      {/*                       <p className={`font-medium ${transaction.type === 'buy' ? 'text-green-600' : 'text-red-600' */}
+      {/*                         }`}> */}
+      {/*                         {transaction.type.toUpperCase()} */}
+      {/*                       </p> */}
+      {/*                     </div> */}
+      {/*                     <div> */}
+      {/*                       <p className="text-gray-500">Quantity</p> */}
+      {/*                       <p className="font-medium text-gray-300">{transaction.quantity}</p> */}
+      {/*                     </div> */}
+      {/*                     <div> */}
+      {/*                       <p className="text-gray-500">Price</p> */}
+      {/*                       <p className="font-medium text-gray-300">₹{transaction.price}</p> */}
+      {/*                     </div> */}
+      {/*                     <div> */}
+      {/*                       <p className="text-gray-500">Time</p> */}
+      {/*                       <p className="font-medium text-gray-300">{new Date(transaction.timestamp).toLocaleString()}</p> */}
+      {/*                     </div> */}
+      {/*                     {transaction.autoSold && ( */}
+      {/*                       <div className="col-span-1 sm:col-span-4"> */}
+      {/*                         <p className="text-gray-500">Auto-sold Reason</p> */}
+      {/*                         <p className="font-medium text-gray-300">{transaction.reason}</p> */}
+      {/*                       </div> */}
+      {/*                     )} */}
+      {/*                   </div> */}
+      {/*                 </div> */}
+      {/*               ))} */}
+      {/*             </div> */}
+      {/*           </div> */}
+      {/*         </div> */}
+      {/*       )) */}
+      {/*     )} */}
+      {/*   </div> */}
+      {/* </div> */}
+    </div >
   );
 }

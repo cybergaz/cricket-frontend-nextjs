@@ -11,6 +11,7 @@ export interface Transaction {
   txnDate: string;
   _id: string;
 }
+
 export interface PlayerPortfolio {
   matchId: string;
   playerId: string;

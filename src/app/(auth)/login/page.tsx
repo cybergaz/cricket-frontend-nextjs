@@ -651,6 +651,7 @@ export default function AuthPage() {
                     name="email"
                     placeholder="Email"
                     value={form.email}
+                    required
                     onChange={handleChange}
                     className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-500"
                   />
