@@ -132,7 +132,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
           onClick={() => router.push(`/betting-interface?id=${match.match_id}`)}
           className={`w-full gap-2 rounded-full text-white font-extrabold py-3 px-8 cursor-pointer shadow-xl duration-300 transition-colors border-0 text-base sm:text-xl mt-2 md:mt-0 animate-fade-in min-h-[48px] sm:min-h-[40px] ${isLive
             ? "bg-gradient-to-r from-transparent via-sky-700 to-transparent hover:via-green-800 hover:from-transparent hover:to-transparent"
-            : "bg-gradient-to-r from-transparent hover:via-red-600/40 hover:from-transparent hover:to-transparent via-red-600/20 to-transparent opacity-60 cursor-not-allowed"
+            : "bg-gradient-to-r from-transparent hover:via-red-600/70 hover:from-transparent hover:to-transparent via-red-500/80 to-transparent opacity-60 cursor-not-allowed"
             }`}
           aria-label={`Create Portfolio for ${match.teama?.name || 'Team A'} vs ${match.teamb?.name || 'Team B'}`}
         >
