@@ -252,7 +252,6 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
         </div> */}
         <div className="w-full">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-6 md:mt-10">
-            {/* Scrollable Tabs List */}
             <div className="relative mb-4 md:mb-6">
               <TabsList className="flex w-full overflow-x-auto scrollbar-hide h-auto gap-1 md:gap-5 p-1.5 bg-white/5 rounded-xl">
                 {[
@@ -301,7 +300,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                         />
                       </div>
                       <div className="flex-1 flex flex-col items-center justify-center">
-                        <div className="text-6xl md:text-7xl font-black text-sky-200 drop-shadow-xl tracking-wider">
+                        <div className="text-6xl md:text-7xl font-black text-white drop-shadow-xl tracking-wider">
                           {currentInnings?.scores}
                         </div>
                         <div className="text-lg md:text-2xl font-semibold text-sky-100/80 mt-1">
@@ -336,9 +335,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
               {/* Current Batsmen & Bowler Section */}
               {currentInnings && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6">
-                  {/* Current Batsmen */}
                   <div className="bg-slate-800/60 rounded-lg p-2 md:p-4">
-
                     <div className="text-white text-base md:text-2xl flex items-center gap-2 p-2">
                       <HardHat className="w-5 h-5 md:w-10 md:h-10" />
                       Current Batsman
@@ -348,7 +345,6 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                         ?.filter((b: any) => b.batting === "true")
                         .map((batsman: any) => {
                           const isOut = batsman.how_out !== "Not out";
-                          // Find the index of the current batsman in currentInnings.batsmen array
                           const batsmanNumber = currentInnings.batsmen.findIndex((b: any) => b.batting === "true");
                           return (
                             <div
@@ -406,6 +402,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                           : batsmanNumber < 6
                                             ? 30
                                             : 25;
+                                            console.log(batsmanNumber)
                                       setCurrentPlayerPrice(
                                         current -
                                         Number(batsman.run0) * 0.5 +
@@ -421,6 +418,9 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                 >
                                   Trade Now
                                 </button>
+                              </span>
+                              <span className="text-gray-300">
+                                {batsmanNumber}
                               </span>
                               <span className="text-gray-300">
                                 {batsman.runs}({batsman.balls_faced})
@@ -668,6 +668,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                     Number(batsman.sixes) * 4.5
                                   );
                                   setIsBettingModalOpen(true);
+                                  console.log(batsmanNumber)
                                 }
                               }}
                             >
@@ -1111,6 +1112,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                       }
                       const buyingResponse = await buyPlayer(bettingPlayer, String(currentPlayerPrice), String(quantity), match_id)
                       toast.success(buyingResponse.message)
+                      setIsBettingModalOpen(false);
                     }}
                   >
                     Buy Player
@@ -1133,6 +1135,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                         match_id
                       )
                       toast.success(sellingResponse.message)
+                      setIsBettingModalOpen(false);
                     }}
                   >
                     Sell Player
