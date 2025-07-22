@@ -353,7 +353,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                           return (
                             <div
                               key={batsman.batsman_id}
-                              className="flex items-center justify-between text-xs md:text-base p-1"
+                              className="flex items-center justify-between text-sm bg-white/20 rounded-2xl md:text-base p-3"
                               onClick={() => {
                                 if (!isOut) {
                                   setBettingPlayer(batsman);
@@ -385,7 +385,43 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                               }}
 
                             >
-                              <span className="font-bold text-white">{batsman.name}</span>
+                              <span className="font-bold text-white">{batsman.name}
+                                <button
+                                  className="bg-green-700 text-white text-[12px] sm:text-xs font-bold px-2 py-1 rounded-md hover:bg-emerald-700 transition ml-3"
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    if (!isOut) {
+                                      setBettingPlayer(batsman);
+                                      setBettingNumber(batsmanNumber);
+                                      setBasePrice(
+                                        batsmanNumber < 3
+                                          ? 35
+                                          : batsmanNumber < 6
+                                            ? 30
+                                            : 25
+                                      );
+                                      const current =
+                                        batsmanNumber < 3
+                                          ? 35
+                                          : batsmanNumber < 6
+                                            ? 30
+                                            : 25;
+                                      setCurrentPlayerPrice(
+                                        current -
+                                        Number(batsman.run0) * 0.5 +
+                                        Number(batsman.run1) * 0.75 +
+                                        Number(batsman.run2) * 1.5 +
+                                        Number(batsman.run3) * 2.25 +
+                                        Number(batsman.fours) * 3 +
+                                        Number(batsman.sixes) * 4.5
+                                      );
+                                      setIsBettingModalOpen(true);
+                                    }
+                                  }}
+                                >
+                                  Trade Now
+                                </button>
+                              </span>
                               <span className="text-gray-300">
                                 {batsman.runs}({batsman.balls_faced})
                               </span>

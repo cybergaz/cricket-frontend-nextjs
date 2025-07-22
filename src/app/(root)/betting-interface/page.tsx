@@ -29,11 +29,7 @@ export default function BettingPage() {
         if (apiData.success) {
           setMatchData(apiData.data);
           setMatchFound(true);
-          // console.log(apiData)
-          // console.log("Data Found")
         } else {
-          // console.log("Data Not Found")
-          // console.log(apiData)
           setMatchData(null);
           setMatchFound(false);
         }
@@ -52,7 +48,7 @@ export default function BettingPage() {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      intervalRef.current = setInterval(fetchData,10000);
+      intervalRef.current = setInterval(fetchData, 10000);
     } else {
       setLoading(true);
       setMatchFound(false);
