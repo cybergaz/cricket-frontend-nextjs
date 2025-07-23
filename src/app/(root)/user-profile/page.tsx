@@ -207,11 +207,21 @@ export default function UserProfile() {
         <Card className="border-none rounded-xl shadow-md overflow-hidden bg-gray-900 border border-white">
           <div className="p-6">
             <div className="flex max-sm:flex-col gap-5 justify-between items-center max-sm:items-start">
-              <div>
-                <p className="text-md font-normal text-gray-400">
-                  Wallet Balance
-                </p>
-                <h3 className="text-5xl font-medium text-white mt-1">{formatINR(Number(user?.amount))}</h3>
+              <div className="flex flex-col gap-2 min-w-[180px]">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-semibold text-gray-200 tracking-wide">Wallet Balance</span>
+                </div>
+                <div className="flex items-end gap-2 mt-1">
+                  <span className="text-4xl sm:text-5xl font-bold text-white drop-shadow-lg">{formatINR(user?.amount! + user?.referralAmount!)}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="inline-flex items-center bg-gradient-to-r from-purple-600/25 via-purple-600/20 to-purple-600/10 text-purple-300 font-bold px-4 py-1.5 rounded-xl text-base gap-2 shadow-md">
+                    <span className="flex items-center justify-center rounded-full p-1">
+                      <UserPlus className="h-4 w-4 text-purple-200" />
+                    </span>
+                    <span className="tracking-wide">{formatINR(user?.referralAmount!)}</span>
+                  </span>
+                </div>
               </div>
               <Button
                 className="bg-[#f5f5f5] text-[#121212] hover:bg-white/70 shadow-md"

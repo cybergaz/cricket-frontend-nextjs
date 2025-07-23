@@ -17,6 +17,7 @@ import {
   ArrowDownLeft,
   Wallet,
   RefreshCcw,
+  UserPlus,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TransactionModal } from "./components/transaction-modal";
@@ -413,7 +414,18 @@ export default function MoneyTransactionsPage() {
               <div className="flex items-center">
                 <Wallet className="h-10 w-10 mr-3 text-emerald-500" />
                 <div>
-                  <div className="text-3xl font-bold text-white">{formatINR(user?.amount)}</div>
+                  <div className="flex flex-wrap gap-4 items-center">
+                    <div className="text-3xl font-bold text-white">{formatINR(user?.amount + user?.referralAmount)}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center bg-gradient-to-r from-purple-600/25 via-purple-600/20 to-purple-600/10 text-purple-300 font-bold px-4 py-1.5 rounded-xl text-base gap-2 shadow-md">
+                        <span className="flex items-center justify-center rounded-full p-1">
+                          <UserPlus className="h-4 w-4 text-purple-200" />
+                        </span>
+                        <span className="tracking-wide">{formatINR(user?.referralAmount!)}</span>
+                      </span>
+                    </div>
+
+                  </div>
                   <p className="mt-1 text-sm text-gray-400">
                     Last updated :{" "}
                     {user?.lastSeen

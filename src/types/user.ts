@@ -38,6 +38,7 @@ export interface UserV2 {
   isVerified: boolean;
   isAdmin: boolean;
   role: string;
+  referralAmount: number
   email: string;
   lastSeen: string;
   amount: number;
@@ -99,7 +100,8 @@ export interface User {
   lastSeen: Date;
 
   profileImage?: string;
-  amount: string;
+  amount: number;
+  referralAmount: number;
   referralCode?: string;
   referredBy?: string;
 

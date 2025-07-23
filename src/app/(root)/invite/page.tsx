@@ -26,7 +26,6 @@ export default function InviteFriendsComponent() {
   // Generate a random referral code
   const generateReferralCode = async () => {
     if (cooldownActive) return;
-    let newCode;
     setIsGenerating(true);
     setCooldownActive(true);
     setCooldownTime(10);
@@ -43,35 +42,42 @@ export default function InviteFriendsComponent() {
       });
     }, 1000);
 
-    setTimeout(() => {
-      newCode = `CRST-${encrypt(
-        "+916377257649".replace("+", "")
+    // Wait for 3 seconds before generating and sending the referral code
+    setTimeout(async () => {
+      const newCode = `CRST-${encrypt(
+        "+916377257649".replace("+91", "")
       )}-${generateAlphaCode()}`;
       setReferralCode(newCode);
       setIsGenerating(false);
+
+      // Get token from cookies
+      const getTokenFromCookies = () => {
+        if (typeof document === "undefined") return null;
+        const cookies = document.cookie.split("; ");
+        const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="));
+        return tokenCookie ? tokenCookie.split("=")[1] : null;
+      };
+      const token = getTokenFromCookies();
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/add-referral-code`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            referralCode: newCode,
+          }),
+        });
+        if (response.status !== 200) {
+          console.error("Failed to add referral code");
+        }
+      } catch (error) {
+        console.error("Error while adding referral code:", error);
+      }
     }, 3000);
-
-    // const token = localStorage.getItem("token");
-
-    //   if (!token) {
-    //     console.log("No token found, user not logged in");
-    //     return;
-    //   }
-
-    //   const data = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/add-referral-code`, {
-    //     method: "POST",
-    //     headers: {
-    //       Authorization: `Bearer ${token}`,
-    //       "Content-Type": "application/json",
-    //     },
-    //     body: JSON.stringify({
-    //       referralCode: newCode,
-    //     }),
-    //   });
-    //   const status = data.status;
-    //   if (status !== 200) {
-    //     console.error("LOL");
-    //   }
   };
 
   // Generate code on initial load
@@ -152,18 +158,17 @@ export default function InviteFriendsComponent() {
                 <Button
                   onClick={generateReferralCode}
                   variant="outline"
-                  className={`w-full border-background hover:border-accent-light hover:bg-accent text-lg p-5 ${
-                    cooldownActive
-                      ? "bg-background cursor-progress"
-                      : "bg-gray-800 cursor-pointer"
-                  }`}
+                  className={`w-full border-background hover:border-accent-light hover:bg-accent text-lg p-5 ${cooldownActive
+                    ? "bg-background cursor-progress"
+                    : "bg-gray-800 cursor-pointer"
+                    }`}
                   disabled={isGenerating || cooldownActive}
                 >
                   {cooldownActive
                     ? `Cool Down in (${cooldownTime}s)`
                     : isGenerating
-                    ? "Generating..."
-                    : "Generate"}
+                      ? "Generating..."
+                      : "Generate"}
                 </Button>
               </div>
 

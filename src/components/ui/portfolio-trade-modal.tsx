@@ -2,6 +2,7 @@ import { Team } from "@/app/(root)/betting-interface/types";
 import { PlayerPortfolio } from "@/app/(root)/portfolio/types";
 import { X } from "lucide-react";
 import React, { useState } from "react";
+import { toast } from "sonner";
 
 interface PortfolioTradeModalProps {
     open: boolean;
@@ -56,17 +57,18 @@ const PortfolioTradeModal: React.FC<PortfolioTradeModalProps> = ({ open, onClose
                     <label className="block text-gray-300 text-xl mb-2 font-bold">Quantity</label>
                     <input
                         type="number"
-                        min={1}
+                        min={0}
                         max={25000}
                         value={quantity}
                         onChange={e => {
-                            let val = Number(e.target.value);
-                            if (val < 1) val = 1;
-                            // Clamp so that quantity * currentPrice <= MAX_TOTAL_VALUE
-                            if (val * currentPrice > MAX_TOTAL_VALUE) {
-                                val = Math.floor(MAX_TOTAL_VALUE / currentPrice);
+                            let val = e.target.value === "" ? "" : Number(e.target.value);
+                            let numVal = typeof val === "number" ? val : 0;
+                            if (numVal < 0) numVal = 0;
+
+                            if (numVal * currentPrice > MAX_TOTAL_VALUE) {
+                                numVal = Math.floor(MAX_TOTAL_VALUE / currentPrice);
                             }
-                            setQuantity(val);
+                            setQuantity(numVal);
                         }}
                         className="w-full rounded-xl bg-gray-800 text-white px-6 py-4 text-3xl font-bold border-0 focus:outline-none focus:ring-0 focus:border-0"
                         style={{
@@ -86,14 +88,26 @@ const PortfolioTradeModal: React.FC<PortfolioTradeModalProps> = ({ open, onClose
                 <div className="flex gap-6">
                     <button
                         className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 text-2xl transition rounded-2xl cursor-pointer"
-                        onClick={() => onBuy(quantity)}
+                        onClick={() => {
+                            if (quantity == 0) {
+                                toast("Select a Quantity")
+                                return
+                            }
+                            onBuy(quantity)
+                        }}
                         disabled={quantity * currentPrice > MAX_TOTAL_VALUE}
                     >
                         Buy
                     </button>
                     <button
                         className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-4 text-2xl rounded-2xl transition cursor-pointer"
-                        onClick={() => onSell(quantity)}
+                        onClick={() => {
+                            if (quantity == 0) {
+                                toast("Select a Quantity")
+                                return
+                            }
+                            onSell(quantity)
+                        }}
                     >
                         Sell
                     </button>

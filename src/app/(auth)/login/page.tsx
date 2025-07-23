@@ -277,6 +277,7 @@ export default function AuthPage() {
           email: form.email,
           password: form.password,
           otp,
+          referralCode: form.referral_code
         }),
         credentials: 'include',
       });

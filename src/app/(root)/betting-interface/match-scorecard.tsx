@@ -1117,7 +1117,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     }}
                   >
                     Buy Player
-                  </button>
+                   </button>
                   <button
                     className="flex-1 rounded-md sm:rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold py-2 text-sm sm:text-base md:text-lg shadow-md transition cursor-pointer"
                     onClick={async () => {

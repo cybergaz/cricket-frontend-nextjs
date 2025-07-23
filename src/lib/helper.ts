@@ -97,12 +97,15 @@ function base62Decode(str: string): bigint {
   return num;
 }
 
-function encrypt(phoneNumber: string): string {
-  if (!/^\d{12}$/.test(phoneNumber)) {
-    throw new Error("Phone number must be exactly 12 digits.");
+function encrypt(phoneNumber: string) {
+  // Accepts a 10-digit phone number as string
+  if (!/^\d{10}$/.test(phoneNumber)) {
+    throw new Error("Phone number must be exactly 10 digits.");
   }
-  const num: bigint = BigInt(phoneNumber);
-  const obfuscated: bigint = num ^ SECRET_KEY;
+  // Pad to 12 digits if needed (for legacy compatibility, but we use 10 digits)
+  // const padded = phoneNumber.padStart(12, "0");
+  const num = BigInt(phoneNumber);
+  const obfuscated = num ^ SECRET_KEY;
   return base62Encode(obfuscated);
 }
 
