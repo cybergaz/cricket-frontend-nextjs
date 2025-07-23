@@ -206,6 +206,11 @@ export default function MoneyTransactionsPage() {
     window.location.reload();
   }
   const createOrder = async () => {
+    if (Number(addtxnAmount) > 50000) {
+      toast("Maximum order amount is ₹50,000");
+      return
+    }
+
     try {
       const toastID = toast.loading(`Creating Order For ₹ ${addtxnAmount}`)
       const orderBody = {

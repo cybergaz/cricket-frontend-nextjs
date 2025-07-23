@@ -33,7 +33,7 @@ function formatTimestamp(ts: Date | string | undefined): string {
 }
 
 export default function Portfolio() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [playerPortfolios, setPlayerPortfolios] = useState<PlayerPortfolio[]>([]);
   const [teamPortfolios, setTeamPortfolios] = useState<TeamPortfolio[]>([]);
   const [playerPortfoliosHistorys, setPlayerPortfoliosHistorys] = useState<PlayerPortfolio[]>([]);
@@ -121,6 +121,7 @@ export default function Portfolio() {
           } catch { }
         }));
         setMatchDataById(matchDataObj);
+        setLoading(false)
 
       } catch (e: any) {
         toast("Fetch error: " + (e?.message || e));
@@ -223,6 +224,7 @@ export default function Portfolio() {
         (batsman: Batsman) =>
           batsman.batsman_id === player.playerId && batsman.batting == "true"
       );
+
       if (!isBatting) {
         toast.success(`${player.playerName} Got Out`);
         return { success: true, code: 0 }
@@ -349,7 +351,7 @@ export default function Portfolio() {
   else {
     return (
       <div className="p-5 min-h-screen">
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 max-sm:px-0 py-8">
           {/* Portfolio Header */}
           <div className="mb-8">
             <h1 className="text-5xl font-bold text-white mb-2">
@@ -650,7 +652,7 @@ export default function Portfolio() {
                     Player Holdings
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="max-sm:px-1">
                   {playerPortfolios.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <div className="p-6 rounded-full mb-4">
@@ -682,13 +684,13 @@ export default function Portfolio() {
                                 <span className="inline xl:hidden">Buy @</span>
                               </th>
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                <span className="hidden xl:inline">Profit / Loss</span>
-                                <span className="inline xl:hidden">P&amp;L</span>
+                                <span className="hidden xl:inline">Current Price</span>
+                                <span className="inline xl:hidden">CP @</span>
                               </th>
-                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                <span className="hidden xl:inline">Percentage</span>
-                                <span className="inline xl:hidden">%</span>
-                              </th>
+                              {/* <th className="px-4 py-3 text-right text-sm font-bold text-gray-300"> */}
+                              {/*   <span className="hidden xl:inline">Percentage</span> */}
+                              {/*   <span className="inline xl:hidden">%</span> */}
+                              {/* </th> */}
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
                                 Status
                               </th>
@@ -756,23 +758,23 @@ export default function Portfolio() {
                                         </div>
                                       )}
                                   </td>
-                                  <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
-                                    {p.currentPrice == "0" ? (
-                                      <span className="text-xs text-gray-400 font-bold">Calculating...</span>
-                                    ) : (
-                                      (() => {
-                                        const totalBuy = Number(p.quantity) * Number(p.boughtPrice);
-                                        const totalCurrent = Number(p.quantity) * Number(p.currentPrice);
-                                        const pnl = totalCurrent - totalBuy;
-                                        const pnlClass = pnl > 0
-                                          ? "text-emerald-400 font-bold"
-                                          : pnl < 0
-                                            ? "text-red-500 font-bold"
-                                            : "text-gray-300 font-bold";
-                                        return <span className={pnlClass}>{`${pnl >= 0 ? "+" : "-"}${Math.abs(pnl).toLocaleString("en-IN", { maximumFractionDigits: 2 })}%`}</span>;
-                                      })()
-                                    )}
-                                  </td>
+                                  {/* <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold"> */}
+                                  {/*   {p.currentPrice == "0" ? ( */}
+                                  {/*     <span className="text-xs text-gray-400 font-bold">Calculating...</span> */}
+                                  {/*   ) : ( */}
+                                  {/*     (() => { */}
+                                  {/*       const totalBuy = Number(p.quantity) * Number(p.boughtPrice); */}
+                                  {/*       const totalCurrent = Number(p.quantity) * Number(p.currentPrice); */}
+                                  {/*       const pnl = totalCurrent - totalBuy; */}
+                                  {/*       const pnlClass = pnl > 0 */}
+                                  {/*         ? "text-emerald-400 font-bold" */}
+                                  {/*         : pnl < 0 */}
+                                  {/*           ? "text-red-500 font-bold" */}
+                                  {/*           : "text-gray-300 font-bold"; */}
+                                  {/*       return <span className={pnlClass}>{`${pnl >= 0 ? "+" : "-"}${Math.abs(pnl).toLocaleString("en-IN", { maximumFractionDigits: 2 })}%`}</span>; */}
+                                  {/*     })() */}
+                                  {/*   )} */}
+                                  {/* </td> */}
                                   <td className="px-4 py-4 text-right">
                                     <Badge
                                       variant="outline"
@@ -833,10 +835,10 @@ export default function Portfolio() {
                             <span className="hidden xl:inline">Profit / Loss</span>
                             <span className="inline xl:hidden">P&amp;L</span>
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            <span className="hidden xl:inline">Percentage</span>
-                            <span className="inline xl:hidden">%</span>
-                          </th>
+                          {/* <th className="px-4 py-3 text-right text-sm font-bold text-gray-300"> */}
+                          {/*   <span className="hidden xl:inline">Percentage</span> */}
+                          {/*   <span className="inline xl:hidden">%</span> */}
+                          {/* </th> */}
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
                             Status
                           </th>
@@ -874,18 +876,19 @@ export default function Portfolio() {
                                   ₹{parseFloat(p.profit) >= 0 ? parseFloat(p.profit).toLocaleString("en-IN", { maximumFractionDigits: 2 }) : `-${Math.abs(parseFloat(p.profit)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}
                                 </span>
                               </td>
-                              <td className="px-4 py-4 text-right">
-                                <Badge className={parseFloat(p.profit) >= 0 ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold" : "bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold"}>
-                                  {parseFloat(p.profit) >= 0 ? "+" : "-"}
-                                  {Math.abs(parseFloat(p.profitPercentage)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}%
-                                </Badge>
-                              </td>
+                              {/* <td className="px-4 py-4 text-right"> */}
+                              {/*   <Badge className={parseFloat(p.profit) >= 0 ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold" : "bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold"}> */}
+                              {/*     {parseFloat(p.profit) >= 0 ? "+" : "-"} */}
+                              {/*     {Math.abs(parseFloat(p.profitPercentage)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}% */}
+                              {/*   </Badge> */}
+                              {/* </td> */}
                               <td className="px-4 py-4 text-right">
                                 <Badge
                                   variant="outline"
                                   className="border-0 bg-white/20 text-white font-bold"
                                 >
-                                  {((p.status?.toLowerCase() === "sold" || p.status?.toLowerCase() === "sell") && (String(parseFloat(p.profitPercentage)) === "-50")) ? "Auto-Sold" : p.status}
+                                  {/* {((p.status?.toLowerCase() === "sold" || p.status?.toLowerCase() === "sell") && (String(parseFloat(p.profitPercentage)) === "-50")) ? "Auto-Sold" : p.status} */}
+                                  {p.status}
                                 </Badge>
                               </td>
                               <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
@@ -947,10 +950,10 @@ export default function Portfolio() {
                                 <span className="hidden xl:inline">Profit / Loss</span>
                                 <span className="inline xl:hidden">P&amp;L</span>
                               </th>
-                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                                <span className="hidden xl:inline">Percentage</span>
-                                <span className="inline xl:hidden">%</span>
-                              </th>
+                              {/* <th className="px-4 py-3 text-right text-sm font-bold text-gray-300"> */}
+                              {/*   <span className="hidden xl:inline">Percentage</span> */}
+                              {/*   <span className="inline xl:hidden">%</span> */}
+                              {/* </th> */}
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
                                 Status
                               </th>
@@ -981,11 +984,11 @@ export default function Portfolio() {
                                 <td className="px-4 py-4 text-right text-sm font-bold text-emerald-500">
                                   ₹{t.profit}
                                 </td>
-                                <td className="px-4 py-4 text-right">
-                                  <Badge className={parseFloat(t.profit) >= 0 ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold" : "bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold"}>
-                                    +{t.profitPercentage}%
-                                  </Badge>
-                                </td>
+                                {/* <td className="px-4 py-4 text-right"> */}
+                                {/*   <Badge className={parseFloat(t.profit) >= 0 ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold" : "bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold"}> */}
+                                {/*     +{t.profitPercentage}% */}
+                                {/*   </Badge> */}
+                                {/* </td> */}
                                 <td className="px-4 py-4 text-right">
                                   <Badge
                                     variant="outline"
@@ -1065,10 +1068,10 @@ export default function Portfolio() {
                             <span className="hidden xl:inline">Profit / Loss</span>
                             <span className="inline xl:hidden">P&amp;L</span>
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
-                            <span className="hidden xl:inline">Percentage</span>
-                            <span className="inline xl:hidden">%</span>
-                          </th>
+                          {/* <th className="px-4 py-3 text-right text-sm font-bold text-gray-300"> */}
+                          {/*   <span className="hidden xl:inline">Percentage</span> */}
+                          {/*   <span className="inline xl:hidden">%</span> */}
+                          {/* </th> */}
                           <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
                             Status
                           </th>
@@ -1104,11 +1107,11 @@ export default function Portfolio() {
                               <td className="px-4 py-4 text-right text-sm font-bold text-emerald-500">
                                 ₹{t.profit}
                               </td>
-                              <td className="px-4 py-4 text-right">
-                                <Badge className={parseFloat(t.profit) >= 0 ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold" : "bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold"}>
-                                  +{t.profitPercentage}%
-                                </Badge>
-                              </td>
+                              {/* <td className="px-4 py-4 text-right"> */}
+                              {/*   <Badge className={parseFloat(t.profit) >= 0 ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold" : "bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold"}> */}
+                              {/*     +{t.profitPercentage}% */}
+                              {/*   </Badge> */}
+                              {/* </td> */}
                               <td className="px-4 py-4 text-right">
                                 <Badge
                                   variant="outline"

@@ -20,19 +20,20 @@ import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { MatchInfoTicker } from "./components/match-info-ticker"
 import { cn } from "@/lib/utils"
+import sample from "./sample.json"
 
 export default function MatchScorecard({ matchData }: MatchScorecardProps) {
 
   // const patchedSample = {
-  //     ...sample,
-  //     match_notes: Array.isArray(sample.match_notes)
-  //         ? (sample.match_notes.flat().join(" | ") || "")
-  //         : (sample.match_notes ?? ""),
-  //     match_number: Array.isArray(sample.match_number)
-  //         ? sample.match_number
-  //         : (typeof sample.match_number === "string"
-  //             ? [[sample.match_number]]
-  //             : [[""]])
+  //   ...sample,
+  //   match_notes: Array.isArray(sample.match_notes)
+  //     ? (sample.match_notes.flat().join(" | ") || "")
+  //     : (sample.match_notes ?? ""),
+  //   match_number: Array.isArray(sample.match_number)
+  //     ? sample.match_number
+  //     : (typeof sample.match_number === "string"
+  //       ? [[sample.match_number]]
+  //       : [[""]])
   // }
   // const data: CricketMatchData = patchedSample as CricketMatchData
 
@@ -402,7 +403,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                           : batsmanNumber < 6
                                             ? 30
                                             : 25;
-                                            console.log(batsmanNumber)
+                                      console.log(batsmanNumber)
                                       setCurrentPlayerPrice(
                                         current -
                                         Number(batsman.run0) * 0.5 +

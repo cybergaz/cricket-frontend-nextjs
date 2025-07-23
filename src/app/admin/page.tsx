@@ -316,94 +316,74 @@ const Dashboard = (): JSX.Element => {
           {/* Metrics Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-6">
             {/* div 1 */}
-            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl">
-              <div className="p-6">
-                <div className="text-6xl font-light mb-2">
-                  {renderMetricValue(totalUsers, isTotalUsersLoading, totalUsersError)}
-                </div>
-                <div className="text-lg font-medium mb-1">Total Registered Users</div>
-                {/* <div className="flex items-center text-sm"> */}
-                {/*   <span className="text-gray-300">Last Month</span> */}
-                {/*   <span className="ml-2 text-green-500">+109</span> */}
-                {/*   <span className="ml-2 text-green-500">Up 25%</span> */}
-                {/* </div> */}
+            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
+              <div className="text-4xl mb-2">
+                {renderMetricValue(totalUsers, isTotalUsersLoading, totalUsersError)}
               </div>
-            </div>
-
-            {/* div 2 */}
-            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl">
-              <div className="p-6">
-                <div className="text-6xl font-light mb-2">
-                  {renderMetricValue(companyProfit.totalProfits, isCompanyProfitLoading, companyProfitError)}
-                </div>
-                <div className="text-lg font-medium mb-1">Company Profit</div>
-                {/* <div className="flex items-center text-sm"> */}
-                {/*   <span className="text-gray-300">Last Month</span> */}
-                {/*   <span className="ml-2 text-green-500">+108</span> */}
-                {/*   <span className="ml-2 text-green-500">Up 11%</span> */}
-                {/* </div> */}
-              </div>
-            </div>
-
-            {/* div 3 */}
-            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl">
-              <div className="p-6">
-                <div className="text-6xl font-light mb-2">
-                  {renderMetricValue(companyProfit.profitFromProfitableCuts, isCompanyProfitLoading, companyProfitError)}
-                </div>
-                <div className="text-lg font-medium mb-1">Company Profit From Profitable Cuts</div>
-                {/* <div className="flex items-center text-sm"> */}
-                {/*   <span className="text-gray-300">Last Month</span> */}
-                {/*   <span className="ml-2 text-red-500">-10</span> */}
-                {/*   <span className="ml-2 text-red-500">Down 15%</span> */}
-                {/* </div> */}
-              </div>
+              <div className="text-lg font-light mb-1">Total registered users</div>
             </div>
 
             {/* div 4 */}
-            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl">
-              <div className="p-6">
-                <div className="text-6xl font-light mb-2">
-                  {renderMetricValue(totalActiveUsers, isTotalActiveUsersLoading, totalActiveUsersError)}
-                </div>
-                <div className="text-lg font-medium mb-1">Total Active users</div>
-                {/* <div className="flex items-center text-sm"> */}
-                {/*   <span className="text-gray-300">Last Month</span> */}
-                {/*   <span className="ml-2 text-green-500">+109</span> */}
-                {/*   <span className="ml-2 text-green-500">Up 25%</span> */}
-                {/* </div> */}
+            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
+              <div className="text-4xl mb-2">
+                {renderMetricValue(totalActiveUsers, isTotalActiveUsersLoading, totalActiveUsersError)}
               </div>
+              <div className="text-lg font-light mb-1">Total Active users</div>
             </div>
 
             {/* div 5 */}
-            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl">
-              <div className="p-6">
-                <div className="text-6xl font-light mb-2">
-                  {renderMetricValue(profitableUsers, isProfitableUsersLoading, profitableUsersError)}
-                </div>
-                <div className="text-lg font-medium mb-1">Profitable user</div>
-                {/* <div className="flex items-center text-sm"> */}
-                {/*   <span className="text-gray-300">Last Month</span> */}
-                {/*   <span className="ml-2 text-green-500">+108</span> */}
-                {/*   <span className="ml-2 text-green-500">Up 11%</span> */}
-                {/* </div> */}
+            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
+              <div className="text-4xl mb-2">
+                {renderMetricValue(profitableUsers, isProfitableUsersLoading, profitableUsersError)}
               </div>
+              <div className="text-lg font-light mb-1">Users in profit</div>
             </div>
 
             {/* div 6 */}
-            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl">
-              <div className="p-6">
-                <div className="text-6xl font-light mb-2">
-                  {renderMetricValue(losingUsers, isLosingUsersLoading, losingUsersError)}
-                </div>
-                <div className="text-lg font-medium mb-1">User having losses</div>
-                {/* <div className="flex items-center text-sm"> */}
-                {/*   <span className="text-gray-300">Last Month</span> */}
-                {/*   <span className="ml-2 text-red-500">-10</span> */}
-                {/*   <span className="ml-2 text-red-500">Down 15%</span> */}
-                {/* </div> */}
+            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
+              <div className="text-4xl mb-2">
+                {renderMetricValue(losingUsers, isLosingUsersLoading, losingUsersError)}
               </div>
+              <div className="text-lg font-light mb-1">Users in loss</div>
             </div>
+
+            {/* div 2 */}
+            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
+              <div className="text-4xl mb-2">
+                {renderMetricValue(companyProfit.totalProfits, isCompanyProfitLoading, companyProfitError)}
+              </div>
+              <div className="text-lg font-light mb-1">Total company profit</div>
+            </div>
+
+            {/* div 3 */}
+            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
+              <div className="text-4xl mb-2">
+                {renderMetricValue(companyProfit.profitFromProfitableCuts, isCompanyProfitLoading, companyProfitError)}
+              </div>
+              <div className="text-lg font-light mb-1">Profit from 5% cuts</div>
+            </div>
+
+            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
+              <div className="text-4xl mb-2">
+                {renderMetricValue(companyProfit.profitFromPlatformFees, isCompanyProfitLoading, companyProfitError)}
+              </div>
+              <div className="text-lg font-light mb-1">Profit from platform fee</div>
+            </div>
+
+            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
+              <div className="text-4xl mb-2">
+                {renderMetricValue(companyProfit.profitFromAutoSell, isCompanyProfitLoading, companyProfitError)}
+              </div>
+              <div className="text-lg font-light mb-1">Profit from auto sell</div>
+            </div>
+
+            {/* <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between"> */}
+            {/*   <div className="text-4xl mb-2"> */}
+            {/*     {renderMetricValue(companyProfit.totalProfits, isCompanyProfitLoading, companyProfitError)} */}
+            {/*   </div> */}
+            {/*   <div className="text-lg font-light mb-1">Company Profit</div> */}
+            {/* </div> */}
+
           </div>
 
           {/* Transaction Activity */}
