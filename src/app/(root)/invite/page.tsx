@@ -16,6 +16,8 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { encrypt, generateAlphaCode } from "../../../lib/helper";
 import "dotenv/config";
+import { useUserStore } from "@/store/user-store";
+
 export default function InviteFriendsComponent() {
   const [referralCode, setReferralCode] = useState<string>("");
   const [copied, setCopied] = useState(false);
@@ -23,8 +25,11 @@ export default function InviteFriendsComponent() {
   const [cooldownActive, setCooldownActive] = useState(false);
   const [cooldownTime, setCooldownTime] = useState(0);
 
+  const mobile = useUserStore((state) => state.user?.mobile);
+  const hasHydrated = useUserStore((state) => state.hasHydrated);
+
   // Generate a random referral code
-  const generateReferralCode = async () => {
+  const generateReferralCode = async (mobile: string) => {
     if (cooldownActive) return;
     setIsGenerating(true);
     setCooldownActive(true);
@@ -43,9 +48,17 @@ export default function InviteFriendsComponent() {
     }, 1000);
 
     // Wait for 3 seconds before generating and sending the referral code
+
     setTimeout(async () => {
+      if (!mobile) {
+        toast.error("No Mobile Number Found in User Profile");
+        setIsGenerating(false);
+        setCooldownActive(false);
+        clearInterval(cooldownInterval);
+        return;
+      }
       const newCode = `CRST-${encrypt(
-        "+916377257649".replace("+91", "")
+        mobile.replace("+91", "")
       )}-${generateAlphaCode()}`;
       setReferralCode(newCode);
       setIsGenerating(false);
@@ -77,15 +90,16 @@ export default function InviteFriendsComponent() {
       } catch (error) {
         console.error("Error while adding referral code:", error);
       }
-    }, 3000);
+    }, 1000);
   };
 
   // Generate code on initial load
+
   useEffect(() => {
-    if (!referralCode) {
-      generateReferralCode();
+    if (hasHydrated && mobile && !referralCode) {
+      generateReferralCode(mobile);
     }
-  }, [referralCode]);
+  }, [hasHydrated, mobile, referralCode]);
 
   // Copy referral code to clipboard
   const copyToClipboard = () => {
@@ -96,13 +110,15 @@ export default function InviteFriendsComponent() {
 
       setTimeout(() => {
         setCopied(false);
-      }, 2000);
+      }, 1000);
     }
   };
 
   // Share referral link
   const generateReferralLink = () => {
-    const referralLink = `http://localhost:3000/referrals?ref=${referralCode}`;
+    const referralLink = typeof window !== "undefined"
+      ? `${window.location.origin}/referrals?ref=${referralCode}`
+      : "";
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
     toast.success("Referral Link Copied !");
@@ -156,7 +172,7 @@ export default function InviteFriendsComponent() {
 
               <div>
                 <Button
-                  onClick={generateReferralCode}
+                  onClick={() => generateReferralCode(mobile!)}
                   variant="outline"
                   className={`w-full border-background hover:border-accent-light hover:bg-accent text-lg p-5 ${cooldownActive
                     ? "bg-background cursor-progress"

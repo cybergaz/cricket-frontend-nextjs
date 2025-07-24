@@ -42,7 +42,7 @@ export default function UserProfile() {
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     setLoading(true)
     const toastId = toast.loading("Uploading Image...");
-    console.log(toastId)
+    // console.log(toastId)
     if (event.target.files && event.target.files[0]) {
       const formData = new FormData();
       formData.append("image", event.target.files[0]);
@@ -69,7 +69,7 @@ export default function UserProfile() {
         }
 
         const data = await response.json();
-        console.log(data.user)
+        // console.log(data.user)
         setUser(data.user)
         toast.success("Profile Image Uploaded!");
         toast.dismiss(toastId)
@@ -111,7 +111,7 @@ export default function UserProfile() {
         const data = await res.json();
         if (data.data && data.success) {
           setUser(data.data);
-          console.log(data.data.transactions)
+          // console.log(data.data.transactions)
         } else {
           toast.error(data?.message || "Failed to fetch user data");
         }

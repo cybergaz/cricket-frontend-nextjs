@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Users, Trophy, Landmark, DollarSign, TrendingDown, Dot } from "lucide-react";
+import { TrendingUp, Users, Trophy, Landmark, DollarSign, TrendingDown, Dot, IndianRupee } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PlayerPortfolio, TeamPortfolio } from "./types";
@@ -555,7 +555,7 @@ export default function Portfolio() {
                                 </svg>
                               </div>
                               :
-                              <DollarSign
+                              <IndianRupee
                                 className={`h-8 w-8 drop-shadow ${profitPending
                                   ? "text-gray-400"
                                   : (typeof profitNumber !== "undefined" && profitNumber !== null
@@ -598,13 +598,12 @@ export default function Portfolio() {
                     <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1 ">
                       <span className="flex flex-col">
                         {formatINR(Number(todaysProfit))}
-                        <span className={`ml-2 text-sm font-bold flex items-center gap-2 ${
-                          Number(todaysProfit) > 0
-                            ? "text-emerald-400"
-                            : Number(todaysProfit) < 0
-                              ? "text-red-500"
-                              : "text-gray-400"
-                        }`}>
+                        <span className={`ml-2 text-sm font-bold flex items-center gap-2 ${Number(todaysProfit) > 0
+                          ? "text-emerald-400"
+                          : Number(todaysProfit) < 0
+                            ? "text-red-500"
+                            : "text-gray-400"
+                          }`}>
                           {(() => {
                             const totalProfitPercentage = value === 0
                               ? "0.00%"
@@ -706,6 +705,9 @@ export default function Portfolio() {
                               <th className="px-4 py-3 text-left text-sm font-bold text-gray-300 pl-6">
                                 Player
                               </th>
+                              {/* <th className="px-4 py-3 text-right text-sm font-bold text-gray-300"> */}
+                              {/*   <span className="hidden xl:inline">Team</span> */}
+                              {/* </th> */}
                               <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
                                 <span className="hidden xl:inline">Quantity(s)</span>
                                 <span className="inline xl:hidden">Qt(s)</span>
@@ -756,6 +758,9 @@ export default function Portfolio() {
                                       </div>
                                     </div>
                                   </td>
+                                  {/* <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold"> */}
+                                  {/*   {p.team} */}
+                                  {/* </td> */}
                                   <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
                                     {p.quantity ? `${p.quantity}` : "--"}
                                   </td>

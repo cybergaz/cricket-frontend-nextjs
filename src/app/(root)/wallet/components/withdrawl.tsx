@@ -24,7 +24,6 @@ export default function WithdrawModal() {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
-
     const validate = () => {
         const newErrors: any = {};
         if (!formData.amount || isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) {
@@ -279,5 +278,5 @@ export default function WithdrawModal() {
                 </div>
             )}
         </div>
-    );
+    )
 }

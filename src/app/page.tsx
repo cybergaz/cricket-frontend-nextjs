@@ -273,19 +273,19 @@ export default function LandingPage() {
         </section>
 
         {/* Testimonials Section with modern cards */}
-        <section className="mt-40">
-          <div className="text-center mb-2">
-            <h2 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent mb-6">
-              Trusted by Lakhs of Happy Users
-            </h2>
-            <p className="text-slate-400 text-xl max-w-3xl mx-auto">
-              See what our community has to say about their trading experience
-            </p>
-          </div>
-
-          <AnimatedTestimonials testimonials={testimonials} />
-
-        </section>
+        {/* <section className="mt-40"> */}
+        {/*   <div className="text-center mb-2"> */}
+        {/*     <h2 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent mb-6"> */}
+        {/*       Trusted by Lakhs of Happy Users */}
+        {/*     </h2> */}
+        {/*     <p className="text-slate-400 text-xl max-w-3xl mx-auto"> */}
+        {/*       See what our community has to say about their trading experience */}
+        {/*     </p> */}
+        {/*   </div> */}
+        {/**/}
+        {/*   <AnimatedTestimonials testimonials={testimonials} /> */}
+        {/**/}
+        {/* </section> */}
 
         {/* Security Section with modern grid */}
         <section className="mt-30">

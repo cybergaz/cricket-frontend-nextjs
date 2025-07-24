@@ -88,7 +88,7 @@ export default function MoneyTransactionsPage() {
         const data = await res.json();
         if (data.data && data.success) {
           setUser(data.data);
-          console.log(data.data.transactions)
+          // console.log(data.data.transactions)
           if (data.data.transactions) {
             setTransactions(data.data.transactions);
           }
@@ -240,7 +240,7 @@ export default function MoneyTransactionsPage() {
 
 
       const data = await response.json();
-      console.log(data)
+      // console.log(data)
       if (data.success) {
         setPaymentSessionId(data.orderDetails.paymentSessionId);
         setPaymentLink(data.orderDetails.paymentSessionId);
@@ -270,7 +270,7 @@ export default function MoneyTransactionsPage() {
       setPaymentSessionId("")
       const result = await cashfree.checkout(checkoutOptions);
 
-      console.log("Payment Result:", result);
+      // console.log("Payment Result:", result);
 
       if (result?.paymentDetails?.order?.order_status === "PAID") {
         toast("Payment successful!");

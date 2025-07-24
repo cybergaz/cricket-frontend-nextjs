@@ -302,7 +302,7 @@ const Dashboard = (): JSX.Element => {
     }
     return value;
   };
-  console.log("companyProfit", transactions);
+
 
   return (
     <section className="w-full min-h-[calc(100vh-50px)]">
@@ -377,12 +377,12 @@ const Dashboard = (): JSX.Element => {
               <div className="text-lg font-light mb-1">Profit from auto sell</div>
             </div>
 
-            {/* <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between"> */}
-            {/*   <div className="text-4xl mb-2"> */}
-            {/*     {renderMetricValue(companyProfit.totalProfits, isCompanyProfitLoading, companyProfitError)} */}
-            {/*   </div> */}
-            {/*   <div className="text-lg font-light mb-1">Company Profit</div> */}
-            {/* </div> */}
+            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
+              <div className="text-4xl mb-2">
+                {renderMetricValue(companyProfit.grossProfit, isCompanyProfitLoading, companyProfitError)}
+              </div>
+              <div className="text-lg font-light mb-1">Gross Profit</div>
+            </div>
 
           </div>
 

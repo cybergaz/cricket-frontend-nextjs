@@ -164,7 +164,7 @@ async function verifyPan(formData: FormData) {
 const getTokenFromCookies = () => {
   if (typeof document === "undefined") return null;
   const cookies = document.cookie.split("; ");
-  console.log("Cookies:", cookies);
+  // console.log("Cookies:", cookies);
   const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="));
   return tokenCookie ? tokenCookie.split("=")[1] : null;
 };
