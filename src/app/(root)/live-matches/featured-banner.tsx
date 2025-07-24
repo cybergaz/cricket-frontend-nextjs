@@ -1,6 +1,6 @@
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, PlusCircle } from "lucide-react"
+import { TrendingUp, PlusCircle, ArrowDown } from "lucide-react"
 import { Match } from "@/types/match-schedule"
 import { useRouter } from "next/navigation"
 
@@ -69,16 +69,23 @@ export function FeaturedBanner(match: Match) {
               Don&apos;t miss the exciting clash between {teama?.name} and {teamb?.name}! Add this match to your portfolio now.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4">
-              <Button
-                size="lg"
-                onClick={() => router.push(`/betting-interface?id=${match.match_id}`)}
-                className="bg-green-400/30 hover:bg-green-800 text-white/80 hover:text-white text-base sm:text-lg font-bold px-6 py-4 transition-all duration-300"
-              >
-                <PlusCircle className="h-6 w-6 mr-2 stroke-3" />
-                Create Portfolio
-              </Button>
-            </div>
+            {/* arrow with scroll down function */}
+            <Button
+              className="bg-green-500/30 rounded-full p-0 size-12 animate-bounce"
+              onClick={() => window.scrollBy({ top: 500, behavior: "smooth" })}
+            >
+              <ArrowDown className="size-8" />
+            </Button>
+            {/* <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4"> */}
+            {/*   <Button */}
+            {/*     size="lg" */}
+            {/*     onClick={() => router.push(`/betting-interface?id=${match.match_id}`)} */}
+            {/*     className="bg-green-400/30 hover:bg-green-800 text-white/80 hover:text-white text-base sm:text-lg font-bold px-6 py-4 transition-all duration-300" */}
+            {/*   > */}
+            {/*     <PlusCircle className="h-6 w-6 mr-2 stroke-3" /> */}
+            {/*     Create Portfolio */}
+            {/*   </Button> */}
+            {/* </div> */}
           </motion.div>
         </div>
       </div>
