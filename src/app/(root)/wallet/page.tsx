@@ -454,7 +454,7 @@ export default function MoneyTransactionsPage() {
                   <div className="text-3xl font-bold text-white">
                     {formatINR(
                       (transactions ?? [])
-                        .filter((transaction) => transaction.type === "withdrawal")
+                        .filter((transaction) => transaction.type === "Withdrawal")
                         .reduce((sum, transaction) => {
                           const amount = Number(
                             (transaction.amount ?? "0").toString().replace(/,/g, "")
@@ -465,7 +465,7 @@ export default function MoneyTransactionsPage() {
                   </div>
                   <p className="mt-1 text-sm text-gray-400">
                     Across {(transactions ?? [])
-                      .filter((transaction) => transaction.type === "withdrawal").length} withdrawals
+                      .filter((transaction) => transaction.type === "Withdrawal").length} withdrawals
                   </p>
                 </div>
               </div>
@@ -648,22 +648,27 @@ function gettxnStatusColor(txnStatus: string) {
 function gettxnPaymentMethodIcon(method: string) {
   switch (method) {
     case "UPI":
+    case "UPI":
       return (
         <div className="h-4 w-4 rounded-full bg-purple-500 flex items-center justify-center text-white text-xs">U</div>
       )
     case "Credit Card":
+    case "CC":
       return (
         <div className="h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs">C</div>
       )
     case "Debit Card":
+    case "DC":
       return (
         <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">D</div>
       )
     case "Net Banking":
+    case "NB":
       return (
         <div className="h-4 w-4 rounded-full bg-yellow-500 flex items-center justify-center text-white text-xs">N</div>
       )
     case "Bank Transfer":
+    case "BT":
       return (
         <div className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center text-white text-xs">B</div>
       )
@@ -677,3 +682,4 @@ function gettxnPaymentMethodIcon(method: string) {
       )
   }
 }
+
