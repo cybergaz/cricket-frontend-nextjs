@@ -46,7 +46,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
   const [bettingNumber, setBettingNumber] = useState(0)
   const [currentPlayerPrice, setCurrentPlayerPrice] = useState(0)
   const [isBettingModalOpen, setIsBettingModalOpen] = useState(false)
-  const [quantity, setQuantity] = useState<number[]>([0])
+  const [quantity, setQuantity] = useState<number[]>([1])
   // const [slider_quantity, setSliderQuantity] = useState<number[]>([1]);
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
@@ -975,6 +975,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
           {bettingPlayer && isBettingModalOpen && (
             <div className="fixed inset-0 z-50 w-full h-full flex items-center justify-center bg-black/70 backdrop-blur-lg p-4">
               <div className="w-full max-w-lg rounded-2xl bg-gradient-to-br from-gray-900/90 via-gray-900/90 to-gray-900 p-6 sm:p-6 md:p-8 shadow-2xl transition-all duration-300">
+
                 {/* === Header === */}
                 <div className="mb-4 sm:mb-6 flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -1056,67 +1057,79 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                   step={1}
                   className="mt-10 mb-5 "
                 />
-                <div className="flex justify-between ">
-                  <div className="flex flex-col gap-1 items-start">
-                    <span className="text-xs font-semibold">Stock Quantity</span>
-                    <span>{quantity[0]} -{'>'} ₹ {currentPlayerPrice * quantity[0]}</span>
-
-                  </div>
-                  <div className="flex flex-col gap-1 items-end">
-                    <span className="text-xs font-semibold">Max Price</span>
-                    <span>₹ 25,000</span>
-                  </div>
+                <div className="flex justify-between w-full">
+                  <span className="text-xs font-semibold">Stock Quantity</span>
+                  <span className="text-xs font-semibold">{quantity[0]}</span>
+                  {/* <div className="flex flex-col gap-1 items-end"> */}
+                  {/*   <span className="text-xs font-semibold">Max Price</span> */}
+                  {/*   <span>₹ 25,000</span> */}
+                  {/* </div> */}
                 </div>
 
                 {/* === Quantity Selector === */}
-                {/* <div className="mt-6 sm:mt-8"> */}
-                {/*   <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"> */}
-                {/*     <div className="flex-1 flex flex-col"> */}
-                {/*       <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="quantity-input"> */}
-                {/*         Quantity */}
-                {/*       </label> */}
-                {/*       <Input */}
-                {/*         id="quantity-input" */}
-                {/*         className="text-white border-0 font-extrabold bg-gray-800/60 rounded-lg px-3 py-2 text-sm sm:text-base" */}
-                {/*         type="number" */}
-                {/*         min={0} */}
-                {/*         max={Math.max(0, Math.floor(25000 / (currentPlayerPrice || 1)))} */}
-                {/*         value={quantity} */}
-                {/*         onChange={e => { */}
-                {/*           const val = e.target.value; */}
-                {/*           if (val === "") { */}
-                {/*             setQuantity(""); */}
-                {/*             return; */}
-                {/*           } */}
-                {/*           let numVal = Number(val); */}
-                {/*           if (isNaN(numVal)) numVal = 0; */}
-                {/*           const maxQty = Math.max(0, Math.floor(25000 / (currentPlayerPrice || 1))); */}
-                {/*           if (numVal < 0) numVal = 0; */}
-                {/*           if (numVal > maxQty) numVal = maxQty; */}
-                {/*           setQuantity(String(numVal)); */}
-                {/*         }} */}
-                {/*       /> */}
-                {/*     </div> */}
-                {/*     <div className="flex-1 flex flex-col lg:items-end"> */}
-                {/*       <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="price-input"> */}
-                {/*         Price */}
-                {/*         <span */}
-                {/*           className={`ml-2 text-xs mt-1 font-bold ${currentPlayerPrice * Number(quantity) > 25000 ? "text-red-500" : "text-gray-400" */}
-                {/*             }`} */}
-                {/*         > */}
-                {/*           (Max: ₹25000) */}
-                {/*         </span> */}
-                {/*       </label> */}
-                {/*       <Input */}
-                {/*         id="price-input" */}
-                {/*         className="text-white border-0 font-extrabold bg-transparent rounded-lg px-3 py-2 lg:text-end text-sm sm:text-base" */}
-                {/*         placeholder={`₹${currentPlayerPrice * Number(quantity)}`} */}
-                {/*         value={`₹${currentPlayerPrice * Number(quantity)}`} */}
-                {/*         disabled */}
-                {/*       /> */}
-                {/*     </div> */}
-                {/*   </div> */}
-                {/* </div> */}
+                <div className="mt-6 sm:mt-8">
+                  <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                    <div className="flex-1 flex flex-col">
+                      <label
+                        className="text-xs sm:text-sm font-bold text-gray-300 mb-1"
+                        htmlFor="quantity-input"
+                      >
+                        Quantity
+                      </label>
+                      <Input
+                        id="quantity-input"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        pattern="[0-9]*"
+                        value={quantity[0] === 0 ? "" : quantity[0]}
+                        className="text-white placeholder:text-gray-400 border-0 font-extrabold bg-gray-800/60 rounded-lg px-3 py-2 text-sm sm:text-base"
+                        onChange={(e) => {
+                          const val = e.target.value;
+
+                          // Only allow digits
+                          if (!/^\d*$/.test(val)) return;
+
+                          if (val === "") {
+                            setQuantity([0]);
+                            return;
+                          }
+
+                          let numVal = Number(val);
+                          const maxQty = Math.max(0, Math.floor(25000 / (currentPlayerPrice || 1)));
+                          if (numVal > maxQty) numVal = maxQty;
+
+                          setQuantity([numVal]);
+                        }}
+                        onWheel={(e) => e.currentTarget.blur()}
+                        onKeyDown={(e) => {
+                          if (["ArrowUp", "ArrowDown", "e", "+", "-"].includes(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        style={{ MozAppearance: "textfield" }}
+                      />
+                    </div>
+                    <div className="flex-1 flex flex-col lg:items-end">
+                      <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="price-input">
+                        Price
+                        <span
+                          className={`ml-2 text-xs mt-1 font-bold ${currentPlayerPrice * quantity[0] > 25000 ? "text-red-500" : "text-gray-400"
+                            }`}
+                        >
+                          (Max: ₹25000)
+                        </span>
+                      </label>
+                      <Input
+                        id="price-input"
+                        className="text-gray-300 border-0 font-extrabold bg-transparent rounded-lg px-3 py-2 lg:text-end text-sm sm:text-base"
+                        placeholder={`₹${currentPlayerPrice * quantity[0]}`}
+                        value={`₹${currentPlayerPrice * quantity[0]}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* === CTA Buttons === */}
                 <div className="mt-6 sm:mt-8 flex flex-col md:flex-row gap-3 sm:gap-4">
                   <button

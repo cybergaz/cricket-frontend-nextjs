@@ -129,7 +129,7 @@ async function verifyAadhar(formData: FormData) {
   // 3. Store only what's necessary in your database
 
   // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 2000))
+  await new Promise((resolve) => setTimeout(resolve, 1000))
 
   // Return success response
   return { success: true }
@@ -154,7 +154,7 @@ async function verifyPan(formData: FormData) {
   // 3. Store only what's necessary in your database
 
   // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 2000))
+  await new Promise((resolve) => setTimeout(resolve, 1000))
 
   // Return success response
   return { success: true }

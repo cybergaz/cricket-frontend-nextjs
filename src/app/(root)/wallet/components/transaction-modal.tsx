@@ -218,6 +218,13 @@ export function TransactionModal({ transaction, onClose }: TransactionModalProps
               >
                 {transaction.type === "Deposit" ? "+" : "-"}₹{formattedAmount}
               </p>
+              {transaction.type === "Withdrawal" && (
+                <div className="mt-2">
+                  <span className="block text-xs text-orange-400 bg-orange-900/30 rounded px-2 py-1">
+                    Withdrawn amount will be reflected in your bank account within 2 to 3 business days.
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Other details */}

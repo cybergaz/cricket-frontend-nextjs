@@ -60,7 +60,7 @@ export default function ContactForm() {
       setIsSubmitting(false);
       toast.success("Message sent successfully!");
       form.reset();
-    }, 1500);
+    }, 1000);
   }
 
   return (

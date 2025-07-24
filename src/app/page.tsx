@@ -53,15 +53,15 @@ export default function LandingPage() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-white/10 pt-2 px-2 backdrop-blur-md">
-        <div className="flex justify-between items-center py-1 px-4 sm:px-6 max-w-[90rem] mx-auto bg-white/5 backdrop-blur-md rounded-2xl">
+      <header className="sticky top-0 z-50 border-white/10 pt-3 px-2 backdrop-blur-md">
+        <div className="flex justify-between items-center py-2 px-4 sm:px-6 max-w-[90rem] mx-auto bg-white/5 backdrop-blur-md rounded-2xl">
           <Link href={"/"} >
             <Image
               src={"/images/logo.png"}
               alt="Logo"
               width={160}
               height={100}
-              className=" w-[8.8rem] rounded-full object-cover"
+              className=" w-[10rem] rounded-full object-cover"
             />
           </Link>
 
@@ -70,7 +70,7 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button className="hidden sm:flex group bg-purple-700 text-base border-b border-transparent hover:rounded-none hover:border-purple-500 justify-center items-center rounded-sm" asChild>
+            <Button className="hidden sm:flex group bg-accent-dark text-base border-b border-transparent hover:rounded-none hover:border-accent-dark justify-center items-center rounded-sm" asChild>
               <Link href={"/login"} className="flex justify-center items-center animate-bounce hover:animate-none">
                 <span>Trade Now</span>
                 <TrendingUp className="size-0 group-hover:size-5 transition-all duration-300" />
@@ -90,7 +90,7 @@ export default function LandingPage() {
           <div className="relative overflow-hidden">
             <div className="relative flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-8 bg-white/6 rounded-2xl p-4 sm:p-6 shadow-xl">
               <div className="flex items-center max-sm:flex-col justify-center max-sm:text-center gap-4 w-full sm:w-auto">
-                <div className="w-12 h-12 bg-gradient-to-r from-white/20 to-purple-500/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-r from-white/20 to-accent-dark/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
                   <ChartNoAxesCombined className="size-6" />
                 </div>
                 <div>
@@ -156,7 +156,7 @@ export default function LandingPage() {
                 icon: <Gift className="w-8 h-8" />,
                 title: "Portfolio Management",
                 desc: "Build your own custom portfolio of players and teams. Track your investments, returns, and performance stats like a true market trader.",
-                gradient: "from-purple-500/20 to-pink-500/20",
+                gradient: "from-accent-dark/20 to-pink-500/20",
               },
               {
                 icon: <LineChart className="w-8 h-8" />,
@@ -192,7 +192,7 @@ export default function LandingPage() {
                 icon: <Globe className="w-8 h-8" />,
                 title: "Available Anytime, Anywhere",
                 desc: "Join the action from your smartphone or tablet – any match, any format, any time.",
-                gradient: "from-purple-500/20 to-indigo-500/20",
+                gradient: "from-accent-dark/20 to-indigo-500/20",
               },
             ].map((feature, i) => (
               <div
@@ -236,7 +236,7 @@ export default function LandingPage() {
                 title: "Build Your Portfolio",
                 desc: "Assemble a portfolio of players that you think will do well over a period of time. Choose how many fantasy stocks to buy in each player.",
                 icon: <Users className="w-8 h-8" />,
-                color: "from-purple-500 to-pink-500",
+                color: "from-accent-dark to-pink-500",
                 step: "02",
               },
               {
@@ -313,7 +313,7 @@ export default function LandingPage() {
               {
                 title: "Account Notifications",
                 desc: "Real-time push and email notifications alert you of any transactions happening on your account. If it wasn't you, you'd know, fast.",
-                gradient: "from-purple-500/20 to-pink-500/20",
+                gradient: "from-accent-dark/20 to-pink-500/20",
               },
               {
                 title: "Payment Protection",
@@ -343,10 +343,10 @@ export default function LandingPage() {
         {/* App Promotion Section with enhanced design */}
         <section className="mt-24 mb-16">
           <div className="relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-900/30 via-blue-900/30 to-indigo-900/30 rounded-3xl"></div>
-            <div className="relative flex flex-col lg:flex-row items-center justify-between gap-12 bg-gradient-to-br from-slate-900 via-purple-900 to-blue-900 rounded-3xl p-8 lg:p-16 shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-r from-accent-dark/30 via-blue-900/30 to-indigo-900/30 rounded-3xl"></div>
+            <div className="relative flex flex-col lg:flex-row items-center justify-between gap-12 bg-gradient-to-br from-slate-900 via-accent-dark to-blue-900 rounded-3xl p-8 lg:p-16 shadow-2xl">
               <div className="flex-1 z-10 lg:w-[60%] w-full">
-                <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20 backdrop-blur-sm border border-purple-500/30 rounded-full px-4 py-2 mb-6">
+                <div className="inline-flex items-center gap-2 bg-gradient-to-r from-accent-dark/20 to-blue-500/20 backdrop-blur-sm border border-accent-dark/30 rounded-full px-4 py-2 mb-6">
                   <Sparkles className="w-4 h-4 text-purple-400" />
                   <span className="text-sm font-medium text-purple-200">Trade Now</span>
                 </div>
@@ -365,7 +365,7 @@ export default function LandingPage() {
 
               <div className="flex flex-col gap-10 justify-center items-center lg:items-end lg:justify-end lg:w-[40%] w-full">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 to-blue-500/30 rounded-3xl blur-2xl transform rotate-6"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-accent-dark/30 to-blue-500/30 rounded-3xl blur-2xl transform rotate-6"></div>
                   <Image
                     src="/images/logo.png"
                     alt="CricStock11 Mobile App"

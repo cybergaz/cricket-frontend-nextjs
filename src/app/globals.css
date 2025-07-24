@@ -11,9 +11,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-secondary: #081f58;
-  --color-accent: #AD45FF;
-  --color-accent-light: #5388c1;
-  --color-accent-dark: #466ab2;
+  --color-accent: #5394CF;
+  --color-accent-light: #5ba7de;
+  --color-accent-dark: #4678B8;
 
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);

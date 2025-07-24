@@ -26,7 +26,7 @@ const MobileNav = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="relative z-50"
       >
-        {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        {isOpen ? <X className="size-6" /> : <Menu className="size-6" />}
       </Button>
 
       {/* <div */}
@@ -38,32 +38,30 @@ const MobileNav = () => {
       {/* /> */}
 
       {/* Mobile Menu */}
-      <div
-        className={cn(
-          "fixed right-1 top-0 z-40 w-full max-w-sm animate-slide-left-md-no-fade shadow-lg transition-transform duration-300 ease-in-out",
-          isOpen ? "block" : "hidden"
-        )}
-      >
-        <div className="flex flex-col space-y-4 bg-background border-white/30 border-1 backdrop-blur-md mt-16 p-10 rounded-2xl">
-          {navlinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-lg font-medium hover:text-primary transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
+      {
+        isOpen &&
+        <div className={cn("fixed right-1 top-2 z-40 w-full max-w-sm animate-slide-up-sm shadow-lg",)} >
+          <div className="flex flex-col space-y-4 bg-background/30 border-white/20 border-1 backdrop-blur-md mt-16 p-10 rounded-2xl">
+            {navlinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-lg font-medium hover:text-primary"
+                onClick={() => setIsOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
 
-          <Button className="mt-5 group bg-purple-700 text-base border-b border-transparent hover:rounded-none hover:border-purple-500 justify-center items-center rounded-sm" asChild>
-            <Link href={"/login"} className="flex justify-center items-center">
-              <span>Trade Now</span>
-              <TrendingUp className="size-0 group-hover:size-5 transition-all duration-300" />
-            </Link>
-          </Button>
+            <Button className="mt-5 group bg-accent-dark text-base border-b border-transparent hover:rounded-none hover:border-purple-500 justify-center items-center rounded-sm" asChild>
+              <Link href={"/login"} className="flex justify-center items-center">
+                <span>Trade Now</span>
+                <TrendingUp className="size-0 group-hover:size-5 transition-all duration-300" />
+              </Link>
+            </Button>
+          </div>
         </div>
-      </div>
+      }
     </div>
   )
 }

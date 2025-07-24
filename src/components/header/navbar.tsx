@@ -59,7 +59,7 @@ const Navbar = () => {
                   href={link.href}
                   className={cn(
                     "text-gray-400 hover:text-white transition-colors duration-200",
-                    pathname === link.href && "text-purple-400"
+                    pathname === link.href && "text-accent-light"
                   )}
                 >
                   {link.title}

@@ -56,13 +56,17 @@ const PortfolioTradeModal: React.FC<PortfolioTradeModalProps> = ({ open, onClose
         <div className="mb-6">
           <label className="block text-gray-300 text-xl mb-2 font-bold">Quantity</label>
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             placeholder="0"
             value={quantity === 0 ? "" : quantity}
             onChange={(e) => {
               const val = e.target.value;
 
-              // Allow blank input
+              // Only allow digits
+              if (!/^\d*$/.test(val)) return;
+
               if (val === "") {
                 setQuantity(0);
                 return;
@@ -81,14 +85,16 @@ const PortfolioTradeModal: React.FC<PortfolioTradeModalProps> = ({ open, onClose
               setQuantity(numVal);
             }}
             className="w-full rounded-xl bg-gray-800 text-white px-6 py-4 text-3xl font-bold border-0 focus:outline-none focus:ring-0"
-            style={{
-              MozAppearance: "textfield", // Firefox: hide arrows
-            }}
-            onWheel={(e) => e.currentTarget.blur()} // block scroll-to-change
+            onWheel={(e) => e.currentTarget.blur()}
             onKeyDown={(e) => {
-              if (["ArrowUp", "ArrowDown"].includes(e.key)) {
-                e.preventDefault(); // block arrow keys
+              if (
+                ["e", "E", "+", "-", ".", "ArrowUp", "ArrowDown"].includes(e.key)
+              ) {
+                e.preventDefault(); // block unwanted characters
               }
+            }}
+            style={{
+              MozAppearance: "textfield",
             }}
           />
         </div>

@@ -93,6 +93,7 @@ export default function Portfolio() {
 
         // Player portfolios
         const playerResult = splitByStatus<PlayerPortfolio>(apiData.playerPortfolios || []);
+        console.log("playerResult -> ", playerResult)
         const playerPortfoliosWithPrice = await Promise.all(
           playerResult.active.map(async (p) => ({
             ...p,
@@ -129,7 +130,7 @@ export default function Portfolio() {
     };
 
     fetchPortfolios();
-    intervalId = setInterval(fetchPortfolios, 5000);
+    intervalId = setInterval(fetchPortfolios, 1000);
 
     return () => {
       if (intervalId) {
@@ -300,7 +301,7 @@ export default function Portfolio() {
       }
       toast.success(response?.message || "Buy successful");
       setTradeModalOpen(false);
-      setTimeout(() => window.location.reload(), 1000);
+      setTimeout(() => window.location.reload(), 500);
     } catch (e: any) {
       toast.error(e?.message || "Buy failed");
     } finally {
@@ -321,7 +322,7 @@ export default function Portfolio() {
       }
       toast.success(response?.message || "Sell successful");
       setTradeModalOpen(false);
-      setTimeout(() => window.location.reload(), 1000);
+      setTimeout(() => window.location.reload(), 500);
     } catch (e: any) {
       toast.error(e?.message || "Sell failed");
     } finally {

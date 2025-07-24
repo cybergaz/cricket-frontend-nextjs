@@ -90,7 +90,7 @@ export default function InviteFriendsComponent() {
       } catch (error) {
         console.error("Error while adding referral code:", error);
       }
-    }, 1000);
+    }, 100);
   };
 
   // Generate code on initial load
@@ -110,7 +110,7 @@ export default function InviteFriendsComponent() {
 
       setTimeout(() => {
         setCopied(false);
-      }, 1000);
+      }, 100);
     }
   };
 
