@@ -7,10 +7,10 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 
 const getToken = async () => {
-  console.log('Fetching token from cookies');
+  // console.log('Fetching token from cookies');
   const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
-  console.log('fetched token:', token);
+  // console.log('fetched token:', token);
   if (!token) throw new Error('Token not found in cookies');
   return token;
 };

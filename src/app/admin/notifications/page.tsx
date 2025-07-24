@@ -37,7 +37,7 @@ const NotificationPopup = ({
         if (!res.ok) throw new Error("API Error");
         const data = await res.json();
         // setMatches(data.data);
-        console.log("Fetched inactive users:", data);
+        // console.log("Fetched inactive users:", data);
       } catch (e) {
         console.error("Fetch error:", e);
       } finally {
@@ -143,7 +143,7 @@ export default function Notifications() {
 
   const handleSendNotification = (text: string, datetime: string, userGroup: string) => {
     // In a real app, you would send this to your backend
-    console.log("Sending notification:", { text, datetime, userGroup });
+    // console.log("Sending notification:", { text, datetime, userGroup });
 
     // For demo purposes, add to local state
     const date = new Date(datetime);

@@ -38,7 +38,7 @@ export function PanForm() {
     const validationErrors = validate();
     setErrors(validationErrors);
     toast.success("PAN Submitted!");
-    console.log("Submitted data:", formData);
+    // console.log("Submitted data:", formData);
   };
 
   return (

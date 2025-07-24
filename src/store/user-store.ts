@@ -18,19 +18,24 @@ import { User } from "@/types/user";
 type UserStoreType = {
   user: User | null;
   setUser: (user: User) => void;
+  hasHydrated: boolean;
+  setHasHydrated: (value: boolean) => void;
 };
 
-const useUserStore = create(
-  persist<UserStoreType>(
+export const useUserStore = create<UserStoreType>()(
+  persist(
     (set) => ({
       user: null,
       setUser: (user) => set({ user }),
+      hasHydrated: false,
+      setHasHydrated: (value) => set({ hasHydrated: value }),
     }),
     {
-      name: "user-storage", // key in localStorage
+      name: "user-storage",
+      onRehydrateStorage: () => (state) => {
+        // Use the `setHasHydrated` action we defined
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
-
-
-export { useUserStore };

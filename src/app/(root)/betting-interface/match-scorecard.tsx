@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { MatchInfoTicker } from "./components/match-info-ticker"
 import { cn } from "@/lib/utils"
 import sample from "./sample.json"
+import { Slider } from "@/components/ui/slider"
 
 export default function MatchScorecard({ matchData }: MatchScorecardProps) {
 
@@ -45,7 +46,8 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
   const [bettingNumber, setBettingNumber] = useState(0)
   const [currentPlayerPrice, setCurrentPlayerPrice] = useState(0)
   const [isBettingModalOpen, setIsBettingModalOpen] = useState(false)
-  const [quantity, setQuantity] = useState("");
+  const [quantity, setQuantity] = useState<number[]>([0])
+  // const [slider_quantity, setSliderQuantity] = useState<number[]>([1]);
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   const [bettingPlayer, setBettingPlayer] = useState<BettingPlayer | null>(null)
@@ -144,7 +146,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
 
   return (
     <div className="min-h-full bg-gradient-to-br from-sky-600 via-transparent to-transparent">
-      <div className="container max-w-[100rem] mx-auto px-3 py-4 space-y-4 overflow-x-hidden">
+      <div className="container max-w-[95rem] mx-auto px-3 py-4 space-y-4 overflow-x-hidden">
         {/* Status Note */}
         {data?.status_note && (
           <div className="absolute top-19 left-1/2 transform -translate-x-1/2 flex justify-center w-full px-4">
@@ -280,7 +282,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                   <TabsTrigger
                     key={value}
                     value={value}
-                    className={cn(`flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base lg:text-lg font-bold py-2 md:py-3 px-3 md:px-4 transition-colors duration-300 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 hover:bg-white/40 rounded-lg whitespace-nowrap flex-shrink-0 cursor-pointer `, value == "stradenow" && "border-green-400/30 bg-green-400/10 animate-pulse data-[state=active]:animate-none data-[state=active]:border-none")}
+                    className={cn(`flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base lg:text-lg font-bold py-2 md:py-3 px-3 md:px-4 transition-colors duration-300 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 hover:bg-white/40 rounded-lg whitespace-nowrap flex-shrink-0 cursor-pointer `, value == "tradenow" && "border-green-400/30 bg-green-400/10 animate-pulse data-[state=active]:animate-none data-[state=active]:border-none")}
                   >
                     <Icon className="hidden md:inline w-7 h-7 md:w-4 md:h-4 lg:w-5 lg:h-5" />
                     <span className="">{label}</span>
@@ -403,7 +405,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                           : batsmanNumber < 6
                                             ? 30
                                             : 25;
-                                      console.log(batsmanNumber)
+                                      // console.log(batsmanNumber)
                                       setCurrentPlayerPrice(
                                         current -
                                         Number(batsman.run0) * 0.5 +
@@ -420,9 +422,9 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                   Trade Now
                                 </button>
                               </span>
-                              <span className="text-gray-300">
-                                {batsmanNumber}
-                              </span>
+                              {/* <span className="text-gray-300"> */}
+                              {/*   {batsmanNumber} */}
+                              {/* </span> */}
                               <span className="text-gray-300">
                                 {batsman.runs}({batsman.balls_faced})
                               </span>
@@ -669,7 +671,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                     Number(batsman.sixes) * 4.5
                                   );
                                   setIsBettingModalOpen(true);
-                                  console.log(batsmanNumber)
+                                  // console.log(batsmanNumber)
                                 }
                               }}
                             >
@@ -975,23 +977,25 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
               <div className="w-full max-w-lg rounded-2xl bg-gradient-to-br from-gray-900/90 via-gray-900/90 to-gray-900 p-6 sm:p-6 md:p-8 shadow-2xl transition-all duration-300">
                 {/* === Header === */}
                 <div className="mb-4 sm:mb-6 flex items-center justify-between">
-                  <img
-                    src={
-                      data?.teama?.team_id == data?.innings?.[Number(data?.latest_inning_number) - 1]?.batting_team_id
-                        ? data?.teama?.logo_url
-                        : data?.teamb?.logo_url
-                    }
-                    alt={
-                      data?.teama?.team_id == data?.innings?.[Number(data?.latest_inning_number) - 1]?.batting_team_id
-                        ? data?.teama?.name
-                        : data?.teamb?.name
-                    }
-                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full shadow-xl"
-                  />
-                  <h2 className="text-xl sm:text-2xl md:text-4xl flex items-center gap-2 sm:gap-4 font-extrabold text-white text-center">
-                    {bettingPlayer.name}
-                    <span className="text-xs sm:text-sm text-gray-500 capitalize mx-5">{bettingPlayer.position}</span>
-                  </h2>
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={
+                        data?.teama?.team_id == data?.innings?.[Number(data?.latest_inning_number) - 1]?.batting_team_id
+                          ? data?.teama?.logo_url
+                          : data?.teamb?.logo_url
+                      }
+                      alt={
+                        data?.teama?.team_id == data?.innings?.[Number(data?.latest_inning_number) - 1]?.batting_team_id
+                          ? data?.teama?.name
+                          : data?.teamb?.name
+                      }
+                      className="size-14 rounded-full shadow-xl"
+                    />
+                    <h2 className="text-xl flex items-center justify-start  gap-2 sm:gap-4 font-extrabold text-white">
+                      {bettingPlayer.name}
+                      <span className="text-xs sm:text-sm text-gray-500 capitalize mx-5">{bettingPlayer.position}</span>
+                    </h2>
+                  </div>
                   <button
                     onClick={() => {
                       setIsBettingModalOpen(false)
@@ -1005,95 +1009,114 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                 </div>
 
                 {/* === Stats === */}
-                <div className="mt-4 sm:mt-6 grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-5 text-center">
-                  <div className="bg-gray-800/40 rounded-lg p-3 sm:p-6">
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{bettingPlayer.runs}</p>
-                    <p className="text-sm sm:text-base font-bold text-gray-400">Runs</p>
+                <div className="mt-4 sm:mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-center">
+                  <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
+                    <p className="text-sm text-gray-300">Runs</p>
+                    <p className="text-xl font-semibold  text-white">{bettingPlayer.runs}</p>
                   </div>
-                  <div className="bg-gray-800/40 font-bold rounded-lg p-3 sm:p-6">
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{bettingPlayer.balls_faced}</p>
-                    <p className="text-sm sm:text-base text-gray-400">Balls</p>
+                  <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
+                    <p className="text-sm text-gray-300">Balls</p>
+                    <p className="text-xl font-semibold  text-white">{bettingPlayer.balls_faced}</p>
                   </div>
-                  <div className="bg-gray-800/40 font-bold rounded-lg p-3 sm:p-6">
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
-                      {Number(bettingPlayer.strike_rate)}
-                    </p>
-                    <p className="text-sm sm:text-base text-gray-400">Strike Rate</p>
+                  <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
+                    <p className="text-sm text-gray-300">Strike Rate</p>
+                    <p className="text-xl font-semibold  text-white"> {Number(bettingPlayer.strike_rate)} </p>
                   </div>
-                  <div className="bg-gray-800/40 font-bold rounded-lg p-3 sm:p-6">
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{bettingPlayer.fours}</p>
-                    <p className="text-sm sm:text-base text-gray-400">Fours</p>
+                  <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
+                    <p className="text-sm text-gray-300">Fours</p>
+                    <p className="text-xl font-semibold  text-white">{bettingPlayer.fours}</p>
                   </div>
-                  <div className="bg-gray-800/40 font-bold rounded-lg p-3 sm:p-6">
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{bettingPlayer.sixes}</p>
-                    <p className="text-sm sm:text-base text-gray-400">Sixes</p>
+                  <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
+                    <p className="text-sm text-gray-300">Sixes</p>
+                    <p className="text-xl font-semibold  text-white">{bettingPlayer.sixes}</p>
                   </div>
-                  <div className="bg-gray-800/40 font-bold rounded-lg p-3 sm:p-6">
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
+                  <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
+                    <p className="text-sm text-gray-300">Dot %</p>
+                    <p className="text-xl font-semibold  text-white">
                       {bettingPlayer.balls_faced && Number(bettingPlayer.balls_faced) > 0
                         ? `${Math.round((Number(bettingPlayer.run0) / Number(bettingPlayer.balls_faced)) * 100)}`
                         : "N/A"}
                     </p>
-                    <p className="text-sm sm:text-base font-bold text-gray-400">Dot %</p>
                   </div>
-                  <div className="bg-gray-800/40 font-bold rounded-lg p-3 sm:p-6">
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">₹{basePrice}</p>
-                    <p className="text-sm sm:text-base text-gray-400">Base Price</p>
+                  <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
+                    <p className="text-sm text-gray-300">Base Price</p>
+                    <p className="text-xl font-semibold  text-white">₹{basePrice}</p>
                   </div>
-                  <div className="bg-gray-800/40 font-bold rounded-lg p-3 sm:p-6">
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">₹{currentPlayerPrice}</p>
-                    <p className="text-sm sm:text-base text-gray-400">Current Price</p>
+                  <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
+                    <p className="text-sm md:text-xs text-gray-300">Current Price</p>
+                    <p className="text-xl font-semibold  text-white">₹{currentPlayerPrice}</p>
                   </div>
                 </div>
+
+                <Slider
+                  value={quantity}
+                  onValueChange={setQuantity}
+                  defaultValue={[1]}
+                  max={Math.max(0, Math.floor(25000 / (currentPlayerPrice || 1)))}
+                  step={1}
+                  className="mt-10 mb-5 "
+                />
+                <div className="flex justify-between ">
+                  <div className="flex flex-col gap-1 items-start">
+                    <span className="text-xs font-semibold">Stock Quantity</span>
+                    <span>{quantity[0]} -{'>'} ₹ {currentPlayerPrice * quantity[0]}</span>
+
+                  </div>
+                  <div className="flex flex-col gap-1 items-end">
+                    <span className="text-xs font-semibold">Max Price</span>
+                    <span>₹ 25,000</span>
+                  </div>
+                </div>
+
                 {/* === Quantity Selector === */}
-                <div className="mt-6 sm:mt-8">
-                  <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-                    <div className="flex-1 flex flex-col">
-                      <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="quantity-input">
-                        Quantity
-                      </label>
-                      <Input
-                        id="quantity-input"
-                        className="text-white border-0 font-extrabold bg-gray-800/60 rounded-lg px-3 py-2 text-sm sm:text-base"
-                        type="number"
-                        min={0}
-                        max={Math.max(0, Math.floor(25000 / (currentPlayerPrice || 1)))}
-                        value={quantity}
-                        onChange={e => {
-                          const val = e.target.value;
-                          if (val === "") {
-                            setQuantity("");
-                            return;
-                          }
-                          let numVal = Number(val);
-                          if (isNaN(numVal)) numVal = 0;
-                          const maxQty = Math.max(0, Math.floor(25000 / (currentPlayerPrice || 1)));
-                          if (numVal < 0) numVal = 0;
-                          if (numVal > maxQty) numVal = maxQty;
-                          setQuantity(String(numVal));
-                        }}
-                      />
-                    </div>
-                    <div className="flex-1 flex flex-col lg:items-end">
-                      <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="price-input">
-                        Price
-                        <span
-                          className={`ml-2 text-xs mt-1 font-bold ${currentPlayerPrice * Number(quantity) > 25000 ? "text-red-500" : "text-gray-400"
-                            }`}
-                        >
-                          (Max: ₹25000)
-                        </span>
-                      </label>
-                      <Input
-                        id="price-input"
-                        className="text-white border-0 font-extrabold bg-transparent rounded-lg px-3 py-2 lg:text-end text-sm sm:text-base"
-                        placeholder={`₹${currentPlayerPrice * Number(quantity)}`}
-                        value={`₹${currentPlayerPrice * Number(quantity)}`}
-                        disabled
-                      />
-                    </div>
-                  </div>
-                </div>
+                {/* <div className="mt-6 sm:mt-8"> */}
+                {/*   <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"> */}
+                {/*     <div className="flex-1 flex flex-col"> */}
+                {/*       <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="quantity-input"> */}
+                {/*         Quantity */}
+                {/*       </label> */}
+                {/*       <Input */}
+                {/*         id="quantity-input" */}
+                {/*         className="text-white border-0 font-extrabold bg-gray-800/60 rounded-lg px-3 py-2 text-sm sm:text-base" */}
+                {/*         type="number" */}
+                {/*         min={0} */}
+                {/*         max={Math.max(0, Math.floor(25000 / (currentPlayerPrice || 1)))} */}
+                {/*         value={quantity} */}
+                {/*         onChange={e => { */}
+                {/*           const val = e.target.value; */}
+                {/*           if (val === "") { */}
+                {/*             setQuantity(""); */}
+                {/*             return; */}
+                {/*           } */}
+                {/*           let numVal = Number(val); */}
+                {/*           if (isNaN(numVal)) numVal = 0; */}
+                {/*           const maxQty = Math.max(0, Math.floor(25000 / (currentPlayerPrice || 1))); */}
+                {/*           if (numVal < 0) numVal = 0; */}
+                {/*           if (numVal > maxQty) numVal = maxQty; */}
+                {/*           setQuantity(String(numVal)); */}
+                {/*         }} */}
+                {/*       /> */}
+                {/*     </div> */}
+                {/*     <div className="flex-1 flex flex-col lg:items-end"> */}
+                {/*       <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="price-input"> */}
+                {/*         Price */}
+                {/*         <span */}
+                {/*           className={`ml-2 text-xs mt-1 font-bold ${currentPlayerPrice * Number(quantity) > 25000 ? "text-red-500" : "text-gray-400" */}
+                {/*             }`} */}
+                {/*         > */}
+                {/*           (Max: ₹25000) */}
+                {/*         </span> */}
+                {/*       </label> */}
+                {/*       <Input */}
+                {/*         id="price-input" */}
+                {/*         className="text-white border-0 font-extrabold bg-transparent rounded-lg px-3 py-2 lg:text-end text-sm sm:text-base" */}
+                {/*         placeholder={`₹${currentPlayerPrice * Number(quantity)}`} */}
+                {/*         value={`₹${currentPlayerPrice * Number(quantity)}`} */}
+                {/*         disabled */}
+                {/*       /> */}
+                {/*     </div> */}
+                {/*   </div> */}
+                {/* </div> */}
                 {/* === CTA Buttons === */}
                 <div className="mt-6 sm:mt-8 flex flex-col md:flex-row gap-3 sm:gap-4">
                   <button
@@ -1107,17 +1130,17 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                         toast.info("Match is not LIVE")
                         return
                       }
-                      if (!quantity || Number(quantity) === 0) {
+                      if (!quantity[0] || Number(quantity[0]) === 0) {
                         toast.info("Quantity must be greater than 0")
                         return
                       }
-                      const buyingResponse = await buyPlayer(bettingPlayer, String(currentPlayerPrice), String(quantity), match_id)
+                      const buyingResponse = await buyPlayer(bettingPlayer, String(currentPlayerPrice), String(quantity[0]), match_id)
                       toast.success(buyingResponse.message)
                       setIsBettingModalOpen(false);
                     }}
                   >
                     Buy Player
-                   </button>
+                  </button>
                   <button
                     className="flex-1 rounded-md sm:rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold py-2 text-sm sm:text-base md:text-lg shadow-md transition cursor-pointer"
                     onClick={async () => {
@@ -1132,7 +1155,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                       const sellingResponse = await sellPlayer(
                         bettingPlayer,
                         String(currentPlayerPrice),
-                        String(quantity),
+                        String(quantity[0]),
                         match_id
                       )
                       toast.success(sellingResponse.message)

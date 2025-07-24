@@ -19,7 +19,7 @@ interface AccordionSections {
 
 export default function UserDetails() {
   const userId = useSearchParams().get('id');
-  console.log("userId ->", userId);
+  // console.log("userId ->", userId);
 
   const [userDetails, setUserDetails] = useState<UserV2 | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +45,7 @@ export default function UserDetails() {
         if (!res.ok) throw new Error("Failed to fetch user details");
         const data = await res.json();
         setUserDetails(data.user);
-        console.log("user ->", data.user);
+        // console.log("user ->", data.user);
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
       } finally {

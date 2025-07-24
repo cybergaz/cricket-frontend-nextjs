@@ -221,8 +221,8 @@ export const setUserIntoGlobalStore = async (token: string) => {
         };
 
         useUserStore.getState().setUser(mappedUser);
-        console.log("✅ User set in store:", mappedUser);
-        console.log("User data set into global store:", useUserStore.getState());
+        // console.log("✅ User set in store:", mappedUser);
+        // console.log("User data set into global store:", useUserStore.getState());
       }
     }
   } catch (e) {
