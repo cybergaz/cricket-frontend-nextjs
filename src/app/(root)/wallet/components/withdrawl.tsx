@@ -24,7 +24,6 @@ export default function WithdrawModal() {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-
   const validate = () => {
     const newErrors: any = {};
     if (!formData.amount || isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) {
@@ -99,7 +98,7 @@ export default function WithdrawModal() {
         toast.success("Withdrawal Request Sent");
         setTimeout(() => {
           window.location.reload()
-        }, 500);
+        }, 1000);
         handleClose();
       } else {
         toast.info(data?.message || "Failed to send withdrawal request");
@@ -144,7 +143,7 @@ export default function WithdrawModal() {
                   value={formData.amount}
                   onChange={handleChange}
                   required
-                  className="w-full border-1 border-gray-500/30 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="w-full border-1 border-gray-600/60 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
                   placeholder="Enter Amount"
                 />
                 {errors.amount && <div className="text-red-500 text-sm mt-1">{errors.amount}</div>}
@@ -157,7 +156,7 @@ export default function WithdrawModal() {
                   value={formData.accountName}
                   onChange={handleChange}
                   required
-                  className="w-full border-1 border-gray-500/30 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="w-full border-1 border-gray-600/60 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
                   placeholder="Account Holder Name"
                 />
                 {errors.accountName && <div className="text-red-500 text-sm mt-1">{errors.accountName}</div>}
@@ -170,7 +169,7 @@ export default function WithdrawModal() {
                   value={formData.accountNumber}
                   onChange={handleChange}
                   required
-                  className="w-full border-1 border-gray-500/30 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="w-full border-1 border-gray-600/60 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
                   placeholder="Account Number"
                 />
                 {errors.accountNumber && <div className="text-red-500 text-sm mt-1">{errors.accountNumber}</div>}
@@ -183,7 +182,7 @@ export default function WithdrawModal() {
                   value={formData.ifsc}
                   onChange={handleChange}
                   required
-                  className="w-full border-1 border-gray-500/30 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="w-full border-1 border-gray-600/60 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
                   placeholder="IFSC Code"
                 />
                 {errors.ifsc && <div className="text-red-500 text-sm mt-1">{errors.ifsc}</div>}
@@ -196,7 +195,7 @@ export default function WithdrawModal() {
                   value={formData.bankName}
                   onChange={handleChange}
                   required
-                  className="w-full border-1 border-gray-500/30 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="w-full border-1 border-gray-600/60 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
                   placeholder="Bank Name"
                 />
                 {errors.bankName && <div className="text-red-500 text-sm mt-1">{errors.bankName}</div>}
@@ -209,7 +208,7 @@ export default function WithdrawModal() {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="w-full border-1 border-gray-500/30 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="w-full border-1 border-gray-600/60 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
                   placeholder="Email Address"
                 />
                 {errors.email && <div className="text-red-500 text-sm mt-1">{errors.email}</div>}
@@ -222,7 +221,7 @@ export default function WithdrawModal() {
                   value={formData.phone}
                   onChange={handleChange}
                   required
-                  className="w-full border-1 border-gray-500/30 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="w-full border-1 border-gray-600/60 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
                   placeholder="Phone Number"
                   maxLength={10}
                 />
@@ -238,7 +237,7 @@ export default function WithdrawModal() {
                   onChange={handleChange}
                   required
                   maxLength={12}
-                  className="w-full border-1 border-gray-500/30 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="w-full border-1 border-gray-600/60 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
                   placeholder="Aadhar Card Number"
                 />
                 {errors.aadhar && <div className="text-red-500 text-sm mt-1">{errors.aadhar}</div>}
@@ -253,7 +252,7 @@ export default function WithdrawModal() {
                   onChange={handleChange}
                   required
                   maxLength={10}
-                  className="w-full border-1 border-gray-500/30 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="w-full border-1 border-gray-600/60 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30"
                   placeholder="PAN Card Number"
                 />
                 {errors.pan && <div className="text-red-500 text-sm mt-1">{errors.pan}</div>}
@@ -279,5 +278,5 @@ export default function WithdrawModal() {
         </div>
       )}
     </div>
-  );
+  )
 }
