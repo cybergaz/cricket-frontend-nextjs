@@ -33,28 +33,50 @@ const PortfolioTradeModal: React.FC<PortfolioTradeModalProps> = ({ open, onClose
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={handleBackdropClick}>
-      <div className="bg-gray-900 rounded-4xl  shadow-lg p-8 w-full max-w-md relative" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-3 right-3 text-gray-400 hover:text-white text-xl cursor-pointer mt-1 mr-1"><X /></button>
-        <div className="mb-4">
-          <div className="text-4xl font-extrabold text-white">{portfolio.playerName}</div>
-          <div className="text-lg text-gray-400 mb-2">{portfolio.team}</div>
-          <div className="flex gap-6 mb-2">
-            <div>
-              <div className="text-base text-gray-400">Buy Price</div>
-              <div className="font-bold text-2xl text-white">₹{buyPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</div>
+      <div className="bg-gray-900 rounded-3xl shadow-lg p-5 w-full max-w-sm relative" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-white text-lg cursor-pointer"><X /></button>
+        <div className="mb-3">
+          <div className="text-2xl font-bold text-white">{portfolio.playerName}</div>
+          <div className="text-sm text-gray-400 mb-2">{portfolio.team}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-1">
+            <div className="bg-gray-800 rounded-lg p-2 flex flex-col items-center">
+              <span className="text-xs text-gray-400 mb-1">Buy</span>
+              <span className="font-bold text-lg text-white">
+                ₹{buyPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+              </span>
             </div>
-            <div>
-              <div className="text-base text-gray-400">Current Price</div>
-              <div className={`font-bold text-2xl ${currentPrice > buyPrice ? "text-emerald-400" : currentPrice < buyPrice ? "text-red-500" : "text-gray-300"}`}>₹{currentPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</div>
+            <div className="bg-gray-800 rounded-lg p-2 flex flex-col items-center">
+              <span className="text-xs text-gray-400 mb-1">Current</span>
+              <span
+                className={`font-bold text-lg ${currentPrice > buyPrice
+                  ? "text-emerald-400"
+                  : currentPrice < buyPrice
+                    ? "text-red-500"
+                    : "text-gray-300"
+                  }`}
+              >
+                ₹{currentPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+              </span>
             </div>
-            <div>
-              <div className="text-base text-gray-400">P&L</div>
-              <div className={`font-bold text-2xl ${profitLossClass}`}>{profitLoss >= 0 ? "+" : "-"}₹{Math.abs(profitLoss).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</div>
+            <div className="bg-gray-800 rounded-lg p-2 flex flex-col items-center">
+              <span className="text-xs text-gray-400 mb-1 md:hidden">Profit &amp; Loss</span>
+              <span className="text-xs text-gray-400 mb-1 hidden md:inline-block">P&amp;L</span>
+              <span className={`font-bold text-lg ${profitLossClass}`}>
+                {profitLoss >= 0 ? "+" : "-"}₹
+                {Math.abs(profitLoss).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-2 flex flex-col items-center">
+              <span className="text-xs text-gray-400 mb-1 md:hidden">Current Quantity</span>
+              <span className="text-xs text-gray-400 mb-1 hidden md:inline-block">Qty</span>
+              <span className="font-bold text-lg text-white">
+                {portfolio.quantity}
+              </span>
             </div>
           </div>
         </div>
-        <div className="mb-6">
-          <label className="block text-gray-300 text-xl mb-2 font-bold">Quantity</label>
+        <div className="mb-4">
+          <label className="block text-gray-300 text-base mb-1 font-bold">Qty</label>
           <input
             type="text"
             inputMode="numeric"
@@ -63,34 +85,25 @@ const PortfolioTradeModal: React.FC<PortfolioTradeModalProps> = ({ open, onClose
             value={quantity === 0 ? "" : quantity}
             onChange={(e) => {
               const val = e.target.value;
-
-              // Only allow digits
               if (!/^\d*$/.test(val)) return;
-
               if (val === "") {
                 setQuantity(0);
                 return;
               }
-
               let numVal = Number(val);
-
-              // Clamp to minimum 1
               if (numVal < 1) numVal = 1;
-
-              // Clamp to max allowed
               if (numVal * currentPrice > MAX_TOTAL_VALUE) {
                 numVal = Math.floor(MAX_TOTAL_VALUE / currentPrice);
               }
-
               setQuantity(numVal);
             }}
-            className="w-full rounded-xl bg-gray-800 text-white px-6 py-4 text-3xl font-bold border-0 focus:outline-none focus:ring-0"
+            className="w-full rounded-lg bg-gray-800 text-white px-4 py-2 text-xl font-bold border-0 focus:outline-none focus:ring-0"
             onWheel={(e) => e.currentTarget.blur()}
             onKeyDown={(e) => {
               if (
                 ["e", "E", "+", "-", ".", "ArrowUp", "ArrowDown"].includes(e.key)
               ) {
-                e.preventDefault(); // block unwanted characters
+                e.preventDefault();
               }
             }}
             style={{
@@ -98,21 +111,23 @@ const PortfolioTradeModal: React.FC<PortfolioTradeModalProps> = ({ open, onClose
             }}
           />
         </div>
-        {/* Total Value Field */}
-        <div className="mb-6 flex items-center justify-between">
-          <span className="text-gray-300 text-xl font-semibold">Total Value</span>
-          <span className="text-2xl font-bold text-white">₹{(quantity * currentPrice).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+        <div className="mb-3 flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+          <span className="text-gray-300 text-base font-semibold">Total</span>
+          <span className="text-lg font-bold text-white">₹{(quantity * currentPrice).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
         </div>
         {quantity * currentPrice > MAX_TOTAL_VALUE && (
-          <div className="mb-4 text-red-500 text-lg font-semibold">Total value cannot exceed ₹{MAX_TOTAL_VALUE.toLocaleString("en-IN")}</div>
+          <div className="mb-2 text-red-500 text-sm font-semibold">Total value cannot exceed ₹{MAX_TOTAL_VALUE.toLocaleString("en-IN")}</div>
         )}
-        <div className="flex gap-6">
+        <div className="flex gap-3">
           <button
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 text-2xl transition rounded-2xl cursor-pointer"
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 text-lg transition rounded-lg cursor-pointer"
             onClick={() => {
               if (quantity == 0) {
                 toast("Select a Quantity")
                 return
+              }
+              if (typeof onClose === "function") {
+                onClose();
               }
               onBuy(quantity)
             }}
@@ -121,7 +136,7 @@ const PortfolioTradeModal: React.FC<PortfolioTradeModalProps> = ({ open, onClose
             Buy
           </button>
           <button
-            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-4 text-2xl rounded-2xl transition cursor-pointer"
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 text-lg rounded-lg transition cursor-pointer"
             onClick={() => {
               if (quantity == 0) {
                 toast("Select a Quantity")

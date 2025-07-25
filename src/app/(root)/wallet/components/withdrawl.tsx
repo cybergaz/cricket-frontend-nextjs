@@ -83,7 +83,7 @@ export default function WithdrawModal() {
       };
       const token = getTokenFromCookies();
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/email/withdrawl-request`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/email/withdrawal-request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

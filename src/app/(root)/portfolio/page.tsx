@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Users, Trophy, Landmark, DollarSign, TrendingDown, Dot, IndianRupee } from "lucide-react";
+import { TrendingUp, Users, Trophy, Landmark, TrendingDown, Dot, IndianRupee } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PlayerPortfolio, TeamPortfolio } from "./types";
@@ -35,6 +35,9 @@ function formatTimestamp(ts: Date | string | undefined): string {
 export default function Portfolio() {
   const [loading, setLoading] = useState(true);
   const [playerPortfolios, setPlayerPortfolios] = useState<PlayerPortfolio[]>([]);
+  // as key clue pair for player idf and title
+  // We'll create an object mapping player IDs to their player names (titles)
+  const [matchIdToTitle, setMatchIdToTitle] = useState<Record<string, string[]>>({});
   const [teamPortfolios, setTeamPortfolios] = useState<TeamPortfolio[]>([]);
   const [playerPortfoliosHistorys, setPlayerPortfoliosHistorys] = useState<PlayerPortfolio[]>([]);
   const [teamPortfoliosHistorys, setTeamPortfoliosHistorys] = useState<TeamPortfolio[]>([]);
@@ -93,7 +96,7 @@ export default function Portfolio() {
 
         // Player portfolios
         const playerResult = splitByStatus<PlayerPortfolio>(apiData.playerPortfolios || []);
-        console.log("playerResult -> ", playerResult)
+        // console.log("playerResult -> ", playerResult)
         const playerPortfoliosWithPrice = await Promise.all(
           playerResult.active.map(async (p) => ({
             ...p,
@@ -112,16 +115,19 @@ export default function Portfolio() {
         const allPortfolios = [...(apiData.playerPortfolios || []), ...(apiData.teamPortfolios || [])];
         const uniqueMatchIds = Array.from(new Set(allPortfolios.map((p: any) => p.matchId)));
         const matchDataObj: Record<string, CricketMatchData> = {};
+        const matchIdToTitleObj: Record<string, string[]> = {};
         await Promise.all(uniqueMatchIds.map(async (matchId: string) => {
           try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`);
             const apiData = await res.json();
+            matchIdToTitleObj[String(apiData.data.match_id)] = [apiData.data.short_title, apiData.data.title]
             if (apiData.data) {
               matchDataObj[matchId] = apiData.data;
             }
           } catch { }
         }));
         setMatchDataById(matchDataObj);
+        setMatchIdToTitle(matchIdToTitleObj);
         setLoading(false)
 
       } catch (e: any) {
@@ -130,7 +136,7 @@ export default function Portfolio() {
     };
 
     fetchPortfolios();
-    intervalId = setInterval(fetchPortfolios, 1000);
+    intervalId = setInterval(fetchPortfolios, 3 * 1000);
 
     return () => {
       if (intervalId) {
@@ -190,11 +196,15 @@ export default function Portfolio() {
       const inningPlayer = currentInning.batsmen.find(
         (batsman: Batsman) => batsman.batsman_id === portfolioPlayer.playerId
       ) as Batsman
-      const basePrice = batsmanNumber < 3
+      // console.log(batsmanNumber)
+      const basePrice = batsmanNumber <= 3
         ? 35
         : batsmanNumber < 6
           ? 30
           : 25
+      console.log(batsmanNumber)
+      console.log("\n")
+      console.log(basePrice)
       return String(basePrice
         - (Number(inningPlayer.run0) * 0.5)
         + (Number(inningPlayer.run1) * 0.75)
@@ -301,7 +311,6 @@ export default function Portfolio() {
       }
       toast.success(response?.message || "Buy successful");
       setTradeModalOpen(false);
-      setTimeout(() => window.location.reload(), 500);
     } catch (e: any) {
       toast.error(e?.message || "Buy failed");
     } finally {
@@ -322,7 +331,6 @@ export default function Portfolio() {
       }
       toast.success(response?.message || "Sell successful");
       setTradeModalOpen(false);
-      setTimeout(() => window.location.reload(), 500);
     } catch (e: any) {
       toast.error(e?.message || "Sell failed");
     } finally {
@@ -364,50 +372,51 @@ export default function Portfolio() {
           </div>
 
           {/* Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card className="border-none shadow-lg transition-all duration-200 bg-gradient-to-br from-purple-600 via-transparent to-transparent rounded-tl-[100px]">
-              <CardContent className="p-7 pl-10 flex flex-col gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <Card className="border-none shadow-lg transition-all duration-200 bg-gradient-to-br from-sky-600 via-transparent to-transparent rounded-tl-[100px]">
+              <CardContent className="px-15 sm:p-7 sm:pl-10 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-purple-400 text-lg font-bold tracking-wide mb-1">
+                    <p className="text-sky-400 text-base sm:text-lg font-bold tracking-wide mb-1">
                       Available Balance
                     </p>
-                    <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1">
+                    <h3 className="text-2xl sm:text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1">
                       {formatINR(Number(value))}
                     </h3>
                   </div>
-                  <div className="flex items-center justify-center bg-purple-500/20 p-4 rounded-full shadow-inner">
-                    <Landmark className="h-8 w-8 text-purple-400 drop-shadow" />
+                  <div className="flex items-center justify-center bg-sky-500/20 p-3 sm:p-4 rounded-full shadow-inner">
+                    <Landmark className="h-6 w-6 sm:h-8 sm:w-8 text-sky-400 drop-shadow" />
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-none shadow-lg transition-all duration-200 bg-gradient-to-br from-sky-600 via-transparent to-transparent rounded-tl-[100px]">
-              <CardContent className="p-7 pl-10 flex flex-col gap-2">
+            <Card className="border-none shadow-lg transition-all duration-200 bg-gradient-to-br from-yellow-500 via-transparent to-transparent rounded-tl-[100px]">
+              <CardContent className="px-15 sm:p-7 sm:pl-10 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sky-400 text-lg font-bold tracking-wide mb-1">
+                    <p className="text-yellow-500 text-base sm:text-lg font-bold tracking-wide mb-1">
                       Active Holdings
                     </p>
                     {playerPortfolios && teamPortfolios && (playerPortfolios.length + teamPortfolios.length > 0) ? (
-                      <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight">
+                      <h3 className="text-2xl sm:text-4xl font-extrabold text-white drop-shadow-sm tracking-tight">
                         {playerPortfolios.length + teamPortfolios.length}
                       </h3>
                     ) : (
-                      <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight">
+                      <h3 className="text-2xl sm:text-4xl font-extrabold text-white drop-shadow-sm tracking-tight">
                         0
-                      </h3>)}
+                      </h3>
+                    )}
                   </div>
-                  <div className="flex items-center justify-center bg-cyan-500/20 p-4 rounded-full shadow-inner">
-                    <Users className="h-8 w-8 text-cyan-400 drop-shadow" />
+                  <div className="flex items-center justify-center bg-yellow-500/20 p-3 sm:p-4 rounded-full shadow-inner">
+                    <Users className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-500 drop-shadow" />
                   </div>
                 </div>
                 {playerPortfolios && teamPortfolios && (playerPortfolios.length + teamPortfolios.length > 0) && (
-                  <div className="mt-3 flex items-center gap-2">
-                    <span className="inline-block bg-cyan-600/20 text-cyan-300 text-xs px-3 py-1 rounded-full font-semibold tracking-wide">
+                  <div className="mt-2 sm:mt-3 flex items-center gap-2">
+                    <span className="inline-block bg-yellow-500/20 text-yellow-500 text-xs px-2 sm:px-3 py-1 rounded-full font-semibold tracking-wide">
                       {playerPortfolios.length} Player{playerPortfolios.length !== 1 && "s"}
                     </span>
-                    <span className="inline-block bg-cyan-600/20 text-cyan-300 text-xs px-3 py-1 rounded-full font-semibold tracking-wide">
+                    <span className="inline-block bg-yellow-500/20 text-yellow-500 text-xs px-2 sm:px-3 py-1 rounded-full font-semibold tracking-wide">
                       {teamPortfolios.length} Team{teamPortfolios.length !== 1 && "s"}
                     </span>
                   </div>
@@ -438,7 +447,6 @@ export default function Portfolio() {
                 return ac + boughtPrice
               }, 0);
 
-
               const hasCurrentHoldings = playerPortfolios.length > 0 || teamPortfolios.length > 0;
               let profitNumberRaw = hasCurrentHoldings ? currentHoldingsProfit : profit;
               const profitNumber = typeof profitNumberRaw === "string" ? parseFloat(profitNumberRaw) : profitNumberRaw;
@@ -463,7 +471,7 @@ export default function Portfolio() {
                     currentHoldingsAmount === 0
                       ? 0
                       : (currentHoldingsProfit / currentHoldingsAmount) * 100
-                  ).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%"
+                  ).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
               return (
                 <>
                   <Card
@@ -476,12 +484,12 @@ export default function Portfolio() {
                           : "from-emerald-600"
                       } via-transparent to-transparent`}
                   >
-                    <CardContent className="p-7 pl-10 flex flex-col gap-2 relative overflow-hidden">
+                    <CardContent className="px-15 sm:p-7 sm:pl-10 flex flex-col gap-2 relative overflow-hidden">
                       <div className="relative z-10">
                         <div className="flex items-center justify-between">
                           <div>
                             <p
-                              className={`text-lg font-bold tracking-wide mb-1 ${profitPending
+                              className={`text-base sm:text-lg font-bold tracking-wide mb-1 ${profitPending
                                 ? "text-gray-400"
                                 : profitNumber < 0
                                   ? "text-red-700"
@@ -497,7 +505,7 @@ export default function Portfolio() {
                             </p>
                             {profitPending ?
                               <div
-                                className="text-4xl font-extrabold drop-shadow-sm tracking-tight mt-1 text-gray-400"
+                                className="text-2xl sm:text-4xl font-extrabold drop-shadow-sm tracking-tight mt-1 text-gray-400"
                               >
                                 Calculating...
                               </div>
@@ -505,7 +513,7 @@ export default function Portfolio() {
                               <AnimatedNumber value={profitNumber}>
                                 {(val, { isChanged }) => (
                                   <span
-                                    className={`text-4xl font-extrabold drop-shadow-sm tracking-tight mt-1 ${profitPending
+                                    className={`text-2xl sm:text-4xl font-extrabold drop-shadow-sm tracking-tight mt-1 ${profitPending
                                       ? "text-gray-400"
                                       : profitNumber < 0
                                         ? "text-white"
@@ -519,7 +527,7 @@ export default function Portfolio() {
                                 )}
                               </AnimatedNumber>}
                             <p
-                              className={`text-sm flex items-center mt-1 ${profitPending
+                              className={`text-xs sm:text-sm flex items-center mt-1 ${profitPending
                                 ? "text-gray-400"
                                 : percentColor
                                 }`}
@@ -527,7 +535,7 @@ export default function Portfolio() {
                               {!profitPending && icon}
                               {profitPending ? <span className="ml-2 text-xs font-bold">Calculating...</span>
                                 :
-                                <span className="ml-2 text-sm font-bold">
+                                <span className="ml-2 text-xs sm:text-sm font-bold">
                                   {profitPercentage}
                                 </span>
                               }
@@ -535,7 +543,7 @@ export default function Portfolio() {
                           </div>
 
                           <div
-                            className={`flex items-center justify-center p-4 rounded-full shadow-inner ${profitPending
+                            className={`flex items-center justify-center p-3 sm:p-4 rounded-full shadow-inner ${profitPending
                               ? "bg-transparent"
                               : (typeof profitNumber !== "undefined" && profitNumber !== null
                                 ? profitNumber
@@ -550,14 +558,14 @@ export default function Portfolio() {
                           >
                             {profitPending ?
                               <div className="relative">
-                                <svg className="absolute -top-5 -right-1 animate-spin h-12 w-12 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <svg className="absolute -top-5 -right-1 animate-spin h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                                 </svg>
                               </div>
                               :
                               <IndianRupee
-                                className={`h-8 w-8 drop-shadow ${profitPending
+                                className={`h-6 w-6 sm:h-8 sm:w-8 drop-shadow ${profitPending
                                   ? "text-gray-400"
                                   : (typeof profitNumber !== "undefined" && profitNumber !== null
                                     ? profitNumber
@@ -580,46 +588,67 @@ export default function Portfolio() {
               )
             })()}
             <Card
-              className={`border-none shadow-lg transition-all duration-200 bg-gradient-to-br rounded-tl-[100px] ${Number(todaysProfit) < 0
-                ? "from-red-700 via-transparent to-transparent"
-                : "from-emerald-700 via-transparent to-transparent"
-                }`}
+              className={`border-none shadow-lg transition-all duration-200 bg-gradient-to-br rounded-tl-[100px] ${(() => {
+                const totalHistoryProfit =
+                  playerPortfoliosHistorys.reduce((acc, p) => acc + parseFloat(p.profit || "0"), 0) +
+                  teamPortfoliosHistorys.reduce((acc, t) => acc + parseFloat(t.profit || "0"), 0);
+                return totalHistoryProfit < 0
+                  ? "from-red-700 via-transparent to-transparent"
+                  : "from-emerald-700 via-transparent to-transparent";
+              })()}`}
             >
-              <CardContent className="p-7 pl-10 flex flex-col gap-2">
+              <CardContent className="px-15 sm:p-7 sm:pl-10 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <p
-                      className={`text-lg font-bold tracking-wide mb-1 ${Number(todaysProfit) < 0
-                        ? "text-red-500"
-                        : "text-emerald-600"
-                        }`}
+                      className={`text-base sm:text-lg font-bold tracking-wide mb-1 ${(() => {
+                        const totalHistoryProfit =
+                          playerPortfoliosHistorys.reduce((acc, p) => acc + parseFloat(p.profit || "0"), 0) +
+                          teamPortfoliosHistorys.reduce((acc, t) => acc + parseFloat(t.profit || "0"), 0);
+                        return totalHistoryProfit < 0 ? "text-red-500" : "text-emerald-400";
+                      })()}`}
                     >
                       Total P&L
                     </p>
-                    <h3 className="text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1 ">
+                    <h3 className="text-2xl sm:text-4xl font-extrabold text-white drop-shadow-sm tracking-tight mt-1 ">
                       <span className="flex flex-col">
-                        {formatINR(Number(todaysProfit))}
-                        <span className={`ml-2 text-sm font-bold flex items-center gap-2 ${Number(todaysProfit) > 0
-                          ? "text-emerald-400"
-                          : Number(todaysProfit) < 0
-                            ? "text-red-500"
-                            : "text-gray-400"
-                          }`}>
+                        {(() => {
+                          const totalHistoryProfit =
+                            playerPortfoliosHistorys.reduce((acc, p) => acc + parseFloat(p.profit || "0"), 0) +
+                            teamPortfoliosHistorys.reduce((acc, t) => acc + parseFloat(t.profit || "0"), 0);
+                          return formatINR(totalHistoryProfit);
+                        })()}
+                        <span className={`ml-2 text-xs sm:text-sm font-bold flex items-center gap-2 ${(() => {
+                          const totalHistoryProfit =
+                            playerPortfoliosHistorys.reduce((acc, p) => acc + parseFloat(p.profit || "0"), 0) +
+                            teamPortfoliosHistorys.reduce((acc, t) => acc + parseFloat(t.profit || "0"), 0);
+                          return totalHistoryProfit > 0
+                            ? "text-emerald-400"
+                            : totalHistoryProfit < 0
+                              ? "text-red-500"
+                              : "text-gray-400";
+                        })()}`}>
                           {(() => {
+                            // Calculate total profit throughout the history (player or team)
+                            const totalHistoryProfit =
+                              playerPortfoliosHistorys.reduce((acc, p) => acc + parseFloat(p.profit || "0"), 0) +
+                              teamPortfoliosHistorys.reduce((acc, t) => acc + parseFloat(t.profit || "0"), 0);
+
+                            // Calculate total spending throughout the history (player or team)
+                            const totalHistorySpending =
+                              playerPortfoliosHistorys.reduce((acc, p) => acc + (parseFloat(p.boughtPrice || "0") * parseFloat(p.quantity || "0")), 0) +
+                              teamPortfoliosHistorys.reduce((acc, t) => acc + (parseFloat(t.boughtPrice || "0") * parseFloat(t.quantity || "0")), 0);
                             const totalProfitPercentage = value === 0
                               ? "0.00%"
-                              : (
-                                (Number(todaysProfit) / value) * 100
-                              ).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
-                            // Show TrendingUp if profit > 0, TrendingDown if < 0, Dot if 0
-                            if (Number(todaysProfit) > 0) {
+                              : ((totalHistoryProfit / totalHistorySpending) * 100).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
+                            if (totalHistoryProfit > 0) {
                               return (
                                 <>
                                   <TrendingUp className="h-4 w-4 ml-1 text-emerald-400" />
                                   {totalProfitPercentage}
                                 </>
                               );
-                            } else if (Number(todaysProfit) < 0) {
+                            } else if (totalHistoryProfit < 0) {
                               return (
                                 <>
                                   <TrendingDown className="h-4 w-4 ml-1 text-red-500" />
@@ -640,16 +669,20 @@ export default function Portfolio() {
                     </h3>
                   </div>
                   <div
-                    className={`flex items-center justify-center p-4 rounded-full shadow-inner ${Number(todaysProfit) < 0
-                      ? "bg-red-700/20"
-                      : "bg-emerald-600/20"
-                      }`}
+                    className={`flex items-center justify-center p-3 sm:p-4 rounded-full shadow-inner ${(() => {
+                      const totalHistoryProfit =
+                        playerPortfoliosHistorys.reduce((acc, p) => acc + parseFloat(p.profit || "0"), 0) +
+                        teamPortfoliosHistorys.reduce((acc, t) => acc + parseFloat(t.profit || "0"), 0);
+                      return totalHistoryProfit < 0 ? "bg-red-700/20" : "bg-emerald-600/20";
+                    })()}`}
                   >
-                    <Trophy
-                      className={`h-8 w-8 drop-shadow ${Number(todaysProfit) < 0
-                        ? "text-red-400"
-                        : "text-emerald-400"
-                        }`}
+                    <IndianRupee
+                      className={`h-6 w-6 sm:h-8 sm:w-8 drop-shadow ${(() => {
+                        const totalHistoryProfit =
+                          playerPortfoliosHistorys.reduce((acc, p) => acc + parseFloat(p.profit || "0"), 0) +
+                          teamPortfoliosHistorys.reduce((acc, t) => acc + parseFloat(t.profit || "0"), 0);
+                        return totalHistoryProfit < 0 ? "text-red-400" : "text-emerald-400";
+                      })()}`}
                     />
                   </div>
                 </div>
@@ -663,13 +696,13 @@ export default function Portfolio() {
               <TabsList className="flex w-full sm:w-auto">
                 <TabsTrigger
                   value="player"
-                  className="flex-1 sm:flex-none p-3 sm:p-4 h-10 w-full sm:w-48 text-base sm:text-lg bg-gray-900 data-[state=active]:bg-purple-500 text-white transition-colors ease-in-out duration-600 rounded-bl-full rounded-tl-full rounded-br-none rounded-tr-none cursor-pointer"
+                  className="flex-1 sm:flex-none p-3 sm:p-4 h-10 w-full sm:w-48 text-base sm:text-lg bg-gray-900 data-[state=active]:bg-sky-500 text-white transition-colors ease-in-out duration-600 rounded-bl-full rounded-tl-full rounded-br-none rounded-tr-none cursor-pointer"
                 >
                   Player Portfolio
                 </TabsTrigger>
                 <TabsTrigger
                   value="team"
-                  className="flex-1 sm:flex-none p-3 sm:p-4 h-10 w-full sm:w-48 text-base sm:text-lg bg-gray-900 data-[state=active]:bg-purple-500 text-white transition-colors ease-in-out duration-600 rounded-br-full rounded-tr-full rounded-bl-none rounded-tl-none cursor-pointer"
+                  className="flex-1 sm:flex-none p-3 sm:p-4 h-10 w-full sm:w-48 text-base sm:text-lg bg-gray-900 data-[state=active]:bg-sky-500 text-white transition-colors ease-in-out duration-600 rounded-br-full rounded-tr-full rounded-bl-none rounded-tl-none cursor-pointer"
                 >
                   Team Portfolio
                 </TabsTrigger>
@@ -687,7 +720,7 @@ export default function Portfolio() {
                   {playerPortfolios.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <div className="p-6 rounded-full mb-4">
-                        <Users className="h-10 w-10 text-gray-500 hover:text-purple-700" />
+                        <Users className="h-10 w-10 text-gray-500 hover:text-sky-700" />
                       </div>
                       <h3 className="text-xl font-bold text-white mb-2">
                         No current player holdings
@@ -706,29 +739,30 @@ export default function Portfolio() {
                               <th className="px-4 py-3 text-left text-sm font-bold text-gray-300 pl-6">
                                 Player
                               </th>
-                              {/* <th className="px-4 py-3 text-right text-sm font-bold text-gray-300"> */}
-                              {/*   <span className="hidden xl:inline">Team</span> */}
-                              {/* </th> */}
-                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
+                                <span className="hidden xl:inline">Team</span>
+                                <span className="inline xl:hidden">Team</span>
+                              </th>
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                                 <span className="hidden xl:inline">Quantity(s)</span>
                                 <span className="inline xl:hidden">Qt(s)</span>
                               </th>
-                              <th className="px-3 py-3 text-right text-sm font-bold text-gray-300">
+                              <th className="px-3 py-3 text-left text-sm font-bold text-gray-300">
                                 <span className="hidden xl:inline">Buy Price</span>
                                 <span className="inline xl:hidden">Buy @</span>
                               </th>
-                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                                 <span className="hidden xl:inline">Current Price</span>
                                 <span className="inline xl:hidden">CP @</span>
                               </th>
-                              {/* <th className="px-4 py-3 text-right text-sm font-bold text-gray-300"> */}
+                              {/* <th className="px-4 py-3 text-left text-sm font-bold text-gray-300"> */}
                               {/*   <span className="hidden xl:inline">Percentage</span> */}
                               {/*   <span className="inline xl:hidden">%</span> */}
                               {/* </th> */}
-                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                                 Status
                               </th>
-                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                                 <span className="hidden lg:inline">Timestamp</span>
                                 <span className="inline lg:hidden">Time</span>
                               </th>
@@ -741,7 +775,7 @@ export default function Portfolio() {
                                 <tr key={idx}>
                                   <td className="px-4 py-4">
                                     <div className="flex items-center gap-3">
-                                      <p className="font-bold text-white">{p.playerName}</p>
+                                      <p className="font-bold text-white">{p.playerName}s</p>
                                       <div className="flex gap-2">
                                         <Button
                                           variant="secondary"
@@ -759,20 +793,25 @@ export default function Portfolio() {
                                       </div>
                                     </div>
                                   </td>
-                                  {/* <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold"> */}
-                                  {/*   {p.team} */}
-                                  {/* </td> */}
-                                  <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                                  <td className="px-4 py-4 text-left text-xs sm:text-sm text-gray-300 font-bold">
+                                    <span className="inline xl:hidden">
+                                      {matchIdToTitle[String(p.matchId)][0] || "0"}
+                                    </span>
+                                    <span className="hidden xl:inline">
+                                      {matchIdToTitle[String(p.matchId)][1] || "1"}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                     {p.quantity ? `${p.quantity}` : "--"}
                                   </td>
-                                  <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                                  <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                     {p.boughtPrice && p.quantity ? (
                                       <div className="text-gray-300 font-bold">
                                         ₹{Number(p.boughtPrice).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                                       </div>
                                     ) : "--"}
                                   </td>
-                                  <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                                  <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                     {p.currentPrice == "0" ?
                                       (
                                         <div className="relative">
@@ -782,7 +821,7 @@ export default function Portfolio() {
                                           </svg>
                                         </div>
                                       ) : (
-                                        <div className="flex flex-col items-end">
+                                        <div className="flex flex-col items-start">
                                           <span
                                             className={
                                               `flex items-center gap-2
@@ -819,7 +858,7 @@ export default function Portfolio() {
                                         </div>
                                       )}
                                   </td>
-                                  <td className="px-4 py-4 text-right">
+                                  <td className="px-4 py-4 text-left">
                                     <Badge
                                       variant="outline"
                                       className="border-0 bg-white/20 text-white font-bold"
@@ -827,16 +866,8 @@ export default function Portfolio() {
                                       {p.status || "--"}
                                     </Badge>
                                   </td>
-                                  <td className="px-4 py-4 text-right text-xs lg:text-sm text-gray-300 font-bold">
-                                    {(() => {
-                                      const date = new Date(p.timestamp);
-                                      let hours = date.getHours();
-                                      const minutes = date.getMinutes().toString().padStart(2, '0');
-                                      const ampm = hours >= 12 ? 'PM' : 'AM';
-                                      hours = hours % 12;
-                                      hours = hours ? hours : 1; // the hour '0' should be '1'
-                                      return `${hours}:${minutes}${ampm}`;
-                                    })()}
+                                  <td className="px-4 py-4 text-left text-xs lg:text-sm text-gray-300 font-bold">
+                                    {formatTimestamp(p.timestamp)}
                                   </td>
                                 </tr>
                               );
@@ -863,30 +894,30 @@ export default function Portfolio() {
                           <th className="px-4 py-3 text-left text-sm font-bold text-gray-300 pl-6">
                             Player
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                             <span className="hidden xl:inline">Quantity(s)</span>
                             <span className="inline xl:hidden">Qt(s)</span>
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                             <span className="hidden xl:inline">Buy Price</span>
                             <span className="inline xl:hidden">Buy @</span>
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                             <span className="hidden xl:inline">Sell Price</span>
                             <span className="inline xl:hidden">Sell @</span>
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                             <span className="hidden xl:inline">Profit / Loss</span>
                             <span className="inline xl:hidden">P&amp;L</span>
                           </th>
-                          {/* <th className="px-4 py-3 text-right text-sm font-bold text-gray-300"> */}
+                          {/* <th className="px-4 py-3 text-left text-sm font-bold text-gray-300"> */}
                           {/*   <span className="hidden xl:inline">Percentage</span> */}
                           {/*   <span className="inline xl:hidden">%</span> */}
                           {/* </th> */}
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                             Status
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                             <span className="hidden lg:inline">Timestamp</span>
                             <span className="inline lg:hidden">Time</span>
                           </th>
@@ -906,14 +937,14 @@ export default function Portfolio() {
                                   <p className="text-xs text-gray-400 font-bold">{p.team}</p>
                                 </div>
                               </td>
-                              <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                              <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                 {p.quantity ? `${p.quantity}` : "--"}
                               </td>
-                              <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                              <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                 ₹{p.boughtPrice}
                               </td>
                               <td
-                                className={`px-4 py-4 text-right text-sm font-bold ${Number(p.soldPrice) > Number(p.boughtPrice)
+                                className={`px-4 py-4 text-left text-sm font-bold ${Number(p.soldPrice) > Number(p.boughtPrice)
                                   ? "text-emerald-500"
                                   : Number(p.soldPrice) < Number(p.boughtPrice)
                                     ? "text-red-500"
@@ -923,7 +954,7 @@ export default function Portfolio() {
                                 ₹
                                 {(Number(p.boughtPrice) + (Number(p.profit) / Number(p.quantity))).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                               </td>
-                              <td className="px-4 py-4 text-right text-sm font-bold text-emerald-500">
+                              <td className="px-4 py-4 text-left text-sm font-bold text-emerald-500">
                                 <span className={parseFloat(p.profit) >= 0 ? "text-emerald-500" : "text-red-500"}>
                                   ₹{parseFloat(p.profit) >= 0 ? parseFloat(p.profit).toLocaleString("en-IN", { maximumFractionDigits: 2 }) : `-${Math.abs(parseFloat(p.profit)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}
                                 </span>
@@ -949,7 +980,7 @@ export default function Portfolio() {
                                 </span>
 
                               </td>
-                              <td className="px-4 py-4 text-right">
+                              <td className="px-4 py-4 text-left">
                                 <Badge
                                   variant="outline"
                                   className={
@@ -963,7 +994,7 @@ export default function Portfolio() {
                                   {((p.status?.toLowerCase() === "sold" || p.status?.toLowerCase() === "sell") && (String(parseFloat(p.profitPercentage)) === "-50")) ? "Auto-Sold" : p.status}
                                 </Badge>
                               </td>
-                              <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                              <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                 {formatTimestamp(p.timestamp)}
                               </td>
                             </tr>
@@ -987,7 +1018,7 @@ export default function Portfolio() {
                   {teamPortfolios.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <div className="p-6 rounded-full mb-4">
-                        <Trophy className="h-10 w-10 text-gray-500 hover:text-purple-700" />
+                        <Trophy className="h-10 w-10 text-gray-500 hover:text-sky-700" />
                       </div>
                       <h3 className="text-xl font-bold text-white mb-2">
                         No team holdings
@@ -1006,30 +1037,30 @@ export default function Portfolio() {
                               <th className="px-4 py-3 text-left text-sm font-bold text-gray-300 pl-6">
                                 Player
                               </th>
-                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                                 <span className="hidden xl:inline">Quantity(s)</span>
                                 <span className="inline xl:hidden">Qt(s)</span>
                               </th>
-                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                                 <span className="hidden xl:inline">Buy Price</span>
                                 <span className="inline xl:hidden">Buy @</span>
                               </th>
-                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                                 <span className="hidden xl:inline">Sell Price</span>
                                 <span className="inline xl:hidden">Sell @</span>
                               </th>
-                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                                 <span className="hidden xl:inline">Profit / Loss</span>
                                 <span className="inline xl:hidden">P&amp;L</span>
                               </th>
-                              {/* <th className="px-4 py-3 text-right text-sm font-bold text-gray-300"> */}
+                              {/* <th className="px-4 py-3 text-left text-sm font-bold text-gray-300"> */}
                               {/*   <span className="hidden xl:inline">Percentage</span> */}
                               {/*   <span className="inline xl:hidden">%</span> */}
                               {/* </th> */}
-                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                                 Status
                               </th>
-                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                                 <span className="hidden lg:inline">Timestamp</span>
                                 <span className="inline lg:hidden">Time</span>
                               </th>
@@ -1044,16 +1075,16 @@ export default function Portfolio() {
                                     <p className="text-xs text-gray-400">{t.team}</p>
                                   </div>
                                 </td>
-                                <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                                <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                   {t.quantity ? `${t.quantity}` : "--"}
                                 </td>
-                                <td className="px-4 py-4 text-right text-sm font-bold text-gray-300">
+                                <td className="px-4 py-4 text-left text-sm font-bold text-gray-300">
                                   ₹{t.boughtPrice}
                                 </td>
-                                <td className="px-4 py-4 text-right text-sm font-bold text-gray-300">
+                                <td className="px-4 py-4 text-left text-sm font-bold text-gray-300">
                                   ₹{t.soldPrice}
                                 </td>
-                                <td className="px-4 py-4 text-right text-sm font-bold text-emerald-500">
+                                <td className="px-4 py-4 text-left text-sm font-bold text-emerald-500">
                                   ₹{t.profit}
                                   <span
                                     className={
@@ -1077,12 +1108,12 @@ export default function Portfolio() {
                                   </span>
 
                                 </td>
-                                {/* <td className="px-4 py-4 text-right"> */}
+                                {/* <td className="px-4 py-4 text-left"> */}
                                 {/*   <Badge className={parseFloat(t.profit) >= 0 ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold" : "bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold"}> */}
                                 {/*     +{t.profitPercentage}% */}
                                 {/*   </Badge> */}
                                 {/* </td> */}
-                                <td className="px-4 py-4 text-right">
+                                <td className="px-4 py-4 text-left">
                                   <Badge
                                     variant="outline"
                                     className="border-0 bg-white/20 text-white font-bold"
@@ -1090,10 +1121,10 @@ export default function Portfolio() {
                                     {((t.status?.toLowerCase() === "sold" || t.status?.toLowerCase() === "sell") && (parseFloat(t.profitPercentage) === -50)) ? "Auto-Sold" : t.status}
                                   </Badge>
                                 </td>
-                                <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                                <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                   {formatTimestamp(t.timestamp)}
                                 </td>
-                                <td className="px-4 py-4 text-right">
+                                <td className="px-4 py-4 text-left">
                                   <div className="flex gap-2">
                                     <Button
                                       variant="secondary"
@@ -1145,30 +1176,30 @@ export default function Portfolio() {
                           <th className="px-4 py-3 text-left text-sm font-bold text-gray-300 pl-6">
                             Player
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                             <span className="hidden xl:inline">Quantity(s)</span>
                             <span className="inline xl:hidden">Qt(s)</span>
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                             <span className="hidden xl:inline">Buy Price</span>
                             <span className="inline xl:hidden">Buy @</span>
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                             <span className="hidden xl:inline">Sell Price</span>
                             <span className="inline xl:hidden">Sell @</span>
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                             <span className="hidden xl:inline">Profit / Loss</span>
                             <span className="inline xl:hidden">P&amp;L</span>
                           </th>
-                          {/* <th className="px-4 py-3 text-right text-sm font-bold text-gray-300"> */}
+                          {/* <th className="px-4 py-3 text-left text-sm font-bold text-gray-300"> */}
                           {/*   <span className="hidden xl:inline">Percentage</span> */}
                           {/*   <span className="inline xl:hidden">%</span> */}
                           {/* </th> */}
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                             Status
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-bold text-gray-300">
                             <span className="hidden lg:inline">Timestamp</span>
                             <span className="inline lg:hidden">Time</span>
                           </th>
@@ -1188,16 +1219,16 @@ export default function Portfolio() {
                                   <p className="text-xs font-bold text-gray-400">{t.team}</p>
                                 </div>
                               </td>
-                              <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                              <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                 {t.quantity ? `${t.quantity}` : "--"}
                               </td>
-                              <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                              <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                 ₹{t.boughtPrice}
                               </td>
-                              <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                              <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                 ₹{t.soldPrice}
                               </td>
-                              <td className="px-4 py-4 text-right text-sm font-bold text-emerald-500">
+                              <td className="px-4 py-4 text-left text-sm font-bold text-emerald-500">
                                 ₹{t.profit}
                                 <span
                                   className={
@@ -1221,12 +1252,12 @@ export default function Portfolio() {
                                 </span>
 
                               </td>
-                              {/* <td className="px-4 py-4 text-right"> */}
+                              {/* <td className="px-4 py-4 text-left"> */}
                               {/*   <Badge className={parseFloat(t.profit) >= 0 ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold" : "bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold"}> */}
                               {/*     +{t.profitPercentage}% */}
                               {/*   </Badge> */}
                               {/* </td> */}
-                              <td className="px-4 py-4 text-right">
+                              <td className="px-4 py-4 text-left">
                                 <Badge
                                   variant="outline"
                                   className="border-0 bg-white/20 text-white font-bold"
@@ -1235,7 +1266,7 @@ export default function Portfolio() {
                                   {t.status}
                                 </Badge>
                               </td>
-                              <td className="px-4 py-4 text-right text-sm text-gray-300 font-bold">
+                              <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                 {formatTimestamp(t.timestamp)}
                               </td>
                             </tr>

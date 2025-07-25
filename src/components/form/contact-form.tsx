@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
+// Remove subject from schema
 const formSchema = z.object({
   name: z.string().min(2, {
     message: "Name must be at least 2 characters.",
@@ -28,14 +29,11 @@ const formSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
-  subject: z.string().min(5, {
-    message: "Subject must be at least 5 characters.",
-  }),
   message: z.string().min(10, {
     message: "Message must be at least 10 characters.",
   }),
 });
-
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL
 type FormValues = z.infer<typeof formSchema>;
 
 export default function ContactForm() {
@@ -47,7 +45,6 @@ export default function ContactForm() {
       name: "",
       phone: "",
       email: "",
-      subject: "",
       message: "",
     },
   });
@@ -55,12 +52,27 @@ export default function ContactForm() {
   async function onSubmit(values: FormValues) {
     setIsSubmitting(true);
 
-    // Simulate delay for UX demo
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const response = await fetch(`${BACKEND}/email/contact-request`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(values),
+        credentials: "include"
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message.");
+      }
+
       toast.success("Message sent successfully!");
       form.reset();
-    }, 1000);
+    } catch (error: any) {
+      toast.error(error?.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -89,7 +101,7 @@ export default function ContactForm() {
             )}
           />
 
-          {/* Email */}
+          {/* Phone */}
           <FormField
             control={form.control}
             name="phone"
@@ -99,7 +111,7 @@ export default function ContactForm() {
                 <FormControl>
                   <Input
                     placeholder="+91 xxxxxx9999"
-                    type="phone"
+                    type="tel"
                     {...field}
                     className="border-gray-700 py-5 bg-gray-800 text-white placeholder:text-gray-500 focus-visible:ring-accent-dark"
                   />
@@ -120,25 +132,6 @@ export default function ContactForm() {
                   <Input
                     placeholder="your.email@example.com"
                     type="email"
-                    {...field}
-                    className="border-gray-700 py-5 bg-gray-800 text-white placeholder:text-gray-500 focus-visible:ring-accent-dark"
-                  />
-                </FormControl>
-                <FormMessage className="text-red-400" />
-              </FormItem>
-            )}
-          />
-
-          {/* Subject */}
-          <FormField
-            control={form.control}
-            name="subject"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-gray-300">Subject</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="What is this regarding?"
                     {...field}
                     className="border-gray-700 py-5 bg-gray-800 text-white placeholder:text-gray-500 focus-visible:ring-accent-dark"
                   />

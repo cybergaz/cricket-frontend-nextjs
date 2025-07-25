@@ -41,6 +41,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
   const hasData = matchData && Object.keys(matchData).length > 0;
   const data: CricketMatchData | null = hasData ? matchData : null;
   const [isCommentaryOpen, setIsCommentaryOpen] = useState(false)
+  const [isMatchInfoOpen, setIsMatchInfoOpen] = useState(false)
   const [tradeSubTab, setTradeSubTab] = useState("batsmen")
   const [activeTab, setActiveTab] = useState<string>("live")
   const [bettingNumber, setBettingNumber] = useState(0)
@@ -237,22 +238,6 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
             )}
           </div>
         </div>
-        {/* <div className="flex w-full gap-4 mt-6">
-          <button
-            className="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-6 rounded-lg shadow transition-colors duration-200"
-            onClick={() => setActiveTab("batting")}
-            type="button"
-          >
-            Trade Now
-          </button>
-          <button
-            className="flex-1 bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-6 rounded-lg shadow transition-colors duration-200"
-            onClick={() => setActiveTab("partnership")}
-            type="button"
-          >
-            Positions
-          </button>
-        </div> */}
         <div className="w-full">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-6 md:mt-10">
             <div className="relative mb-4 md:mb-6">
@@ -577,6 +562,113 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                 </li>
                               ))}
                             </ul>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {/* Collapsible Weather, Toss, Pitch, Umpires & Referee Section */}
+              {(data?.weather || data?.toss || data?.pitch || data?.umpires || data?.referee || data?.venue) && (
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between bg-slate-800/50 p-3 rounded-lg focus:outline-none transition"
+                    onClick={() => setIsMatchInfoOpen?.((prev: boolean) => !prev)}
+                  >
+                    <span className="flex items-center gap-2 text-white text-base md:text-2xl">
+                      <svg className="w-5 h-5 md:w-8 md:h-8 text-white" fill="none" viewBox="0 0 24 24">
+                        <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16 8 8 0 010-16zm0 2a6 6 0 100 12A6 6 0 0012 6z" fill="currentColor" />
+                      </svg>
+                      Match Info
+                    </span>
+                    <svg
+                      className={`w-5 h-5 transition-transform duration-300 ${isMatchInfoOpen ? "rotate-90" : "rotate-0"}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M6 9l6 6 6-6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    <motion.div
+                      key="matchinfo"
+                      initial={false}
+                      animate={isMatchInfoOpen ? { height: "auto", opacity: 1, marginTop: 12 } : { height: 0, opacity: 0, marginTop: 0 }}
+                      exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                      transition={{
+                        height: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
+                        opacity: { duration: 0.25 },
+                        marginTop: { duration: 0.3 }
+                      }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <Card className="bg-slate-800/50 p-3 mt-0">
+                        <CardContent>
+                          <div className="space-y-3">
+                            {data?.weather && (
+                              <div className="flex items-start gap-2">
+                                <span className="font-bold text-sky-300 min-w-[80px]">Weather</span>
+                                <span className="text-gray-200">
+                                  {data.weather.weather && <span>{data.weather.weather}</span>}
+                                  {data.weather.temp && (
+                                    <span className="ml-2">Temp: {data.weather.temp}°C</span>
+                                  )}
+                                  {data.weather.humidity && (
+                                    <span className="ml-2">Humidity: {data.weather.humidity}%</span>
+                                  )}
+                                  {data.weather.wind_speed && (
+                                    <span className="ml-2">Wind: {data.weather.wind_speed}</span>
+                                  )}
+                                  {data.weather.weather_desc && (
+                                    <span className="ml-2">{data.weather.weather_desc}</span>
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                            {data?.toss && (
+                              <div className="flex items-start gap-2">
+                                <span className="font-bold text-yellow-300 min-w-[80px]">Toss</span>
+                                <span className="text-gray-200">{data.toss.text}</span>
+                              </div>
+                            )}
+                            {data?.pitch && (
+                              <div className="flex items-start gap-2">
+                                <span className="font-bold text-green-300 min-w-[80px]">Pitch</span>
+                                <span className="text-gray-200">{data.pitch.pitch_condition}</span>
+                                <span className="text-gray-200">{data.pitch.batting_condition}</span>
+                                <span className="text-gray-200">{data.pitch.pace_bowling_condition}</span>
+                                <span className="text-gray-200">{data.pitch.spine_bowling_condition}</span>
+                              </div>
+                            )}
+                            {data?.umpires && (
+                              <div className="flex items-start gap-2">
+                                <span className="font-bold text-indigo-300 min-w-[80px]">Umpires</span>
+                                <span className="text-gray-200">{data.umpires}</span>
+                              </div>
+                            )}
+                            {data?.referee && (
+                              <div className="flex items-start gap-2">
+                                <span className="font-bold text-pink-300 min-w-[80px]">Referee</span>
+                                <span className="text-gray-200">{data.referee}</span>
+                              </div>
+                            )}
+                            {data?.venue && (
+                              <div className="flex items-start gap-2">
+                                <span className="font-bold text-orange-300 min-w-[80px]">Venue</span>
+                                <span className="text-gray-200 mr-2">
+                                  <span className="font-semibold capitalize"></span> {String(data.venue.name)}, {String(data.venue.location)}, {String(data.venue.country)}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -1135,6 +1227,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                   <button
                     className="flex-1 rounded-md sm:rounded-2xl bg-green-600 hover:bg-green-700 text-white font-bold py-2 text-sm sm:text-base md:text-lg shadow-md transition cursor-pointer"
                     onClick={async () => {
+                      setIsBettingModalOpen(false);
                       const statusNote = data?.status_note.toLowerCase() || ""
                       const isMatchOver = ["won", "loss", "draw", "tie", "abandoned", "no result", "ended", "finished", "completed"].some(
                         word => statusNote.includes(word)
@@ -1149,7 +1242,6 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                       }
                       const buyingResponse = await buyPlayer(bettingPlayer, String(currentPlayerPrice), String(quantity[0]), match_id)
                       toast.success(buyingResponse.message)
-                      setIsBettingModalOpen(false);
                     }}
                   >
                     Buy Player
@@ -1157,6 +1249,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                   <button
                     className="flex-1 rounded-md sm:rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold py-2 text-sm sm:text-base md:text-lg shadow-md transition cursor-pointer"
                     onClick={async () => {
+                      setIsBettingModalOpen(false);
                       const statusNote = data?.status_note.toLowerCase() || ""
                       const isMatchOver = ["won", "loss", "draw", "tie", "abandoned", "no result", "ended", "finished", "completed"].some(
                         word => statusNote.includes(word)
@@ -1172,7 +1265,6 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                         match_id
                       )
                       toast.success(sellingResponse.message)
-                      setIsBettingModalOpen(false);
                     }}
                   >
                     Sell Player
