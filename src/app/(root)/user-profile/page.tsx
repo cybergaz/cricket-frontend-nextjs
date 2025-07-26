@@ -56,11 +56,10 @@ export default function UserProfile() {
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/upload/upload-profile`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: formData,
-          credentials: 'include'
+          credentials: 'include',
         });
 
         if (!response.ok) {
@@ -90,6 +89,7 @@ export default function UserProfile() {
   // console.log("Current user in store:", user);
   const [isLogoutOpen, setLogoutOpen] = useState(false);
   const router = useRouter();
+
   useEffect(() => {
     (async () => {
       try {
@@ -100,7 +100,7 @@ export default function UserProfile() {
           return tokenCookie ? tokenCookie.split("=")[1] : null;
         };
         const token = getTokenFromCookies();
-        const res = await fetch(`${BACKEND}/user/data`, {
+        const res = await fetch(`${BACKEND}/auth/user`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -109,14 +109,14 @@ export default function UserProfile() {
           credentials: "include"
         });
         const data = await res.json();
-        if (data.data && data.success) {
-          setUser(data.data);
+        if (data.success) {
+          setUser(data.user);
           // console.log(data.data.transactions)
         } else {
           toast.error(data?.message || "Failed to fetch user data");
         }
       } catch (e: any) {
-        toast.error("Error fetching user data: " + (e?.message || e));
+        console.error("Error fetching user data: " + (e?.message || e));
       }
     })();
 
@@ -137,9 +137,9 @@ export default function UserProfile() {
     <div className="min-h-screen">
       <main className="max-w-4xl mx-auto px-4 space-y-6">
         {/* Profile Card */}
-        <Card className="border-none rounded-xl shadow-md overflow-hidden">
-          <CardContent className="pt-0 text-3xl">
-            <div className="flex max-sm:flex-col items-start justify-between gap-4 w-full">
+        <Card className="border-none rounded-xl shadow-md overflow-hidden ">
+          <CardContent className="pt-0 text-3xl px-3">
+            <div className="flex items-start justify-between gap-4 w-full">
               <div className="flex gap-4">
                 <div>
                   {/* Hidden file input */}
@@ -153,7 +153,7 @@ export default function UserProfile() {
 
                   {/* Avatar */}
                   <Avatar
-                    className="h-16 w-16 border-2 border-amber-600 mt-3 transition-all duration-250 hover:border-accent shadow-md cursor-pointer flex justify-center items-center"
+                    className="h-16 w-16 border-2 border-accent-light mt-3 transition-all duration-250 hover:border-accent shadow-md cursor-pointer flex justify-center items-center"
                     onClick={triggerFileInput}
                   >
                     {loading
@@ -166,34 +166,34 @@ export default function UserProfile() {
                 </div>
                 <div className="pt-4">
                   <h2 className="text-xl font-medium text-gray-100">
-                    {`${user?.name.split(" ")[0] || "John"}'s Profile`}
+                    {`${user?.name.split(" ")[0] || "User"}'s Profile`}
                   </h2>
                   <div className="flex max-sm:flex-col items-center max-sm:items-start gap-2 text-sm text-gray-400 mt-1">
                     <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
                       <Phone className="h-3 w-3" />
                       <span>+91-{user?.mobile.slice(3) || "XXXXXXXXXX"}</span>
                     </div>
-                    {
-                      user?.isVerified
-                        ? <Badge
-                          variant="outline"
-                          className=" text-xs text-emerald-600 bg-gray-900 border-emerald-600 cursor-no-drop"
-                        >
-                          Verified
-                        </Badge>
-                        : <Badge
-                          variant="outline"
-                          className=" text-xs text-amber-600 bg-gray-900 border-amber-600 cursor-no-drop"
-                        >
-                          Not Verified
-                        </Badge>
-                    }
+                    {/* { */}
+                    {/*   user?.isVerified */}
+                    {/*     ? <Badge */}
+                    {/*       variant="outline" */}
+                    {/*       className=" text-xs text-emerald-600 bg-gray-900 border-emerald-600 cursor-no-drop" */}
+                    {/*     > */}
+                    {/*       Verified */}
+                    {/*     </Badge> */}
+                    {/*     : <Badge */}
+                    {/*       variant="outline" */}
+                    {/*       className=" text-xs text-amber-600 bg-gray-900 border-amber-600 cursor-no-drop" */}
+                    {/*     > */}
+                    {/*       Not Verified */}
+                    {/*     </Badge> */}
+                    {/* } */}
                   </div>
                 </div>
               </div>
               <Button
                 variant="ghost"
-                className="mt-5 text-red-500 hover:text-red-500 hover:bg-red-500/10 border-red-500/50 cursor-pointer border-1 flex items-center gap-1"
+                className="mt-5 text-red-500 hover:text-red-500 bg-red-500/10 border-red-500/50 hover:border cursor-pointer flex items-center gap-1"
                 onClick={() => setLogoutOpen(true)}
               >
                 <LogOut className="h-4 w-4" />
@@ -212,16 +212,18 @@ export default function UserProfile() {
                   <span className="text-lg font-semibold text-gray-200 tracking-wide">Wallet Balance</span>
                 </div>
                 <div className="flex items-end gap-2 mt-1">
-                  <span className="text-4xl sm:text-5xl font-bold text-white drop-shadow-lg">{formatINR(user?.amount! + user?.referralAmount!)}</span>
+                  <span className="text-4xl sm:text-5xl font-bold text-white drop-shadow-lg">{user?.amount ? formatINR(user?.amount! + user?.referralAmount!) : formatINR(0)}</span>
                 </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="inline-flex items-center bg-gradient-to-r from-purple-600/25 via-purple-600/20 to-purple-600/10 text-purple-300 font-bold px-4 py-1.5 rounded-xl text-base gap-2 shadow-md">
-                    <span className="flex items-center justify-center rounded-full p-1">
-                      <UserPlus className="h-4 w-4 text-purple-200" />
+                {(user?.referralAmount! > 0) &&
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="inline-flex items-center bg-gradient-to-r from-purple-600/25 via-purple-600/20 to-purple-600/10 text-purple-300 font-bold px-4 py-1.5 rounded-xl text-base gap-2 shadow-md">
+                      <span className="flex items-center justify-center rounded-full p-1">
+                        <UserPlus className="h-4 w-4 text-purple-200" />
+                      </span>
+                      <span className="tracking-wide">{formatINR(user?.referralAmount!)}</span>
                     </span>
-                    <span className="tracking-wide">{formatINR(user?.referralAmount!)}</span>
-                  </span>
-                </div>
+                  </div>
+                }
               </div>
               <Button
                 className="bg-[#f5f5f5] text-[#121212] hover:bg-white/70 shadow-md"

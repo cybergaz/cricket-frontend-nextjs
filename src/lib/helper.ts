@@ -203,21 +203,10 @@ export const setUserIntoGlobalStore = async (token: string) => {
         const mappedUser = {
           name: data.user.name,
           mobile: data.user.mobile,
-          isVerified: data.user.isVerified,
-          password: "", // We don't store password in frontend
-          isAdmin: data.user.isAdmin,
-          role: data.user.role,
           lastSeen: new Date(data.user.lastSeen),
-          amount: data.user.amount,
-          transactions: data.user.transactions || [],
-          portfolio: data.user.portfolio || [],
-          teamPortfolio: data.user.teamPortfolio || [],
           // Optional fields
-          ...(data.user.googleId && { googleId: data.user.googleId }),
-          ...(data.user.email && { email: data.user.email }),
-          ...(data.user.profileImage && { profileImage: data.user.profileImage }),
-          ...(data.user.referralCode && { referralCode: data.user.referralCode }),
-          ...(data.user.referredBy && { referredBy: data.user.referredBy }),
+          email: data.user.email || "",
+          profileImage: data.user.profileImage || "",
         };
 
         useUserStore.getState().setUser(mappedUser);

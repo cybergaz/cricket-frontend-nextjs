@@ -1,5 +1,5 @@
 import { Team } from "@/app/(root)/betting-interface/types";
-import { PlayerPortfolio } from "@/app/(root)/portfolio/types";
+import { PlayerPortfolio } from "@/app/(root)/positions/types";
 import { X } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";

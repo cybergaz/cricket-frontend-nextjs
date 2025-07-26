@@ -1,7 +1,7 @@
 export const NAVLINKS = [
   { title: "Home", href: "/home" },
   { title: "Live Matches", href: "/live-matches" },
-  { title: "Portfolio", href: "/portfolio" },
+  { title: "Positions", href: "/positions" },
   { title: "Wallet", href: "/wallet" },
   { title: "About Us", href: "/about-us" },
   { title: "Contact Us", href: "/contact" },
@@ -11,7 +11,7 @@ export const MOBILE_NAVLINKS = [
   { title: "Profile", href: "/user-profile" },
   { title: "Home", href: "/home" },
   { title: "Live Matches", href: "/live-matches" },
-  { title: "Portfolio", href: "/portfolio" },
+  { title: "Positions", href: "/positions" },
   { title: "Wallet", href: "/wallet" },
   { title: "About Us", href: "/about-us" },
   { title: "Contact Us", href: "/contact" },

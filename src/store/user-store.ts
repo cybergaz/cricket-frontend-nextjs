@@ -13,11 +13,21 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { User } from "@/types/user";
+
+
+export interface UserDetails {
+  name: string;
+  mobile: string;
+  amount: number;
+  referralAmount: number;
+  lastSeen: Date;
+  email?: string;
+  profileImage?: string;
+}
 
 type UserStoreType = {
-  user: User | null;
-  setUser: (user: User) => void;
+  user: UserDetails | null;
+  setUser: (user: UserDetails) => void;
   hasHydrated: boolean;
   setHasHydrated: (value: boolean) => void;
 };

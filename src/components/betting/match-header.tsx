@@ -28,7 +28,7 @@ export function MatchHeader({ team1, team2, winStatus }: MatchHeaderProps) {
           <Link href="/matches" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">
             Live Matches
           </Link>
-          <Link href="/portfolio" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">
+          <Link href="/positions" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">
             Portfolio
           </Link>
           <Link href="/contact" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">

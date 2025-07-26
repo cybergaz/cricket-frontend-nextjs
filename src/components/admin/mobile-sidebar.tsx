@@ -5,6 +5,9 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage } from "../ui/avatar";
 import { useUserStore } from "@/store/user-store";
+import { useEffect, useState } from "react";
+import { AdminDetails } from "@/app/admin/layout";
+import { getTokenFromCookies } from "@/lib/actions";
 
 type MobileSidebarProps = {
   isOpen: boolean;
@@ -14,6 +17,42 @@ type MobileSidebarProps = {
 const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   const pathname = usePathname();
   const user = useUserStore((state) => state.user);
+
+  const [adminDetails, setAdminDetails] = useState<AdminDetails | null>(null)
+
+  useEffect(() => {
+    const fetchAdminDetails = async () => {
+      const token = getTokenFromCookies();
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/is-admin`, {
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.data) {
+            // Map MongoDB user data to User type
+            const mappedUser = {
+              name: data.data.name as string,
+              role: data.data.role as string,
+            };
+            setAdminDetails(mappedUser)
+          }
+        } else {
+          console.error("Failed to fetch admin details");
+        }
+      } catch (error) {
+        console.error("Error fetching admin details:", error);
+      }
+    };
+
+    fetchAdminDetails();
+  }, [])
 
   return (
     <>
@@ -74,6 +113,21 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
             >
               <span className="font-medium">Manage Users</span>
             </Link>
+
+            {(adminDetails && (adminDetails.role === "super_admin" || adminDetails.role === "financial")) &&
+              <Link
+                href="/admin/withdrawals"
+                onClick={onClose}
+                className={cn(
+                  "flex items-center py-3 px-4 text-white rounded-lg",
+                  pathname === "/admin/withdrawals"
+                    ? "bg-green-500/20 text-green-500"
+                    : "hover:bg-white/10"
+                )}
+              >
+                <span className="font-medium">Withdrawals</span>
+              </Link>
+            }
             <Link
               href="/admin/notifications"
               onClick={onClose}

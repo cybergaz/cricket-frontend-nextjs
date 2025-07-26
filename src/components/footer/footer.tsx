@@ -28,7 +28,7 @@ export default function Footer() {
           {/* Column 1: Company Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Image src="/logo.png" alt="CricStock11 Logo" width={140} height={40} className="rounded-full" />
+              <Image src="/images/logo.png" alt="CricStock11 Logo" width={140} height={40} className="rounded-full" />
             </div>
             <p className="text-gray-400 text-sm">
               Your premier platform for cricket stock trading and fantasy league investments.
@@ -62,7 +62,7 @@ export default function Footer() {
               <li>
                 <Link href="/positions" className="text-gray-400 hover:text-accent transition-colors flex items-center gap-2">
                   <BarChart2 className="w-4 h-4" />
-                  <span>Player Stocks</span>
+                  <span>Positions</span>
                 </Link>
               </li>
             </ul>

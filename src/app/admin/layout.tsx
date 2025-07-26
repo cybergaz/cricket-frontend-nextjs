@@ -3,20 +3,62 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Menu, User } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import MobileSidebar from "@/components/admin/mobile-sidebar";
 import Image from "next/image";
 import { useUserStore } from "@/store/user-store";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { getTokenFromCookies } from "@/lib/actions";
 
+
+export type AdminDetails = {
+  name: string,
+  role: string
+};
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const user = useUserStore((state) => state.user);
   const router = useRouter();
   const pathname = usePathname();
+
+  const [adminDetails, setAdminDetails] = useState<AdminDetails | null>(null)
+
+  useEffect(() => {
+    const fetchAdminDetails = async () => {
+      const token = getTokenFromCookies();
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/is-admin`, {
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.data) {
+            // Map MongoDB user data to User type
+            const mappedUser = {
+              name: data.data.name as string,
+              role: data.data.role as string,
+            };
+            setAdminDetails(mappedUser)
+          }
+        } else {
+          console.error("Failed to fetch admin details");
+        }
+      } catch (error) {
+        console.error("Error fetching admin details:", error);
+      }
+    };
+
+    fetchAdminDetails();
+  }, [])
 
   const handleLogout = async () => {
     // await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/logout`, { method: 'POST', credentials: "include" });
@@ -77,6 +119,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             <span className="ml-2 font-medium">Manage Users</span>
           </Link>
+          {(adminDetails && (adminDetails.role === "super_admin" || adminDetails.role === "financial")) &&
+            <Link
+              href="/admin/withdrawals"
+              className={cn(
+                "flex items-start py-2 px-2 text-white border-l-4 border-transparent hover:bg-[#23263a]",
+                (pathname === "/admin/withdrawals" && "border-[#a259ff] text-[#a259ff] bg-[#23263a]"))}
+            >
+              <span className="ml-2 font-medium">Withdrawals</span>
+            </Link>
+          }
           <Link
             href="/admin/notifications"
             className={cn(
