@@ -22,6 +22,7 @@ import { MatchInfoTicker } from "./components/match-info-ticker"
 import { cn } from "@/lib/utils"
 import sample from "./sample.json"
 import { Slider } from "@/components/ui/slider"
+import { redirect } from "next/navigation"
 
 export default function MatchScorecard({ matchData }: MatchScorecardProps) {
 
@@ -45,7 +46,6 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
   const [tradeSubTab, setTradeSubTab] = useState("batsmen")
   const [activeTab, setActiveTab] = useState<string>("live")
   const [bettingNumber, setBettingNumber] = useState(0)
-  const [currentPlayerPrice, setCurrentPlayerPrice] = useState(0)
   const [isBettingModalOpen, setIsBettingModalOpen] = useState(false)
   const [quantity, setQuantity] = useState<number[]>([1])
   // const [slider_quantity, setSliderQuantity] = useState<number[]>([1]);
@@ -78,7 +78,6 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
       : [[]]
   );
   const [isYetToComeOpen, setIsYetToComeOpen] = useState(false)
-  const [basePrice, setBasePrice] = useState(0);
   const allUsedBowlers = useMemo(() => {
     if (!data?.innings) return []
 
@@ -134,11 +133,6 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
         : [[]]
     );
   }, [data]);
-  useEffect(() => {
-    if (bettingNumber < 3) setBasePrice(35);
-    else if (bettingNumber < 6) setBasePrice(30);
-    else setBasePrice(25);
-  }, [bettingNumber]);
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "auto" });
@@ -321,7 +315,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                 </Card>
               )}
               {/* Current Batsmen & Bowler Section */}
-              {currentInnings && (
+              {data?.innings[Number(data.latest_inning_number) - 1] && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6">
                   <div className="bg-slate-800/60 rounded-lg p-2 md:p-4">
                     <div className="text-white text-base md:text-2xl flex items-center gap-2 p-2">
@@ -329,11 +323,11 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                       Current Batsman
                     </div>
                     <div className="flex flex-col gap-1 md:gap-2 p-2">
-                      {currentInnings.batsmen
-                        ?.filter((b: any) => b.batting === "true")
+                      {data?.innings[Number(data.latest_inning_number) - 1].batsmen
+                        ?.filter((b: any) => b.batting === "true" && b.dismissal == "")
                         .map((batsman: any) => {
-                          const isOut = batsman.how_out !== "Not out";
-                          const batsmanNumber = currentInnings.batsmen.findIndex((b: any) => b.batting === "true");
+                          const isOut = batsman.how_out !== "Not out" && batsman.dismissal != ""
+                          const batsmanNumber = data?.innings[Number(data.latest_inning_number) - 1].batsmen.findIndex((b: any) => b.batting === "true" && b.dismissal == "");
                           return (
                             <div
                               key={batsman.batsman_id}
@@ -342,28 +336,6 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                                 if (!isOut) {
                                   setBettingPlayer(batsman);
                                   setBettingNumber(batsmanNumber);
-                                  setBasePrice(
-                                    batsmanNumber < 3
-                                      ? 35
-                                      : batsmanNumber < 6
-                                        ? 30
-                                        : 25
-                                  );
-                                  const current =
-                                    batsmanNumber < 3
-                                      ? 35
-                                      : batsmanNumber < 6
-                                        ? 30
-                                        : 25;
-                                  setCurrentPlayerPrice(
-                                    current -
-                                    Number(batsman.run0) * 0.5 +
-                                    Number(batsman.run1) * 0.75 +
-                                    Number(batsman.run2) * 1.5 +
-                                    Number(batsman.run3) * 2.25 +
-                                    Number(batsman.fours) * 3 +
-                                    Number(batsman.sixes) * 4.5
-                                  );
                                   setIsBettingModalOpen(true);
                                 }
                               }}
@@ -371,38 +343,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                             >
                               <span className="font-bold text-white">{batsman.name}
                                 <button
-                                  className="bg-green-700 text-white text-[12px] sm:text-xs font-bold px-2 py-1 rounded-md hover:bg-emerald-700 transition ml-3"
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    if (!isOut) {
-                                      setBettingPlayer(batsman);
-                                      setBettingNumber(batsmanNumber);
-                                      setBasePrice(
-                                        batsmanNumber < 3
-                                          ? 35
-                                          : batsmanNumber < 6
-                                            ? 30
-                                            : 25
-                                      );
-                                      const current =
-                                        batsmanNumber < 3
-                                          ? 35
-                                          : batsmanNumber < 6
-                                            ? 30
-                                            : 25;
-                                      // console.log(batsmanNumber)
-                                      setCurrentPlayerPrice(
-                                        current -
-                                        Number(batsman.run0) * 0.5 +
-                                        Number(batsman.run1) * 0.75 +
-                                        Number(batsman.run2) * 1.5 +
-                                        Number(batsman.run3) * 2.25 +
-                                        Number(batsman.fours) * 3 +
-                                        Number(batsman.sixes) * 4.5
-                                      );
-                                      setIsBettingModalOpen(true);
-                                    }
-                                  }}
+                                  className="bg-green-700 text-white text-[12px] sm:text-xs font-bold px-2 py-1 rounded-md hover:bg-emerald-700 transition ml-3 cursor-pointer"
                                 >
                                   Trade Now
                                 </button>
@@ -680,203 +621,337 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
             <TabsContent value="tradenow">
               <Tabs value={tradeSubTab} onValueChange={setTradeSubTab} className="w-full">
                 {currentInnings && (
-                  <Card className="relative bg-gradient-to-r from-transparent to-transparent overflow-hidden rounded-none shadow-none -mx-3">
-                    {data && (
-                      <div className="absolute inset-0 z-10 overflow-hidden">
-                        <img
-                          src={data?.teama.logo_url || "/placeholder.svg"}
-                          alt={data?.teama.name}
-                          className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay scale-125 blur-sm"
-                        />
-                        <img
-                          src={data?.teamb.logo_url || "/placeholder.svg"}
-                          alt={data?.teamb.name}
-                          className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay scale-125 blur-sm"
-                        />
-                      </div>
-                    )}
-                    <CardContent className="p-0 text-center space-y-4 relative z-20">
-                      <h2 className="text-5xl font-bold tracking-wide bg-white/60 bg-clip-text text-transparent">
-                        {data && Number(data.latest_inning_number) === 1
-                          ? "1st Innings"
-                          : Number(data?.latest_inning_number) === 2
-                            ? "2nd Innings"
-                            : data?.latest_inning_number
-                              ? `${data.latest_inning_number}th Innings`
-                              : ""}
-                      </h2>
-                    </CardContent>
-                  </Card>
-                )}
-                <TabsList className="flex w-full overflow-x-auto scrollbar-hide h-auto gap-1 md:gap-2 p-1 bg-white/5 rounded-xl">
-                  <TabsTrigger
-                    value="batsmen"
-                    className={`flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base lg:text-lg font-bold py-2 md:py-3 px-3 md:px-4 transition-colors duration-300 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 hover:bg-white/40 rounded-lg whitespace-nowrap flex-shrink-0 cursor-pointer `}
-                  >
-                    Batsmen
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="bowlers"
-                    className={`flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base lg:text-lg font-bold py-2 md:py-3 px-3 md:px-4 transition-colors duration-300 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 hover:bg-white/40 rounded-lg whitespace-nowrap flex-shrink-0 cursor-pointer `}
-                  >
-                    Bowlers
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="batsmen" className="mt-4">
-                  <div className="space-y-2">
-                    {data?.innings &&
-                      data?.innings[Number(data.latest_inning_number) - 1]?.batsmen?.map(
-                        (batsman: any, batsmanNumber: any) => {
-                          const isBatting = batsman.batting === "true";
-                          const isOut = batsman.how_out !== "Not out";
-                          return (
-                            <div
-                              key={batsman.batsman_id}
-                              className={`flex items-center justify-between p-2 rounded-md transition text-xs sm:text-base ${!isOut
-                                ? "bg-gray-700/20 hover:bg-gray-700/60 cursor-pointer"
-                                : "opacity-50 cursor-not-allowed"
-                                }`}
-                              onClick={() => {
-                                if (!isOut) {
-                                  setBettingPlayer(batsman);
-                                  setBettingNumber(batsmanNumber);
-                                  setBasePrice(
-                                    batsmanNumber < 3
-                                      ? 35
-                                      : batsmanNumber < 6
-                                        ? 30
-                                        : 25
+                  <>
+                    <div className="first">
+                      <Card className="relative bg-gradient-to-r from-transparent to-transparent overflow-hidden rounded-none shadow-none -mx-3">
+                        {data && (
+                          <div className="absolute inset-0 z-10 overflow-hidden">
+                            <img
+                              src={data?.teama.logo_url || "/placeholder.svg"}
+                              alt={data?.teama.name}
+                              className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay scale-125 blur-sm"
+                            />
+                            <img
+                              src={data?.teamb.logo_url || "/placeholder.svg"}
+                              alt={data?.teamb.name}
+                              className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay scale-125 blur-sm"
+                            />
+                          </div>
+                        )}
+                        <CardContent className="p-0 text-center space-y-4 relative z-20">
+                          <h2 className="text-5xl font-bold tracking-wide bg-white/60 bg-clip-text text-transparent">
+                            {data && Number(data.latest_inning_number) === 1
+                              ? "1st Innings"
+                              : Number(data?.latest_inning_number) === 2
+                                ? "2nd Innings"
+                                : data?.latest_inning_number
+                                  ? `${data.latest_inning_number}th Innings`
+                                  : ""}
+                          </h2>
+                        </CardContent>
+                      </Card>
+                      <TabsList className="flex w-full overflow-x-auto scrollbar-hide h-auto gap-1 md:gap-2 p-1 bg-white/5 rounded-xl">
+                        <TabsTrigger
+                          value="batsmen1"
+                          className={`flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base lg:text-lg font-bold py-2 md:py-3 px-3 md:px-4 transition-colors duration-300 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 hover:bg-white/40 rounded-lg whitespace-nowrap flex-shrink-0 cursor-pointer `}
+                        >
+                          Batsmen
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="bowlers1"
+                          className={`flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base lg:text-lg font-bold py-2 md:py-3 px-3 md:px-4 transition-colors duration-300 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 hover:bg-white/40 rounded-lg whitespace-nowrap flex-shrink-0 cursor-pointer `}
+                        >
+                          Bowlers
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="batsmen1" className="mt-4">
+                        <div className="space-y-2">
+                          {data?.innings &&
+                            (() => {
+                              // Get batsmen for current (latest) inning
+                              const batsmen = data?.innings[Number(data.latest_inning_number) - 1]?.batsmen || [];
+                              // Sort: not out batsmen first
+                              const sortedBatsmen = [...batsmen].sort((a: any, b: any) => {
+                                const aNotOut = a.how_out === "Not out" || a.dismissal === "";
+                                const bNotOut = b.how_out === "Not out" || b.dismissal === "";
+                                if (aNotOut === bNotOut) return 0;
+                                return aNotOut ? -1 : 1;
+                              });
+                              return sortedBatsmen.map(
+                                (batsman: any, batsmanNumber: any) => {
+                                  const isBatting = batsman.batting === "true" && batsman.dismissal == ""
+                                  const isOut = batsman.how_out !== "Not out" && batsman.dismissal != ""
+                                  return (
+                                    <div
+                                      key={batsman.batsman_id}
+                                      className={`flex items-center justify-between p-2 px-4 rounded-md transition text-xs sm:text-base ${!isOut
+                                        ? "bg-white/20 hover:bg-white/30"
+                                        : "opacity-50 cursor-not-allowed"
+                                        }`}
+                                    >
+                                      <div>
+                                        <h3 className="flex items-center gap-2 text-sm sm:text-lg font-bold text-white">
+                                          {batsman.name}
+                                          {isBatting && (
+                                            <Badge className="text-xs p-1 text-white">*</Badge>
+                                          )}
+                                        </h3>
+                                        <p className="text-xs sm:text-sm font-bold text-white/70">
+                                          {batsman.runs} ({batsman.balls_faced})
+                                        </p>
+                                        {isOut && (
+                                          <p className="text-xs sm:text-sm font-bold text-red-400">
+                                            {batsman.how_out}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="text-right flex gap-5">
+                                        <div className="flex flex-col items-end gap-1">
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-white bg-white/10 text-xs sm:text-sm font-bold shadow-sm">
+                                            <span className="font-bold">SR:</span>
+                                            <span>{batsman.strike_rate}</span>
+                                          </span>
+                                          <div className="flex items-center gap-2 mt-1">
+                                            <span className="flex items-center gap-1">
+                                              <span className="w-4 h-4 rounded bg-blue-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-blue-400">
+                                                4
+                                              </span>
+                                              <span className="text-xs sm:text-sm font-bold text-blue-200">{batsman.fours}</span>
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                              <span className="w-4 h-4 rounded bg-yellow-400 text-black text-xs font-bold flex items-center justify-center shadow-sm border border-yellow-300">
+                                                6
+                                              </span>
+                                              <span className="text-xs sm:text-sm font-bold text-yellow-200">{batsman.sixes}</span>
+                                            </span>
+                                          </div>
+                                        </div>
+                                        {!isOut && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setBettingPlayer(batsman);
+                                              setBettingNumber(batsmanNumber);
+                                              setIsBettingModalOpen(true);
+                                            }}
+                                            className="bg-green-700 text-white text-[12px] sm:text-xs font-bold px-2 py-1 rounded-md hover:bg-emerald-700 transition"
+                                          >
+                                            Trade
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
                                   );
-                                  const current =
-                                    batsmanNumber < 3
-                                      ? 35
-                                      : batsmanNumber < 6
-                                        ? 30
-                                        : 25;
-                                  setCurrentPlayerPrice(
-                                    current -
-                                    Number(batsman.run0) * 0.5 +
-                                    Number(batsman.run1) * 0.75 +
-                                    Number(batsman.run2) * 1.5 +
-                                    Number(batsman.run3) * 2.25 +
-                                    Number(batsman.fours) * 3 +
-                                    Number(batsman.sixes) * 4.5
-                                  );
-                                  setIsBettingModalOpen(true);
-                                  // console.log(batsmanNumber)
                                 }
-                              }}
-                            >
-                              <div>
-                                <h3 className="flex items-center gap-2 text-sm sm:text-lg font-bold text-white">
-                                  {batsman.name}
-                                  {isBatting && (
-                                    <Badge className="text-xs p-1 text-white">*</Badge>
-                                  )}
-                                </h3>
-                                <p className="text-xs sm:text-sm font-bold text-gray-400">
-                                  {batsman.runs} ({batsman.balls_faced})
-                                </p>
-                                {isOut && (
-                                  <p className="text-xs sm:text-sm font-bold text-red-400">
-                                    {batsman.how_out}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="text-right flex gap-5">
-                                <div>
-                                  <p className="text-xs sm:text-base font-bold text-white">
-                                    SR: {batsman.strike_rate}
-                                  </p>
-                                  <p className="text-xs sm:text-sm font-bold text-gray-400">
-                                    {batsman.fours}x4, {batsman.sixes}x6
-                                  </p>
-                                </div>
-                                {!isOut ? (
-                                  <button
-                                    onClick={() => {
-                                      setBettingPlayer(batsman);
-                                      setBettingNumber(batsmanNumber);
-                                      setBasePrice(
-                                        batsmanNumber < 3
-                                          ? 35
-                                          : batsmanNumber < 6
-                                            ? 30
-                                            : 25
-                                      );
-                                      const current =
-                                        batsmanNumber < 3
-                                          ? 35
-                                          : batsmanNumber < 6
-                                            ? 30
-                                            : 25;
-                                      setCurrentPlayerPrice(
-                                        current -
-                                        Number(batsman.run0) * 0.5 +
-                                        Number(batsman.run1) * 0.75 +
-                                        Number(batsman.run2) * 1.5 +
-                                        Number(batsman.run3) * 2.25 +
-                                        Number(batsman.fours) * 3 +
-                                        Number(batsman.sixes) * 4.5
-                                      );
-                                      setIsBettingModalOpen(true);
-                                    }}
-                                    className="bg-green-700 text-white text-[12px] sm:text-xs font-bold px-2 py-1 rounded-md hover:bg-emerald-700 transition"
-                                  >
-                                    Trade
-                                  </button>
-                                ) : (
-                                  <button
-                                    disabled
-                                    className="bg-green-700/70 text-white text-[12px] sm:text-xs font-bold px-2 py-1 rounded-md hover:bg-emerald-700 transition"
-                                  >
-                                    Trade
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        }
-                      )}
-                  </div>
-                </TabsContent>
-                <TabsContent value="bowlers" className="mt-4">
-                  <div className="space-y-2">
-                    {data?.innings?.map(inning =>
-                      inning.bowlers.map(bowler => {
-                        const isCurrentBowler = bowler.bowling === "true";
-                        return (
-                          <div
-                            key={bowler.bowler_id}
-                            onClick={() => toast("Bowler's Stocks Coming Soon..")}
-                            className={`flex items-center justify-between p-2 rounded-md transition
+                              );
+                            })()
+                          }
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="bowlers1" className="mt-4">
+                        <div className="space-y-2">
+                          {data?.innings?.map(inning =>
+                            inning.bowlers.map(bowler => {
+                              const isCurrentBowler = bowler.bowling === "true";
+                              return (
+                                <div
+                                  key={bowler.bowler_id}
+                                  onClick={() => toast("Bowler's Stocks Coming Soon..")}
+                                  className={`flex items-center justify-between p-2 rounded-md transition
                               ${isCurrentBowler
-                                ? "bg-slate-700/40"
-                                : "bg-transparent opacity-60 pointer-events-none select-none"
-                              }`}
-                          >
-                            <div>
-                              <h3 className={`flex items-center gap-2 text-sm sm:text-lg font-bold
+                                      ? "bg-white/20 hover:bg-white/30 cursor-pointer"
+                                      : "bg-transparent opacity-60 pointer-events-none select-none"
+                                    }`}
+                                >
+                                  <div>
+                                    <h3 className={`flex items-center gap-2 text-sm sm:text-lg font-bold
                                 ${isCurrentBowler ? "text-white" : "text-gray-400"}
                               `}>
-                                {bowler.name}
-                                {isCurrentBowler && <Badge className="text-xs p-1 text-red-400">*</Badge>}
-                              </h3>
-                              <p className={`text-xs sm:text-sm ${isCurrentBowler ? "text-gray-400" : "text-gray-500"}`}>
-                                {bowler.overs} ov, {bowler.maidens} m, {bowler.runs_conceded} r, {bowler.wickets} w
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className={`text-xs sm:text-base font-bold ${isCurrentBowler ? "text-white" : "text-gray-400"}`}>
-                                Econ: {bowler.econ}
-                              </p>
-                            </div>
+                                      {bowler.name}
+                                      {isCurrentBowler && <Badge className="text-xs p-1 text-red-400">*</Badge>}
+                                    </h3>
+                                    <p className={`text-xs sm:text-sm ${isCurrentBowler ? "text-white" : "text-gray-500"}`}>
+                                      {bowler.overs} ov, {bowler.maidens} m, {bowler.runs_conceded} r, {bowler.wickets} w
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className={`text-xs sm:text-base font-bold ${isCurrentBowler ? "text-white" : "text-gray-400"}`}>
+                                      Econ: {bowler.econ}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </TabsContent>
+                    </div>
+                    <div className="second">
+                      <Card className="relative bg-gradient-to-r from-transparent to-transparent overflow-hidden rounded-none shadow-none -mx-3">
+                        {data && (
+                          <div className="absolute inset-0 z-10 overflow-hidden">
+                            <img
+                              src={data?.teama.logo_url || "/placeholder.svg"}
+                              alt={data?.teama.name}
+                              className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay scale-125 blur-sm"
+                            />
+                            <img
+                              src={data?.teamb.logo_url || "/placeholder.svg"}
+                              alt={data?.teamb.name}
+                              className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay scale-125 blur-sm"
+                            />
                           </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </TabsContent>
+                        )}
+                        <CardContent className="p-0 text-center space-y-4 relative z-20">
+                          <h2 className="text-5xl font-bold tracking-wide bg-white/60 bg-clip-text text-transparent">
+                            {data && Number(data.latest_inning_number) - 1 === 1
+                              ? "1st Innings"
+                              : Number(data?.latest_inning_number) - 1 === 2
+                                ? "2nd Innings"
+                                : data?.latest_inning_number
+                                  ? `${data.latest_inning_number}th Innings`
+                                  : ""}
+                          </h2>
+                        </CardContent>
+                      </Card>
+                      <TabsList className="flex w-full overflow-x-auto scrollbar-hide h-auto gap-1 md:gap-2 p-1 bg-white/5 rounded-xl">
+                        <TabsTrigger
+                          value="batsmen2"
+                          className={`flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base lg:text-lg font-bold py-2 md:py-3 px-3 md:px-4 transition-colors duration-300 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 hover:bg-white/40 rounded-lg whitespace-nowrap flex-shrink-0 cursor-pointer `}
+                        >
+                          Batsmen
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="bowlers2"
+                          className={`flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base lg:text-lg font-bold py-2 md:py-3 px-3 md:px-4 transition-colors duration-300 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 hover:bg-white/40 rounded-lg whitespace-nowrap flex-shrink-0 cursor-pointer `}
+                        >
+                          Bowlers
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="batsmen2" className="mt-4">
+                        <div className="space-y-2">
+                          {data?.innings &&
+                            (() => {
+                              // Get batsmen for previous inning
+                              const batsmen = data?.innings[Number(data.latest_inning_number) - 2]?.batsmen || [];
+                              // Sort: not out batsmen first
+                              const sortedBatsmen = [...batsmen].sort((a: any, b: any) => {
+                                const aNotOut = a.how_out === "Not out" || a.dismissal === "";
+                                const bNotOut = b.how_out === "Not out" || b.dismissal === "";
+                                if (aNotOut === bNotOut) return 0;
+                                return aNotOut ? -1 : 1;
+                              });
+                              return sortedBatsmen.map(
+                                (batsman: any, batsmanNumber: any) => {
+                                  const isBatting = batsman.batting === "true" && batsman.dismissal == ""
+                                  const isOut = batsman.how_out !== "Not out" && batsman.dismissal != ""
+                                  return (
+                                    <div
+                                      key={batsman.batsman_id}
+                                      className={`flex items-center justify-between p-2 px-4 rounded-md transition text-xs sm:text-base ${!isOut
+                                        ? "bg-white/20 hover:bg-white/30"
+                                        : "opacity-50 cursor-not-allowed"
+                                        }`}
+                                    >
+                                      <div>
+                                        <h3 className="flex items-center gap-2 text-sm sm:text-lg font-bold text-white">
+                                          {batsman.name}
+                                          {isBatting && (
+                                            <Badge className="text-xs p-1 text-white">*</Badge>
+                                          )}
+                                        </h3>
+                                        <p className="text-xs sm:text-sm font-bold text-white/70">
+                                          {batsman.runs} ({batsman.balls_faced})
+                                        </p>
+                                        {isOut && (
+                                          <p className="text-xs sm:text-sm font-bold text-red-400">
+                                            {batsman.how_out}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="text-right flex gap-5">
+                                        <div className="flex flex-col items-end gap-1">
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-white bg-white/10 text-xs sm:text-sm font-bold shadow-sm">
+                                            <span className="font-bold">SR:</span>
+                                            <span>{batsman.strike_rate}</span>
+                                          </span>
+                                          <div className="flex items-center gap-2 mt-1">
+                                            <span className="flex items-center gap-1">
+                                              <span className="w-4 h-4 rounded bg-blue-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-blue-400">
+                                                4
+                                              </span>
+                                              <span className="text-xs sm:text-sm font-bold text-blue-200">{batsman.fours}</span>
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                              <span className="w-4 h-4 rounded bg-yellow-400 text-black text-xs font-bold flex items-center justify-center shadow-sm border border-yellow-300">
+                                                6
+                                              </span>
+                                              <span className="text-xs sm:text-sm font-bold text-yellow-200">{batsman.sixes}</span>
+                                            </span>
+                                          </div>
+                                        </div>
+                                        {!isOut && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setBettingPlayer(batsman);
+                                              setBettingNumber(batsmanNumber);
+                                              setIsBettingModalOpen(true);
+                                            }}
+                                            className="bg-green-700 text-white text-[12px] sm:text-xs font-bold px-2 py-1 rounded-md hover:bg-emerald-700 transition"
+                                          >
+                                            Trade
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                              );
+                            })()
+                          }
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="bowlers2" className="mt-4">
+                        <div className="space-y-2">
+                          {data?.innings?.map(inning =>
+                            inning.bowlers.map(bowler => {
+                              const isCurrentBowler = bowler.bowling === "true";
+                              return (
+                                <div
+                                  key={bowler.bowler_id}
+                                  onClick={() => toast("Bowler's Stocks Coming Soon..")}
+                                  className={`flex items-center justify-between p-2 rounded-md transition
+                              ${isCurrentBowler
+                                      ? "bg-white/20 hover:bg-white/30 cursor-pointer"
+                                      : "bg-transparent opacity-60 pointer-events-none select-none"
+                                    }`}
+                                >
+                                  <div>
+                                    <h3 className={`flex items-center gap-2 text-sm sm:text-lg font-bold
+                                ${isCurrentBowler ? "text-white" : "text-gray-400"}
+                              `}>
+                                      {bowler.name}
+                                      {isCurrentBowler && <Badge className="text-xs p-1 text-red-400">*</Badge>}
+                                    </h3>
+                                    <p className={`text-xs sm:text-sm ${isCurrentBowler ? "text-white" : "text-gray-500"}`}>
+                                      {bowler.overs} ov, {bowler.maidens} m, {bowler.runs_conceded} r, {bowler.wickets} w
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className={`text-xs sm:text-base font-bold ${isCurrentBowler ? "text-white" : "text-gray-400"}`}>
+                                      Econ: {bowler.econ}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </TabsContent>
+                    </div>
+                  </>
+                )}
               </Tabs>
             </TabsContent>
             <TabsContent value="bowling">
@@ -1064,7 +1139,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
             </div>
           )}
 
-          {bettingPlayer && isBettingModalOpen && (
+          {bettingPlayer && isBettingModalOpen && data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].dismissal == "" && (
             <div className="fixed inset-0 z-50 w-full h-full flex items-center justify-center bg-black/70 backdrop-blur-lg p-4">
               <div className="w-full max-w-lg rounded-2xl bg-gradient-to-br from-gray-900/90 via-gray-900/90 to-gray-900 p-6 sm:p-6 md:p-8 shadow-2xl transition-all duration-300">
 
@@ -1086,7 +1161,7 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                     />
                     <h2 className="text-xl flex items-center justify-start  gap-2 sm:gap-4 font-extrabold text-white">
                       {bettingPlayer.name}
-                      <span className="text-xs sm:text-sm text-gray-500 capitalize mx-5">{bettingPlayer.position}</span>
+                      <span className="text-xs sm:text-sm text-gray-500 capitalize mx-5">{data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].position}</span>
                     </h2>
                   </div>
                   <button
@@ -1105,39 +1180,58 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                 <div className="mt-4 sm:mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-center">
                   <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
                     <p className="text-sm text-gray-300">Runs</p>
-                    <p className="text-xl font-semibold  text-white">{bettingPlayer.runs}</p>
+                    <p className="text-xl font-semibold  text-white">{data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].runs}</p>
                   </div>
                   <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
                     <p className="text-sm text-gray-300">Balls</p>
-                    <p className="text-xl font-semibold  text-white">{bettingPlayer.balls_faced}</p>
+                    <p className="text-xl font-semibold  text-white">{data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].balls_faced}</p>
                   </div>
                   <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
                     <p className="text-sm text-gray-300">Strike Rate</p>
-                    <p className="text-xl font-semibold  text-white"> {Number(bettingPlayer.strike_rate)} </p>
+                    <p className="text-xl font-semibold  text-white"> {Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].strike_rate)} </p>
                   </div>
                   <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
                     <p className="text-sm text-gray-300">Fours</p>
-                    <p className="text-xl font-semibold  text-white">{bettingPlayer.fours}</p>
+                    <p className="text-xl font-semibold  text-white">{data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].fours}</p>
                   </div>
                   <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
                     <p className="text-sm text-gray-300">Sixes</p>
-                    <p className="text-xl font-semibold  text-white">{bettingPlayer.sixes}</p>
+                    <p className="text-xl font-semibold  text-white">{data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].sixes}</p>
                   </div>
                   <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
                     <p className="text-sm text-gray-300">Dot %</p>
                     <p className="text-xl font-semibold  text-white">
-                      {bettingPlayer.balls_faced && Number(bettingPlayer.balls_faced) > 0
-                        ? `${Math.round((Number(bettingPlayer.run0) / Number(bettingPlayer.balls_faced)) * 100)}`
-                        : "N/A"}
+                      {data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run0}
                     </p>
                   </div>
                   <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
                     <p className="text-sm text-gray-300">Base Price</p>
-                    <p className="text-xl font-semibold  text-white">₹{basePrice}</p>
+                    <p className="text-xl font-semibold  text-white">₹{
+                      (
+                        Number(bettingNumber <= 2
+                          ? 35
+                          : bettingNumber < 5
+                            ? 30
+                            : 25))
+                    }</p>
                   </div>
                   <div className="bg-gray-800/40  rounded-lg p-3 sm:p-3 sm:py-6">
                     <p className="text-sm md:text-xs text-gray-300">Current Price</p>
-                    <p className="text-xl font-semibold  text-white">₹{currentPlayerPrice}</p>
+                    <p className="text-xl font-semibold  text-white">₹{
+                      (
+                        Number(bettingNumber <= 2
+                          ? 35
+                          : bettingNumber < 5
+                            ? 30
+                            : 25) -
+                        Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run0) * 0.5 +
+                        Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run1) * 0.75 +
+                        Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run2) * 1.5 +
+                        Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run3) * 2.25 +
+                        Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].fours) * 3 +
+                        Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].sixes) * 4.5
+                      )
+                    }</p>
                   </div>
                 </div>
 
@@ -1145,7 +1239,20 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                   value={quantity}
                   onValueChange={setQuantity}
                   defaultValue={[1]}
-                  max={Math.max(0, Math.floor(25000 / (currentPlayerPrice || 1)))}
+                  max={Math.max(0, Math.floor(25000 / (
+                    Number(bettingNumber <= 2
+                      ? 35
+                      : bettingNumber < 5
+                        ? 30
+                        : 25) +
+                    Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run0) * 0.5 +
+                    Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run1) * 0.75 +
+                    Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run2) * 1.5 +
+                    Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run3) * 2.25 +
+                    Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].fours) * 3 +
+                    Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].sixes) * 4.5
+                  )
+                  ))}
                   step={1}
                   className="mt-10 mb-5 "
                 />
@@ -1188,7 +1295,19 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                           }
 
                           let numVal = Number(val);
-                          const maxQty = Math.max(0, Math.floor(25000 / (currentPlayerPrice || 1)));
+                          const maxQty = Math.max(0, Math.floor(25000 /
+                            Number(bettingNumber <= 2
+                              ? 35
+                              : bettingNumber < 5
+                                ? 30
+                                : 25) +
+                            Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run0) * 0.5 +
+                            Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run1) * 0.75 +
+                            Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run2) * 1.5 +
+                            Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run3) * 2.25 +
+                            Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].fours) * 3 +
+                            Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].sixes) * 4.5
+                          ))
                           if (numVal > maxQty) numVal = maxQty;
 
                           setQuantity([numVal]);
@@ -1206,17 +1325,57 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                       <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="price-input">
                         Price
                         <span
-                          className={`ml-2 text-xs mt-1 font-bold ${currentPlayerPrice * quantity[0] > 25000 ? "text-red-500" : "text-gray-400"
+                          className={`ml-2 text-xs mt-1 font-bold ${(
+                            Number(bettingNumber <= 2
+                              ? 35
+                              : bettingNumber < 5
+                                ? 30
+                                : 25) +
+                            Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run0) * 0.5 +
+                            Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run1) * 0.75 +
+                            Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run2) * 1.5 +
+                            Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run3) * 2.25 +
+                            Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].fours) * 3 +
+                            Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].sixes) * 4.5
+                          )
+                            * quantity[0] > 25000 ? "text-red-500" : "text-gray-400"
                             }`}
                         >
-                          (Max: ₹25000)
+                          (Max: ₹25000)a
                         </span>
                       </label>
                       <Input
                         id="price-input"
                         className="text-gray-300 border-0 font-extrabold bg-transparent rounded-lg px-3 py-2 lg:text-end text-sm sm:text-base"
-                        placeholder={`₹${currentPlayerPrice * quantity[0]}`}
-                        value={`₹${currentPlayerPrice * quantity[0]}`}
+                        placeholder={`₹${(
+                          Number(bettingNumber <= 2
+                            ? 35
+                            : bettingNumber < 5
+                              ? 30
+                              : 25) -
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run0) * 0.5 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run1) * 0.75 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run2) * 1.5 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run3) * 2.25 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].fours) * 3 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].sixes) * 4.5
+                        )
+                          * quantity[0]}`}
+                        value={`₹${(
+                          Number(bettingNumber <= 2
+                            ? 35
+                            : bettingNumber < 5
+                              ? 30
+                              : 25) -
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run0) * 0.5 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run1) * 0.75 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run2) * 1.5 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run3) * 2.25 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].fours) * 3 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].sixes) * 4.5
+                        )
+
+                          * quantity[0]}`}
                       />
                     </div>
                   </div>
@@ -1234,13 +1393,27 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                       )
                       if (isMatchOver) {
                         toast.info("Match is not LIVE")
-                        return
+                        setTimeout(() => {
+                          redirect("/live-matches");
+                        }, 1000);
                       }
                       if (!quantity[0] || Number(quantity[0]) === 0) {
                         toast.info("Quantity must be greater than 0")
                         return
                       }
-                      const buyingResponse = await buyPlayer(bettingPlayer, String(currentPlayerPrice), String(quantity[0]), match_id)
+                      const buyingResponse = await buyPlayer(bettingPlayer, String(
+                        Number(bettingNumber <= 2
+                          ? 35
+                          : bettingNumber < 5
+                            ? 30
+                            : 25) -
+                        Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run0) * 0.5 +
+                        Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run1) * 0.75 +
+                        Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run2) * 1.5 +
+                        Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run3) * 2.25 +
+                        Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].fours) * 3 +
+                        Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].sixes) * 4.5
+                      ), String(quantity[0]), match_id)
                       toast.success(buyingResponse.message)
                     }}
                   >
@@ -1256,11 +1429,25 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
                       )
                       if (isMatchOver) {
                         toast.info("Match is not LIVE")
-                        return
+                        setTimeout(() => {
+                          redirect("/live-matches");
+                        }, 1000);
                       }
                       const sellingResponse = await sellPlayer(
                         bettingPlayer,
-                        String(currentPlayerPrice),
+                        String(
+                          Number(bettingNumber <= 2
+                            ? 35
+                            : bettingNumber < 5
+                              ? 30
+                              : 25) -
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run0) * 0.5 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run1) * 0.75 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run2) * 1.5 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].run3) * 2.25 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].fours) * 3 +
+                          Number(data?.innings[Number(data.latest_inning_number) - 1].batsmen[bettingNumber].sixes) * 4.5
+                        ),
                         String(quantity[0]),
                         match_id
                       )

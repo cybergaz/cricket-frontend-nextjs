@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Users, Trophy, Landmark, TrendingDown, Dot, IndianRupee } from "lucide-react";
+import { TrendingUp, Users, Trophy, Landmark, TrendingDown, Dot, IndianRupee, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PlayerPortfolio, TeamPortfolio } from "./types";
@@ -16,7 +16,7 @@ import { Batsman, BettingPlayer, CricketMatchData, Team } from "../betting-inter
 import { Button } from "@/components/ui/button";
 import { sellPlayer, buyPlayer, sellTeam, buyTeam } from "../betting-interface/services";
 import AnimatedNumber from "@/components/ui/animated-number";
-import PortfolioTradeModal from "@/components/ui/portfolio-trade-modal";
+import "dotenv/config"
 
 function formatTimestamp(ts: Date | string | undefined): string {
   if (!ts) return "--";
@@ -31,19 +31,26 @@ function formatTimestamp(ts: Date | string | undefined): string {
     hour12: true,
   });
 }
-
+const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+  if (e.target === e.currentTarget) {
+    // onClose();
+  }
+};
 export default function Portfolio() {
+  const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [playerPortfolios, setPlayerPortfolios] = useState<PlayerPortfolio[]>([]);
   // as key clue pair for player idf and title
   // We'll create an object mapping player IDs to their player names (titles)
   const [matchIdToTitle, setMatchIdToTitle] = useState<Record<string, string[]>>({});
+  const [playerIdToNumber, setPlayerIdToNumber] = useState<Record<string, Number>>({});
   const [teamPortfolios, setTeamPortfolios] = useState<TeamPortfolio[]>([]);
   const [playerPortfoliosHistorys, setPlayerPortfoliosHistorys] = useState<PlayerPortfolio[]>([]);
   const [teamPortfoliosHistorys, setTeamPortfoliosHistorys] = useState<TeamPortfolio[]>([]);
   const [todaysProfit, setTodaysProfit] = useState()
   const [value, setValue] = useState(0);
   const [profit, setProfit] = useState(0);
+  const [playerIdToMatch, setPlayerIdToMatch] = useState<Record<string, any>>({})
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [tradeModalPortfolio, setTradeModalPortfolio] = useState<any>(null);
   const [tradeModalType, setTradeModalType] = useState<"player" | "team" | null>(null);
@@ -94,9 +101,7 @@ export default function Portfolio() {
           return { active, history };
         }
 
-        // Player portfolios
         const playerResult = splitByStatus<PlayerPortfolio>(apiData.playerPortfolios || []);
-        // console.log("playerResult -> ", playerResult)
         const playerPortfoliosWithPrice = await Promise.all(
           playerResult.active.map(async (p) => ({
             ...p,
@@ -106,26 +111,51 @@ export default function Portfolio() {
         setPlayerPortfolios(playerPortfoliosWithPrice);
         setPlayerPortfoliosHistorys(playerResult.history);
 
-        // Team portfolios
         const teamResult = splitByStatus<TeamPortfolio>(apiData.teamPortfolios || []);
         setTeamPortfolios(teamResult.active);
         setTeamPortfoliosHistorys(teamResult.history);
 
-        // Fetch match data for all unique matchIds
-        const allPortfolios = [...(apiData.playerPortfolios || []), ...(apiData.teamPortfolios || [])];
+        // Map ids from player and team portfolios where status is Buy only
+        const allPortfolios = [
+          ...(apiData.playerPortfolios || []).filter((p: any) => (p.status || "").toLowerCase() === "buy"),
+          ...(apiData.teamPortfolios || []).filter((t: any) => (t.status || "").toLowerCase() === "buy")
+        ];
+
         const uniqueMatchIds = Array.from(new Set(allPortfolios.map((p: any) => p.matchId)));
         const matchDataObj: Record<string, CricketMatchData> = {};
         const matchIdToTitleObj: Record<string, string[]> = {};
+        const playerIdToIndex: Record<string, number> = {};
+        const playerIdToMatch: Record<string, any> = {};
         await Promise.all(uniqueMatchIds.map(async (matchId: string) => {
           try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`);
-            const apiData = await res.json();
-            matchIdToTitleObj[String(apiData.data.match_id)] = [apiData.data.short_title, apiData.data.title]
-            if (apiData.data) {
-              matchDataObj[matchId] = apiData.data;
+            const res = await fetch(
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`
+            );
+            const resJson = await res.json();
+            const apiData = resJson.data
+            const latestInningNumber = apiData.latest_inning_number;
+            const innings = apiData.innings;
+
+            matchIdToTitleObj[String(apiData.match_id)] = [apiData.short_title, apiData.title]
+
+            if (latestInningNumber && innings && Array.isArray(innings)) {
+              const batsmen = innings[Number(latestInningNumber) - 1]?.batsmen || [];
+              batsmen.forEach((batsman: any, batsmanIdx: number) => {
+                allPortfolios.forEach((player: any) => {
+                  if (batsman.batsman_id == player.playerId) {
+                    playerIdToMatch[player.playerId] = batsman
+                    playerIdToIndex[batsman.batsman_id] = batsmanIdx + 1;
+                  }
+                });
+              });
+            }
+            if (apiData) {
+              matchDataObj[matchId] = apiData
             }
           } catch { }
         }));
+        setPlayerIdToNumber(playerIdToIndex)
+        setPlayerIdToMatch(playerIdToMatch)
         setMatchDataById(matchDataObj);
         setMatchIdToTitle(matchIdToTitleObj);
         setLoading(false)
@@ -192,26 +222,25 @@ export default function Portfolio() {
       const currentInning = match.innings[Number(currentInningNumber) - 1]
       const batsmanNumber = currentInning.batsmen.findIndex(
         (batsman: Batsman) => batsman.batsman_id === portfolioPlayer.playerId
-      ) + 1;
+      );
       const inningPlayer = currentInning.batsmen.find(
         (batsman: Batsman) => batsman.batsman_id === portfolioPlayer.playerId
       ) as Batsman
-      // console.log(batsmanNumber)
-      const basePrice = batsmanNumber <= 3
+
+      const basePrice = batsmanNumber <= 2
         ? 35
-        : batsmanNumber < 6
+        : batsmanNumber < 5
           ? 30
-          : 25
-      console.log(batsmanNumber)
-      console.log("\n")
-      console.log(basePrice)
-      return String(basePrice
-        - (Number(inningPlayer.run0) * 0.5)
-        + (Number(inningPlayer.run1) * 0.75)
-        + (Number(inningPlayer.run2) * 1.50)
-        + (Number(inningPlayer.run3) * 2.25)
-        + (Number(inningPlayer.fours) * 3)
-        + (Number(inningPlayer.sixes) * 4.5))
+          : 25;
+      return String(
+        Number(basePrice) +
+        Number(inningPlayer.run0) * 0.5 +
+        Number(inningPlayer.run1) * 0.75 +
+        Number(inningPlayer.run2) * 1.5 +
+        Number(inningPlayer.run3) * 2.25 +
+        Number(inningPlayer.fours) * 3 +
+        Number(inningPlayer.sixes) * 4.5
+      );
     } catch {
       return "0"
     }
@@ -222,20 +251,18 @@ export default function Portfolio() {
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${player.matchId}`
       );
       const apiData = await res.json();
-      if (!apiData.data) {
-        toast.success("Match is Over")
+      const unwantedWords = ["won", "loss", "draw", "abandoned", "no result", "cancelled", "tie", "postponed", "completed", "finished"];
+      if (unwantedWords.some(word => String(apiData.data.status_note).toLowerCase().includes(word))) {
+        toast.success("Match is Over");
         return { success: true, code: 1 }
       }
-
       const match: CricketMatchData = apiData.data;
-      // Check if batsman is not batting
       const currentInningNumber = match.latest_inning_number;
       const currentInning = match.innings[Number(currentInningNumber) - 1];
       const isBatting = currentInning.batsmen.some(
         (batsman: Batsman) =>
           batsman.batsman_id === player.playerId && batsman.batting == "true"
       );
-
       if (!isBatting) {
         toast.success(`${player.playerName} Got Out`);
         return { success: true, code: 0 }
@@ -794,12 +821,16 @@ export default function Portfolio() {
                                     </div>
                                   </td>
                                   <td className="px-4 py-4 text-left text-xs sm:text-sm text-gray-300 font-bold">
-                                    <span className="inline xl:hidden">
-                                      {matchIdToTitle[String(p.matchId)][0] || "0"}
-                                    </span>
-                                    <span className="hidden xl:inline">
-                                      {matchIdToTitle[String(p.matchId)][1] || "1"}
-                                    </span>
+                                    {matchIdToTitle[String(p.matchId)] &&
+                                      <>
+                                        <span className="inline xl:hidden">
+                                          {matchIdToTitle[String(p.matchId)][0] || "0"}
+                                        </span>
+                                        <span className="hidden xl:inline">
+                                          {matchIdToTitle[String(p.matchId)][1] || "1"}
+                                        </span>
+                                      </>
+                                    }
                                   </td>
                                   <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
                                     {p.quantity ? `${p.quantity}` : "--"}
@@ -812,51 +843,78 @@ export default function Portfolio() {
                                     ) : "--"}
                                   </td>
                                   <td className="px-4 py-4 text-left text-sm text-gray-300 font-bold">
-                                    {p.currentPrice == "0" ?
-                                      (
-                                        <div className="relative">
-                                          <svg className="absolute -top-3 right-0 animate-spin h-5 w-5 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                                          </svg>
-                                        </div>
-                                      ) : (
+                                    {(() => {
+                                      // Calculate current price using the same formula as in the modal
+                                      // Get batsman data by matching playerId from playerIdToMatch state
+                                      const batsmanData = p.playerId ? playerIdToMatch[p.playerId] : undefined;
+                                      const playerId = Number(batsmanData?.batsman_id || p.playerId);
+                                      const batsmanNumber = Number(playerIdToNumber[playerId]);
+                                      const matchData = playerIdToMatch[playerId];
+                                      let calculatedCurrentPrice = 0;
+                                      const basePrice =
+                                        batsmanNumber <= 2
+                                          ? 35
+                                          : batsmanNumber < 5
+                                            ? 30
+                                            : 25;
+
+                                      calculatedCurrentPrice =
+                                        basePrice
+                                        - Number(matchData.run0 || 0) * 0.5
+                                        + Number(matchData.run1 || 0) * 0.75
+                                        + Number(matchData.run2 || 0) * 1.5
+                                        + Number(matchData.run3 || 0) * 2.25
+                                        + Number(matchData.fours || 0) * 3
+                                        + Number(matchData.sixes || 0) * 4.5;
+                                      // If calculatedCurrentPrice is 0, show spinner
+                                      if (!calculatedCurrentPrice || isNaN(calculatedCurrentPrice)) {
+                                        return (
+                                          <div className="relative">
+                                            <svg className="absolute -top-3 right-0 animate-spin h-5 w-5 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                                            </svg>
+                                          </div>
+                                        );
+                                      }
+                                      return (
                                         <div className="flex flex-col items-start">
                                           <span
                                             className={
                                               `flex items-center gap-2
-                                              ${Number(p.currentPrice) > Number(p.boughtPrice)
+                                              ${calculatedCurrentPrice > Number(p.boughtPrice)
                                                 ? "text-emerald-400"
-                                                : Number(p.currentPrice) < Number(p.boughtPrice)
+                                                : calculatedCurrentPrice < Number(p.boughtPrice)
                                                   ? "text-red-500"
                                                   : "text-gray-300"}
-
-                                            `}
+                                            `
+                                            }
                                           >
-                                            ₹{Number(p.currentPrice).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                                            ₹{calculatedCurrentPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                                             <span
                                               className={
                                                 " px-2 py-0.5 rounded-full text-xs font-normal text-[10px] " +
                                                 (
-                                                  Number(p.currentPrice) > Number(p.boughtPrice)
+                                                  calculatedCurrentPrice > Number(p.boughtPrice)
                                                     ? "bg-emerald-400/10 text-emerald-400"
-                                                    : Number(p.currentPrice) < Number(p.boughtPrice)
+                                                    : calculatedCurrentPrice < Number(p.boughtPrice)
                                                       ? "bg-red-500/10 text-red-400"
                                                       : "bg-gray-400/10 text-gray-300"
                                                 )
                                               }
                                             >
                                               {
-                                                Number(p.currentPrice) === 0
+                                                Number(p.boughtPrice) === 0
                                                   ? "0.00%"
                                                   : (
-                                                    ((Number(p.currentPrice) - Number(p.boughtPrice)) / Number(p.boughtPrice)) * 100
+                                                    ((calculatedCurrentPrice - Number(p.boughtPrice)) / Number(p.boughtPrice)) * 100
                                                   ).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%"
                                               }
                                             </span>
                                           </span>
                                         </div>
-                                      )}
+                                      );
+                                    })()}
                                   </td>
                                   <td className="px-4 py-4 text-left">
                                     <Badge
@@ -1280,14 +1338,161 @@ export default function Portfolio() {
             </TabsContent>
           </Tabs>
         </main >
-        <PortfolioTradeModal
-          open={tradeModalOpen}
-          onClose={() => setTradeModalOpen(false)}
-          portfolio={tradeModalPortfolio}
-          team={tradeModalPortfolio ? (tradeModalType === "player" ? mapPlayerPortfolioToTeam(tradeModalPortfolio) : mapTeamPortfolioToTeam(tradeModalPortfolio)) : { team_id: '', name: '', short_name: '', logo_url: '', thumb_url: '', scores_full: '', scores: '', overs: '' }}
-          onBuy={handleBuy}
-          onSell={handleSell}
-        />
+        {
+          tradeModalOpen &&
+          (() => {
+            const batsmanData = playerIdToMatch[tradeModalPortfolio.playerId]
+            const playerName = batsmanData?.name || tradeModalPortfolio.playerName;
+            const teamName = batsmanData?.team_name || tradeModalPortfolio.team;
+            const playerId = Number(batsmanData.batsman_id)
+            const batsmanNumber = Number(playerIdToNumber[playerId])
+            const boughtPrice = Number(tradeModalPortfolio.boughtPrice) || 0;
+            const quantityVal = Number(tradeModalPortfolio.quantity) || 0;
+            const basePrice =
+              batsmanNumber <= 2
+                ? 35
+                : batsmanNumber < 5
+                  ? 30
+                  : 25;
+
+            const currentPrice =
+              basePrice
+              - Number(batsmanData.run0 || 0) * 0.5
+              + Number(batsmanData.run1 || 0) * 0.75
+              + Number(batsmanData.run2 || 0) * 1.5
+              + Number(batsmanData.run3 || 0) * 2.25
+              + Number(batsmanData.fours || 0) * 3
+              + Number(batsmanData.sixes || 0) * 4.5;
+
+            const profitLoss = (currentPrice - boughtPrice) * quantity;
+            const profitLossClass =
+              profitLoss > 0
+                ? "text-emerald-400"
+                : profitLoss < 0
+                  ? "text-red-400"
+                  : "text-gray-300";
+            const MAX_TOTAL_VALUE = 1000000;
+            return (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={handleBackdropClick}>
+                <div className="bg-gray-900 rounded-3xl shadow-lg p-5 w-full max-w-sm relative" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setTradeModalOpen(false)} className="absolute top-2 right-2 text-gray-400 hover:text-white text-lg cursor-pointer"><X /></button>
+                  <div className="mb-3">
+                    <div className="text-2xl font-bold text-white">{playerName}</div>
+                    <div className="text-sm text-gray-400 mb-2">{teamName}</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-1">
+                      <div className="bg-gray-800 rounded-lg p-2 flex flex-col items-center">
+                        <span className="text-xs text-gray-400 mb-1">Buy</span>
+                        <span className="font-bold text-lg text-white">
+                          ₹{boughtPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="bg-gray-800 rounded-lg p-2 flex flex-col items-center">
+                        <span className="text-xs text-gray-400 mb-1">Current</span>
+                        <span
+                          className={`font-bold text-lg ${currentPrice > boughtPrice
+                            ? "text-emerald-400"
+                            : currentPrice < boughtPrice
+                              ? "text-red-500"
+                              : "text-gray-300"
+                            }`}
+                        >
+                          ₹{currentPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="bg-gray-800 rounded-lg p-2 flex flex-col items-center">
+                        <span className="text-xs text-gray-400 mb-1">
+                          {profitLoss > 0 ? "Profit" : profitLoss < 0 ? "Loss" : "P & L"}
+                        </span>
+                        <span className={`font-bold text-md ${profitLossClass}`}>
+                          ₹{profitLoss}
+                        </span>
+                      </div>
+                      <div className="bg-gray-800 rounded-lg p-2 flex flex-col items-center">
+                        <span className="text-xs text-gray-400 mb-1 md:hidden">Current Quantity</span>
+                        <span className="text-xs text-gray-400 mb-1 hidden md:inline-block">Qty</span>
+                        <span className="font-bold text-lg text-white">
+                          {quantityVal}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-gray-300 text-base mb-1 font-bold">Qty</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="0"
+                      value={quantity === 0 ? "" : quantity}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!/^\d*$/.test(val)) return;
+                        if (val === "") {
+                          setQuantity(0);
+                          return;
+                        }
+                        let numVal = Number(val);
+                        if (numVal < 1) numVal = 1;
+                        if (numVal * currentPrice > MAX_TOTAL_VALUE) {
+                          numVal = Math.floor(MAX_TOTAL_VALUE / currentPrice);
+                        }
+                        setQuantity(numVal);
+                      }}
+                      className="w-full rounded-lg bg-gray-800 text-white px-4 py-2 text-xl font-bold border-0 focus:outline-none focus:ring-0"
+                      onWheel={(e) => e.currentTarget.blur()}
+                      onKeyDown={(e) => {
+                        if (
+                          ["e", "E", "+", "-", ".", "ArrowUp", "ArrowDown"].includes(e.key)
+                        ) {
+                          e.preventDefault();
+                        }
+                      }}
+                      style={{
+                        MozAppearance: "textfield",
+                      }}
+                    />
+                  </div>
+                  <div className="mb-3 flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+                    <span className="text-gray-300 text-base font-semibold">Total</span>
+                    <span className="text-lg font-bold text-white">₹{(quantity * currentPrice).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+                  </div>
+                  {quantity * currentPrice > MAX_TOTAL_VALUE && (
+                    <div className="mb-2 text-red-500 text-sm font-semibold">Total value cannot exceed ₹{MAX_TOTAL_VALUE.toLocaleString("en-IN")}</div>
+                  )}
+                  <div className="flex gap-3">
+                    <button
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 text-lg transition rounded-lg cursor-pointer"
+                      onClick={() => {
+                        if (quantity == 0) {
+                          toast("Select a Quantity")
+                          return
+                        }
+                        handleBuy(quantity)
+                        setTradeModalOpen(false)
+                      }}
+                      disabled={quantity * currentPrice > MAX_TOTAL_VALUE}
+                    >
+                      Buy
+                    </button>
+                    <button
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 text-lg rounded-lg transition cursor-pointer"
+                      onClick={() => {
+                        if (quantity == 0) {
+                          toast("Select a Quantity")
+                          return
+                        }
+                        handleSell(quantity)
+                        setTradeModalOpen(false)
+                      }}
+                    >
+                      Sell
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()
+        }
       </div >
     );
   }
