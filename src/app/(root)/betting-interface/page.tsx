@@ -24,10 +24,11 @@ export default function BettingPage() {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`
         );
-        const apiData = await res.json();
+        const resJson = await res.json();
+        const apiData = resJson.data
         if (!isMounted) return;
-        if (apiData.success) {
-          setMatchData(apiData.data);
+        if (apiData) {
+          setMatchData(apiData);
           setMatchFound(true);
         } else {
           setMatchData(null);

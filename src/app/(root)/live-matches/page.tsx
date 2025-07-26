@@ -59,7 +59,6 @@ export default function LiveMatches() {
   return (
     <div className="min-h-full text-gray-100">
       {matches.length > 0 && <FeaturedBanner {...matches[Math.floor(Math.random() * matches.length)]} />}
-      {/* {matches.length > 0 && <FeaturedBanner {...matches[0]} />} */}
 
       <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
         <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -77,7 +76,6 @@ export default function LiveMatches() {
           </div>
         </div>
 
-        {/* Matches Grid */}
         <div>
           {matches && matches.map((match) => (
             <MatchCard key={match._id} match={match} />
