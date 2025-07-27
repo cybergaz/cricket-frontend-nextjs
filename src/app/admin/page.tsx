@@ -365,6 +365,13 @@ const Dashboard = (): JSX.Element => {
 
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
               <div className="text-4xl mb-2">
+                {renderMetricValue(companyProfit.profitFromUserLoss, isCompanyProfitLoading, companyProfitError)}
+              </div>
+              <div className="text-lg font-light mb-1">Profit from Users Loss</div>
+            </div>
+
+            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
+              <div className="text-4xl mb-2">
                 {renderMetricValue(companyProfit.profitFromPlatformFees, isCompanyProfitLoading, companyProfitError)}
               </div>
               <div className="text-lg font-light mb-1">Profit from platform fee</div>
