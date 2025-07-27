@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { Menu, TrendingUp, X } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { useState } from "react"
 
 const navlinks = [
@@ -41,17 +42,21 @@ const MobileNav = () => {
       {
         isOpen &&
         <div className={cn("fixed right-1 top-2 z-40 w-full max-w-sm animate-slide-up-sm shadow-lg",)} >
-          <div className="flex flex-col space-y-4 bg-background/30 border-white/20 border-1 backdrop-blur-md mt-16 p-10 rounded-2xl">
-            {navlinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-lg font-medium hover:text-primary"
-                onClick={() => setIsOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
+          <div className="flex flex-col space-y-4 bg-background border-white/15 border-1 mt-16 p-10 rounded-2xl">
+            {navlinks.map((link) => {
+              const isActive = link.href === usePathname()
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn("text-lg font-medium hover:text-primary", isActive && "text-accent-light")}
+                  onClick={() => setIsOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              )
+            })
+            }
 
             <Button className="mt-5 group bg-accent-dark text-base border-b border-transparent hover:rounded-none hover:border-purple-500 justify-center items-center rounded-sm" asChild>
               <Link href={"/login"} className="flex justify-center items-center">
