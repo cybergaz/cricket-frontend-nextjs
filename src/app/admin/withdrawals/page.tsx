@@ -5,128 +5,35 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Search, LoaderCircle, CheckCircle, Clock, AlertCircle, DollarSign, User, Calendar } from "lucide-react";
+import { Search, LoaderCircle, CheckCircle, Clock, AlertCircle, DollarSign, User, Calendar, Shield, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
+import { getTokenFromCookies } from "@/lib/actions";
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 // Types for withdrawal requests
 interface WithdrawalRequest {
-  id: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
+  _id: string;
+  accountName: string;
+  email: string;
   amount: number;
-  bankName: string;
   accountNumber: string;
-  ifscCode: string;
-  status: "pending" | "completed" | "rejected";
-  requestDate: string;
-  completedDate?: string;
-  notes?: string;
+  ifsc: string;
+  bankName: string;
+  phone: string;
+  aadhar?: string;
+  pan?: string;
+  orderId: string;
+  userMobile: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-// Dummy data for withdrawal requests
-const dummyWithdrawals: WithdrawalRequest[] = [
-  {
-    id: "1",
-    userId: "user1",
-    userName: "Rahul Sharma",
-    userEmail: "rahul.sharma@email.com",
-    amount: 2500,
-    bankName: "HDFC Bank",
-    accountNumber: "****1234",
-    ifscCode: "HDFC0001234",
-    status: "pending",
-    requestDate: "2024-01-15T10:30:00Z",
-    notes: "User requested urgent processing"
-  },
-  {
-    id: "2",
-    userId: "user2",
-    userName: "Priya Patel",
-    userEmail: "priya.patel@email.com",
-    amount: 5000,
-    bankName: "ICICI Bank",
-    accountNumber: "****5678",
-    ifscCode: "ICIC0005678",
-    status: "pending",
-    requestDate: "2024-01-14T15:45:00Z"
-  },
-  {
-    id: "3",
-    userId: "user3",
-    userName: "Amit Kumar",
-    userEmail: "amit.kumar@email.com",
-    amount: 1200,
-    bankName: "SBI Bank",
-    accountNumber: "****9012",
-    ifscCode: "SBIN0009012",
-    status: "completed",
-    requestDate: "2024-01-13T09:15:00Z",
-    completedDate: "2024-01-14T11:20:00Z"
-  },
-  {
-    id: "4",
-    userId: "user4",
-    userName: "Neha Singh",
-    userEmail: "neha.singh@email.com",
-    amount: 3500,
-    bankName: "Axis Bank",
-    accountNumber: "****3456",
-    ifscCode: "AXIS0003456",
-    status: "rejected",
-    requestDate: "2024-01-12T14:20:00Z",
-    notes: "Insufficient balance in user account"
-  },
-  {
-    id: "5",
-    userId: "user5",
-    userName: "Vikram Malhotra",
-    userEmail: "vikram.malhotra@email.com",
-    amount: 8000,
-    bankName: "Kotak Bank",
-    accountNumber: "****7890",
-    ifscCode: "KOTK0007890",
-    status: "pending",
-    requestDate: "2024-01-11T16:30:00Z"
-  },
-  {
-    id: "6",
-    userId: "user6",
-    userName: "Sneha Reddy",
-    userEmail: "sneha.reddy@email.com",
-    amount: 1800,
-    bankName: "Canara Bank",
-    accountNumber: "****2345",
-    ifscCode: "CNRB0002345",
-    status: "pending",
-    requestDate: "2024-01-10T12:45:00Z"
-  },
-  {
-    id: "7",
-    userId: "user7",
-    userName: "Arjun Mehta",
-    userEmail: "arjun.mehta@email.com",
-    amount: 4200,
-    bankName: "PNB Bank",
-    accountNumber: "****6789",
-    ifscCode: "PUNB0006789",
-    status: "completed",
-    requestDate: "2024-01-09T08:15:00Z",
-    completedDate: "2024-01-10T10:30:00Z"
-  },
-  {
-    id: "8",
-    userId: "user8",
-    userName: "Kavya Iyer",
-    userEmail: "kavya.iyer@email.com",
-    amount: 6500,
-    bankName: "Union Bank",
-    accountNumber: "****0123",
-    ifscCode: "UBIN0000123",
-    status: "pending",
-    requestDate: "2024-01-08T13:20:00Z"
-  }
-];
+interface WithdrawalResponse {
+  withdrawals: WithdrawalRequest[];
+  totalPages?: number;
+  currentPage?: number;
+}
 
 const Withdrawals = () => {
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
@@ -136,40 +43,47 @@ const Withdrawals = () => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [selectedWithdrawals, setSelectedWithdrawals] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [itemsPerPage] = useState<number>(5);
+  const [itemsPerPage] = useState<number>(10);
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
 
-  // Simulate API call
+  // Fetch withdrawals from API
   const fetchWithdrawals = async (page: number = 1, search: string = "", status: string = "all"): Promise<void> => {
     setLoading(true);
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      let filteredData = [...dummyWithdrawals];
-      
-      // Apply status filter
-      if (status !== "all") {
-        filteredData = filteredData.filter(item => item.status === status);
+      const token = getTokenFromCookies();
+      if (!token) {
+        toast.error("Authentication required");
+        return;
       }
-      
-      // Apply search filter
+
+      let url = `${BACKEND_URL}/admin/fetch-all-withdrawals?page=${page}&limit=${itemsPerPage}`;
       if (search) {
-        filteredData = filteredData.filter(item =>
-          item.userName.toLowerCase().includes(search.toLowerCase()) ||
-          item.userEmail.toLowerCase().includes(search.toLowerCase()) ||
-          item.bankName.toLowerCase().includes(search.toLowerCase()) ||
-          item.amount.toString().includes(search)
-        );
+        url += `&query=${encodeURIComponent(search)}`;
       }
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch withdrawals");
+      }
+
+      const data: WithdrawalResponse = await response.json();
       
-      // Calculate pagination
-      const startIndex = (page - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage;
-      const paginatedData = filteredData.slice(startIndex, endIndex);
+      setWithdrawals(data.withdrawals || []);
+      setCurrentPage(data.currentPage || page);
+      setTotalPages(data.totalPages || 1);
       
-      setWithdrawals(paginatedData);
-      setCurrentPage(page);
-      setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
+      // Fetch transaction statuses for the withdrawals
+      if (data.withdrawals && data.withdrawals.length > 0) {
+        const orderIds = data.withdrawals.map((w: WithdrawalRequest) => w.orderId);
+        fetchTransactionStatuses(orderIds);
+      }
     } catch (error) {
       console.error("Error fetching withdrawals:", error);
       toast.error("Failed to fetch withdrawal requests");
@@ -194,22 +108,65 @@ const Withdrawals = () => {
     setSelectedWithdrawals([]);
   };
 
-  const handleSelectWithdrawal = (withdrawalId: string): void => {
+  const handleSelectWithdrawal = (orderId: string): void => {
     setSelectedWithdrawals(prev => 
-      prev.includes(withdrawalId)
-        ? prev.filter(id => id !== withdrawalId)
-        : [...prev, withdrawalId]
+      prev.includes(orderId)
+        ? prev.filter(id => id !== orderId)
+        : [...prev, orderId]
     );
   };
 
   const handleSelectAll = (): void => {
-    const pendingWithdrawals = withdrawals.filter(w => w.status === "pending");
-    const pendingIds = pendingWithdrawals.map(w => w.id);
+    const selectableWithdrawals = withdrawals.filter(w => {
+      const status = getTransactionStatus(w.orderId);
+      return status === "Pending" || status === "Verified";
+    });
+    const selectableIds = selectableWithdrawals.map(w => w.orderId);
     
-    if (selectedWithdrawals.length === pendingIds.length) {
+    if (selectedWithdrawals.length === selectableIds.length) {
       setSelectedWithdrawals([]);
     } else {
-      setSelectedWithdrawals(pendingIds);
+      setSelectedWithdrawals(selectableIds);
+    }
+  };
+
+  const handleMarkAsVerified = async (): Promise<void> => {
+    if (selectedWithdrawals.length === 0) {
+      toast.error("Please select at least one withdrawal request");
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const token = getTokenFromCookies();
+      if (!token) {
+        toast.error("Authentication required");
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/admin/mark-withdrawal-verified`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ orderIds: selectedWithdrawals }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success(`${selectedWithdrawals.length} withdrawal request(s) marked as verified`);
+        setSelectedWithdrawals([]);
+        fetchWithdrawals(currentPage, searchQuery, statusFilter);
+      } else {
+        toast.error(data.message || "Failed to mark withdrawals as verified");
+      }
+    } catch (error) {
+      console.error("Error marking withdrawals as verified:", error);
+      toast.error("Failed to mark withdrawals as verified");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -220,37 +177,86 @@ const Withdrawals = () => {
     }
 
     try {
-      setLoading(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Update local state
-      setWithdrawals(prev => prev.map(w => 
-        selectedWithdrawals.includes(w.id) 
-          ? { ...w, status: "completed" as const, completedDate: new Date().toISOString() }
-          : w
-      ));
-      
-      setSelectedWithdrawals([]);
-      toast.success(`${selectedWithdrawals.length} withdrawal request(s) marked as completed`);
-      
-      // Refresh data
-      fetchWithdrawals(currentPage, searchQuery, statusFilter);
+      setActionLoading(true);
+      const token = getTokenFromCookies();
+      if (!token) {
+        toast.error("Authentication required");
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/admin/mark-withdrawal-completed`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ orderIds: selectedWithdrawals }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success(`${selectedWithdrawals.length} withdrawal request(s) marked as completed`);
+        setSelectedWithdrawals([]);
+        fetchWithdrawals(currentPage, searchQuery, statusFilter);
+      } else {
+        toast.error(data.message || "Failed to mark withdrawals as completed");
+      }
     } catch (error) {
       console.error("Error marking withdrawals as completed:", error);
       toast.error("Failed to mark withdrawals as completed");
     } finally {
-      setLoading(false);
+      setActionLoading(false);
+    }
+  };
+
+  const [transactionStatuses, setTransactionStatuses] = useState<{[key: string]: string}>({});
+
+  // Helper function to get transaction status
+  const getTransactionStatus = (orderId: string): string => {
+    return transactionStatuses[orderId] || "Pending";
+  };
+
+  // Fetch transaction statuses for all withdrawals
+  const fetchTransactionStatuses = async (orderIds: string[]) => {
+    if (orderIds.length === 0) return;
+    
+    try {
+      const token = getTokenFromCookies();
+      if (!token) return;
+
+      const response = await fetch(`${BACKEND_URL}/admin/withdrawal-statuses?${orderIds.map(id => `orderIds=${id}`).join('&')}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.statuses) {
+          const statusMap: {[key: string]: string} = {};
+          data.statuses.forEach((item: {orderId: string, status: string}) => {
+            statusMap[item.orderId] = item.status;
+          });
+          setTransactionStatuses(statusMap);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching transaction statuses:", error);
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "pending":
+      case "Pending":
         return <Clock className="h-4 w-4 text-yellow-500" />;
-      case "completed":
+      case "Verified":
+        return <Shield className="h-4 w-4 text-blue-500" />;
+      case "Completed":
         return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case "rejected":
+      case "Failed":
         return <AlertCircle className="h-4 w-4 text-red-500" />;
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
@@ -259,14 +265,15 @@ const Withdrawals = () => {
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      pending: "bg-yellow-500/20 text-yellow-500 border-yellow-500/30",
-      completed: "bg-green-500/20 text-green-500 border-green-500/30",
-      rejected: "bg-red-500/20 text-red-500 border-red-500/30"
+      Pending: "bg-yellow-500/20 text-yellow-500 border-yellow-500/30",
+      Verified: "bg-blue-500/20 text-blue-500 border-blue-500/30",
+      Completed: "bg-green-500/20 text-green-500 border-green-500/30",
+      Failed: "bg-red-500/20 text-red-500 border-red-500/30"
     };
     
     return (
       <Badge className={`${variants[status as keyof typeof variants]} font-medium`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {status}
       </Badge>
     );
   };
@@ -289,7 +296,8 @@ const Withdrawals = () => {
     }).format(amount);
   };
 
-  const pendingCount = withdrawals.filter(w => w.status === "pending").length;
+  const pendingCount = withdrawals.filter(w => getTransactionStatus(w.orderId) === "Pending").length;
+  const verifiedCount = withdrawals.filter(w => getTransactionStatus(w.orderId) === "Verified").length;
 
   return (
     <section className="bg-[#181a20] flex flex-col gap-5 rounded-2xl p-4 sm:p-8 w-full max-w-full">
@@ -303,14 +311,24 @@ const Withdrawals = () => {
         </div>
         
         {selectedWithdrawals.length > 0 && (
-          <Button 
-            onClick={handleMarkAsCompleted}
-            className="bg-green-600 hover:bg-green-700 text-white"
-            disabled={loading}
-          >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Mark as Completed ({selectedWithdrawals.length})
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleMarkAsVerified}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={actionLoading}
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              Mark as Verified ({selectedWithdrawals.length})
+            </Button>
+            <Button 
+              onClick={handleMarkAsCompleted}
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={actionLoading}
+            >
+              <CheckSquare className="h-4 w-4 mr-2" />
+              Mark as Completed ({selectedWithdrawals.length})
+            </Button>
+          </div>
         )}
       </div>
 
@@ -350,18 +368,11 @@ const Withdrawals = () => {
             Pending ({pendingCount})
           </Button>
           <Button
-            variant={statusFilter === "completed" ? "default" : "outline"}
-            onClick={() => handleStatusFilterChange("completed")}
-            className="bg-green-600 hover:bg-green-700"
+            variant={statusFilter === "verified" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("verified")}
+            className="bg-blue-600 hover:bg-blue-700"
           >
-            Completed
-          </Button>
-          <Button
-            variant={statusFilter === "rejected" ? "default" : "outline"}
-            onClick={() => handleStatusFilterChange("rejected")}
-            className="bg-red-600 hover:bg-red-700"
-          >
-            Rejected
+            Verified ({verifiedCount})
           </Button>
         </div>
       </div>
@@ -390,81 +401,105 @@ const Withdrawals = () => {
             <>
               {/* Withdrawal Requests List */}
               <div className="space-y-4">
-                {withdrawals.map((withdrawal) => (
-                  <Card key={withdrawal.id} className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
-                        {/* Selection and User Info */}
-                        <div className="flex items-start gap-4 flex-1">
-                          <Checkbox
-                            checked={selectedWithdrawals.includes(withdrawal.id)}
-                            onCheckedChange={() => handleSelectWithdrawal(withdrawal.id)}
-                            disabled={withdrawal.status !== "pending"}
-                            className="mt-1"
-                          />
+                {withdrawals.map((withdrawal) => {
+                  const status = getTransactionStatus(withdrawal.orderId);
+                  return (
+                    <Card key={withdrawal._id} className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                          {/* Selection and User Info */}
+                          <div className="flex items-start gap-4 flex-1">
+                            <Checkbox
+                              checked={selectedWithdrawals.includes(withdrawal.orderId)}
+                              onCheckedChange={() => handleSelectWithdrawal(withdrawal.orderId)}
+                              disabled={status !== "Pending" && status !== "Verified"}
+                              className="mt-1"
+                            />
+                            
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <User className="h-4 w-4 text-gray-400" />
+                                <h3 className="font-semibold text-white">{withdrawal.accountName}</h3>
+                                <span className="text-gray-400 text-sm">{withdrawal.email}</span>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <DollarSign className="h-4 w-4 text-green-400" />
+                                  <span className="text-gray-300">Amount:</span>
+                                  <span className="font-semibold text-white">{formatAmount(withdrawal.amount)}</span>
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-300">Bank:</span>
+                                  <span className="text-white">{withdrawal.bankName}</span>
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-300">Account:</span>
+                                  <span className="text-white">{withdrawal.accountNumber}</span>
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-gray-400" />
+                                  <span className="text-gray-300">Requested:</span>
+                                  <span className="text-white">{formatDate(withdrawal.createdAt)}</span>
+                                </div>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-300">IFSC:</span>
+                                  <span className="text-white">{withdrawal.ifsc}</span>
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-300">Phone:</span>
+                                  <span className="text-white">{withdrawal.phone}</span>
+                                </div>
+                              </div>
+                              
+                              {(withdrawal.aadhar || withdrawal.pan) && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-2">
+                                  {withdrawal.aadhar && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-gray-300">Aadhar:</span>
+                                      <span className="text-white">{withdrawal.aadhar}</span>
+                                    </div>
+                                  )}
+                                  
+                                  {withdrawal.pan && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-gray-300">PAN:</span>
+                                      <span className="text-white">{withdrawal.pan}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              
+                              <div className="mt-2 text-xs text-gray-400">
+                                Order ID: {withdrawal.orderId}
+                              </div>
+                            </div>
+                          </div>
                           
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <User className="h-4 w-4 text-gray-400" />
-                              <h3 className="font-semibold text-white">{withdrawal.userName}</h3>
-                              <span className="text-gray-400 text-sm">{withdrawal.userEmail}</span>
+                          {/* Status */}
+                          <div className="flex flex-col items-end gap-2">
+                            {getStatusBadge(status)}
+                            <div className="flex items-center gap-1">
+                              {getStatusIcon(status)}
+                              <span className="text-xs text-gray-400">
+                                {status === "Pending" ? "Awaiting verification" :
+                                 status === "Verified" ? "Ready for payment" :
+                                 status === "Completed" ? "Payment completed" : "Failed"}
+                              </span>
                             </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-green-400" />
-                                <span className="text-gray-300">Amount:</span>
-                                <span className="font-semibold text-white">{formatAmount(withdrawal.amount)}</span>
-                              </div>
-                              
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-300">Bank:</span>
-                                <span className="text-white">{withdrawal.bankName}</span>
-                              </div>
-                              
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-300">Account:</span>
-                                <span className="text-white">{withdrawal.accountNumber}</span>
-                              </div>
-                              
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-gray-400" />
-                                <span className="text-gray-300">Requested:</span>
-                                <span className="text-white">{formatDate(withdrawal.requestDate)}</span>
-                              </div>
-                            </div>
-                            
-                            {withdrawal.completedDate && (
-                              <div className="flex items-center gap-2 mt-2">
-                                <CheckCircle className="h-4 w-4 text-green-400" />
-                                <span className="text-gray-300">Completed:</span>
-                                <span className="text-white">{formatDate(withdrawal.completedDate)}</span>
-                              </div>
-                            )}
-                            
-                            {withdrawal.notes && (
-                              <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
-                                <p className="text-yellow-400 text-sm">{withdrawal.notes}</p>
-                              </div>
-                            )}
                           </div>
                         </div>
-                        
-                        {/* Status */}
-                        <div className="flex flex-col items-end gap-2">
-                          {getStatusBadge(withdrawal.status)}
-                          <div className="flex items-center gap-1">
-                            {getStatusIcon(withdrawal.status)}
-                            <span className="text-xs text-gray-400">
-                              {withdrawal.status === "pending" ? "Awaiting approval" :
-                               withdrawal.status === "completed" ? "Processed" : "Rejected"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
 
               {/* Pagination */}
