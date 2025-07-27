@@ -18,9 +18,9 @@ import { persist } from "zustand/middleware";
 export interface UserDetails {
   name: string;
   mobile: string;
-  amount: number;
-  referralAmount: number;
   lastSeen: Date;
+  amount?: number;
+  referralAmount?: number;
   email?: string;
   profileImage?: string;
 }

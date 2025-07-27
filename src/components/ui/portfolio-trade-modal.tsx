@@ -31,6 +31,9 @@ const PortfolioTradeModal: React.FC<PortfolioTradeModalProps> = ({ open, onClose
   };
 
   return (
+    <div>
+      portfolio trade modal
+    </div>
   );
 };
 
