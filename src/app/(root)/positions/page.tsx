@@ -65,7 +65,7 @@ export default function Portfolio() {
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Record<string, number>>({})
 
   const fetchAllData = async () => {
-    console.log("called ")
+    // console.log("called ")
     // setFiveSecondWindow(true)
     try {
       const getTokenFromCookies = () => {
@@ -98,7 +98,7 @@ export default function Portfolio() {
       }
 
       setAvailableBalance(apiData.value)
-      setTotalProfit(apiData.totalPortfolioProfit)
+      setTotalProfit(apiData.profit)
 
       const allPlayerPortfolios: PlayerPortfolio[] = apiData.playerPortfolios || []
       const allTeamPortfolios: TeamPortfolio[] = apiData.teamPortfolios || []
@@ -142,7 +142,7 @@ export default function Portfolio() {
             const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
             const batsmanData = currentInning.batsmen[batsmanIndex]
             currentPrice = calculatePlayerCurrentPrice(batsmanData, batsmanIndex)
-            
+
             // Check if price has changed for this player
             const lastPrice = lastPriceUpdate[p.playerId] || 0
             if (currentPrice !== lastPrice && lastPrice !== 0) {
@@ -926,18 +926,17 @@ export default function Portfolio() {
                   </Button>
                   <Button
                     size="lg"
-                    className={`font-bold text-base ${
-                      sellWindowActive 
-                        ? "bg-green-600 hover:bg-green-700 text-white" 
-                        : "bg-gray-600 text-gray-400 cursor-not-allowed"
-                    }`}
+                    className={`font-bold text-base ${sellWindowActive
+                      ? "bg-green-600 hover:bg-green-700 text-white"
+                      : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                      }`}
                     onClick={() => handleTradeAction("sell")}
                     disabled={!sellWindowActive}
                   >
                     {sellWindowActive ? `Sell (${sellWindowTimeLeft}s)` : "Sell"}
                   </Button>
                 </div>
-                
+
                 {!sellWindowActive && (
                   <div className="mt-3 text-center">
                     <p className="text-sm text-gray-400">
