@@ -12,6 +12,7 @@ import type { Batsman, BettingPlayer, CricketMatchData } from "../betting-interf
 import { Button } from "@/components/ui/button"
 import { sellPlayer, buyPlayer } from "../betting-interface/services"
 import AnimatedNumber from "@/components/ui/animated-number"
+import { Input } from "@/components/ui/input"
 
 function formatTimestamp(ts: Date | string | undefined): string {
   if (!ts) return "--"
@@ -317,6 +318,57 @@ export default function Portfolio() {
     }
   }
 
+  const handleSellAll = async () => {
+    if (playerPortfolios.length === 0) {
+      toast.error("No active holdings to sell")
+      return
+    }
+
+    setLoading(true)
+    try {
+      const sellPromises = playerPortfolios.map(async (portfolio) => {
+        const player: BettingPlayer = {
+          name: portfolio.playerName,
+          batsman_id: portfolio.playerId,
+          batting: "",
+          position: "",
+          role: "",
+          role_str: "",
+          runs: "0",
+          balls_faced: "0",
+          fours: "0",
+          sixes: "0",
+          run0: "0",
+          run1: "0",
+          run2: "0",
+          run3: "0",
+          run5: "0",
+          how_out: "",
+          dismissal: "",
+          strike_rate: "0",
+          bowler_id: "",
+          first_fielder_id: "",
+          second_fielder_id: "",
+          third_fielder_id: "",
+        }
+        const price = portfolio.currentPrice || "0"
+        const quantity = portfolio.quantity
+        const matchId = portfolio.matchId
+
+        return sellPlayer(player, price, quantity, matchId)
+      })
+
+      await Promise.allSettled(sellPromises)
+      toast.success(`Successfully sold all ${playerPortfolios.length} holdings`)
+      await fetchAllData() // Refresh data after selling all
+    } catch (e: any) {
+      console.error("Sell all failed:", e?.message || "Unknown error")
+      toast.error("Failed to sell all holdings")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const { currentHoldingsProfit, currentHoldingsValue, profitPercentage } = useMemo(() => {
     const activePortfolios = [...playerPortfolios, ...teamPortfolios]
     if (activePortfolios.length === 0) {
@@ -482,7 +534,19 @@ export default function Portfolio() {
           <TabsContent value="player" className="mt-4">
             <Card className="bg-gray-800/50 border-gray-700">
               <CardHeader>
-                <CardTitle className="text-white text-xl">Active Player Holdings</CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-white text-xl">Active Player Holdings</CardTitle>
+                  {playerPortfolios.length > 0 && (
+                    <Button
+                      onClick={handleSellAll}
+                      disabled={loading}
+                      className="bg-red-600 hover:bg-red-700 text-white font-bold"
+                      size="sm"
+                    >
+                      Sell All Holdings
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {playerPortfolios.length === 0 ? (
@@ -746,6 +810,14 @@ export default function Portfolio() {
                   </div>
                 </div>
 
+                <div className="w-full flex items-end justify-end mt-7" >
+                  <Button
+                    className="bg-white/30"
+                    onClick={() => { setTradeQuantity(Number(portfolio.quantity)); }}
+                  >
+                    Select All
+                  </Button>
+                </div>
 
                 <div className="mb-4">
                   <label className="block text-sm font-bold text-gray-300 mb-2">Quantity</label>
@@ -756,15 +828,41 @@ export default function Portfolio() {
                     >
                       -
                     </button>
-                    <input
+
+                    <Input
+                      id="quantity-input"
                       type="text"
                       inputMode="numeric"
-                      value={tradeQuantity}
+                      placeholder="0"
+                      pattern="[0-9]*"
+                      value={tradeQuantity === 0 ? "" : tradeQuantity}
+                      className=" placeholder:text-gray-400 bg-gray-800/60 rounded-lg px-3 py-2 sm:text-base text-center text-xl font-bold text-white border-0 focus:ring-0"
                       onChange={(e) => {
-                        const val = Number.parseInt(e.target.value, 10)
-                        setTradeQuantity(isNaN(val) || val < 1 ? 1 : val)
+                        const sval = e.target.value;
+
+                        // Only allow digits
+                        if (!/^\d*$/.test(sval)) return;
+
+                        if (sval === "") {
+                          setTradeQuantity(0);
+                          return;
+                        }
+
+                        let val = Number.parseInt(sval, 10);
+                        const maxQty = Number(portfolio.quantity);
+
+                        if (isNaN(val) || val < 1) val = 1;
+                        if (val > maxQty) val = maxQty;
+
+                        setTradeQuantity(val);
                       }}
-                      className="w-full bg-transparent text-center text-xl font-bold text-white border-0 focus:ring-0"
+                      onWheel={(e) => e.currentTarget.blur()}
+                      onKeyDown={(e) => {
+                        if (["ArrowUp", "ArrowDown", "e", "+", "-"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      style={{ MozAppearance: "textfield" }}
                     />
                     <button
                       onClick={() => setTradeQuantity((q) => q + 1)}

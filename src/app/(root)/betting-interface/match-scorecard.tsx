@@ -1085,24 +1085,68 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       {Math.max(0, Math.floor(25000 / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)))}
                     </span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-                    <div className="flex-1">
-                      <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="quantity-input">
-                        Quantity
-                      </label>
-                      <Input
-                        id="quantity-input"
-                        type="number"
-                        value={quantity[0]}
-                        onChange={(e) => setQuantity([Number(e.target.value)])}
-                        className="text-white bg-gray-800/60 border-0"
-                      />
-                    </div>
-                    <div className="flex-1 sm:text-right">
-                      <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1">Total Price</label>
-                      <p className="text-lg font-bold text-white">
-                        ₹{calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) * quantity[0]}
-                      </p>
+
+                  {/* === Quantity Selector === */}
+                  <div className="mt-6 sm:mt-8">
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                      <div className="flex-1 flex flex-col">
+                        <label
+                          className="text-xs sm:text-sm font-bold text-gray-300 mb-1"
+                          htmlFor="quantity-input"
+                        >
+                          Quantity
+                        </label>
+                        <Input
+                          id="quantity-input"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          pattern="[0-9]*"
+                          value={quantity[0] === 0 ? "" : quantity[0]}
+                          className="text-white placeholder:text-gray-400 border-0 font-extrabold bg-gray-800/60 rounded-lg px-3 py-2 text-sm sm:text-base"
+                          onChange={(e) => {
+                            const val = e.target.value;
+
+                            // Only allow digits
+                            if (!/^\d*$/.test(val)) return;
+
+                            if (val === "") {
+                              setQuantity([0]);
+                              return;
+                            }
+
+                            let numVal = Number(val);
+                            const maxQty = Math.max(0, Math.floor(25000 / (calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) || 1)));
+                            if (numVal > maxQty) numVal = maxQty;
+
+                            setQuantity([numVal]);
+                          }}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          onKeyDown={(e) => {
+                            if (["ArrowUp", "ArrowDown", "e", "+", "-"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          style={{ MozAppearance: "textfield" }}
+                        />
+                      </div>
+                      <div className="flex-1 flex flex-col lg:items-end">
+                        <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="price-input">
+                          Price
+                          <span
+                            className={`ml-2 text-xs mt-1 font-bold ${calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) * quantity[0] > 25000 ? "text-red-500" : "text-gray-400"
+                              }`}
+                          >
+                            (Max: ₹25000)
+                          </span>
+                        </label>
+                        <Input
+                          id="price-input"
+                          className="text-gray-300 border-0 font-extrabold bg-transparent rounded-lg px-3 py-2 lg:text-end text-sm sm:text-base"
+                          placeholder={`₹${calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) * quantity[0]}`}
+                          value={`₹${calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) * quantity[0]}`}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
