@@ -58,8 +58,15 @@ export default function Portfolio() {
   const [tradeModalPortfolio, setTradeModalPortfolio] = useState<PlayerPortfolio | null>(null)
   const [tradeQuantity, setTradeQuantity] = useState(1)
   const [autoSellingInProgress, setAutoSellingInProgress] = useState<Set<string>>(new Set())
+  const [sellAllConfirmOpen, setSellAllConfirmOpen] = useState(false)
 
-  const fetchAllData = useCallback(async () => {
+  const [sellWindowActive, setSellWindowActive] = useState(false)
+  const [sellWindowTimeLeft, setSellWindowTimeLeft] = useState(0)
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<Record<string, number>>({})
+
+  const fetchAllData = async () => {
+    console.log("called ")
+    // setFiveSecondWindow(true)
     try {
       const getTokenFromCookies = () => {
         if (typeof document === "undefined") return null
@@ -135,24 +142,54 @@ export default function Portfolio() {
             const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
             const batsmanData = currentInning.batsmen[batsmanIndex]
             currentPrice = calculatePlayerCurrentPrice(batsmanData, batsmanIndex)
+            
+            // Check if price has changed for this player
+            const lastPrice = lastPriceUpdate[p.playerId] || 0
+            if (currentPrice !== lastPrice && lastPrice !== 0) {
+              console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
+              setLastPriceUpdate(prev => ({ ...prev, [p.playerId]: currentPrice }))
+              // Activate sell window for this player
+              setSellWindowActive(true)
+              setSellWindowTimeLeft(5)
+            } else if (lastPrice === 0) {
+              // First time setting price
+              setLastPriceUpdate(prev => ({ ...prev, [p.playerId]: currentPrice }))
+            }
           }
         }
         return { ...p, currentPrice: String(currentPrice) }
       })
 
       setPlayerPortfolios(updatedPlayerPortfolios)
+
     } catch (e: any) {
       console.error("Fetch error: " + (e?.message || "Unknown error"))
     } finally {
       setLoading(false)
     }
-  }, [matchDataById])
+  }
 
   useEffect(() => {
     fetchAllData()
-    const intervalId = setInterval(fetchAllData, 5000) // Fetch every 5 seconds
+    const intervalId = setInterval(fetchAllData, 1000) // Fetch every 5 seconds
     return () => clearInterval(intervalId)
-  }, [fetchAllData])
+  }, [])
+
+  // Timer effect for sell window
+  useEffect(() => {
+    if (sellWindowActive && sellWindowTimeLeft > 0) {
+      const timer = setTimeout(() => {
+        setSellWindowTimeLeft(prev => {
+          if (prev <= 1) {
+            setSellWindowActive(false)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [sellWindowActive, sellWindowTimeLeft])
 
   useEffect(() => {
     if (loading || playerPortfolios.length === 0) return
@@ -366,6 +403,7 @@ export default function Portfolio() {
       toast.error("Failed to sell all holdings")
     } finally {
       setLoading(false)
+      setSellAllConfirmOpen(false)
     }
   }
 
@@ -538,7 +576,7 @@ export default function Portfolio() {
                   <CardTitle className="text-white text-xl">Active Player Holdings</CardTitle>
                   {playerPortfolios.length > 0 && (
                     <Button
-                      onClick={handleSellAll}
+                      onClick={() => setSellAllConfirmOpen(true)}
                       disabled={loading}
                       className="bg-red-600 hover:bg-red-700 text-white font-bold"
                       size="sm"
@@ -813,7 +851,7 @@ export default function Portfolio() {
                 <div className="w-full flex items-end justify-end mt-7" >
                   <Button
                     className="bg-white/30"
-                    onClick={() => { setTradeQuantity(Number(portfolio.quantity)); }}
+                    onClick={() => { setTradeQuantity(Number(portfolio.quantity)) }}
                   >
                     Select All
                   </Button>
@@ -888,16 +926,93 @@ export default function Portfolio() {
                   </Button>
                   <Button
                     size="lg"
-                    className="bg-red-600 hover:bg-red-700 text-white font-bold text-base"
+                    className={`font-bold text-base ${
+                      sellWindowActive 
+                        ? "bg-green-600 hover:bg-green-700 text-white" 
+                        : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                    }`}
                     onClick={() => handleTradeAction("sell")}
+                    disabled={!sellWindowActive}
                   >
-                    Sell
+                    {sellWindowActive ? `Sell (${sellWindowTimeLeft}s)` : "Sell"}
                   </Button>
                 </div>
+                
+                {!sellWindowActive && (
+                  <div className="mt-3 text-center">
+                    <p className="text-sm text-gray-400">
+                      ⏰ Sell button will be enabled for 5 seconds after price updates
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )
         })()}
+
+      {/* Sell All Confirmation Dialog */}
+      {sellAllConfirmOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setSellAllConfirmOpen(false)}
+        >
+          <div
+            className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-full max-w-md relative border border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSellAllConfirmOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="mb-6">
+              <h3 className="text-2xl font-bold text-white mb-2">Confirm Sell All</h3>
+              <p className="text-gray-400">
+                Are you sure you want to sell all {playerPortfolios.length} active holdings?
+              </p>
+              <p className="text-sm text-red-400 mt-2">
+                This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="bg-gray-800 rounded-lg p-4 mb-6">
+              <h4 className="text-white font-semibold mb-2">Holdings to be sold:</h4>
+              <div className="max-h-32 overflow-y-auto">
+                {playerPortfolios.slice(0, 5).map((portfolio, idx) => (
+                  <div key={idx} className="flex justify-between items-center py-1">
+                    <span className="text-gray-300 text-sm">{portfolio.playerName}</span>
+                    <span className="text-white text-sm font-mono">{portfolio.quantity} × {formatINR(Number.parseFloat(portfolio.currentPrice || "0"))}</span>
+                  </div>
+                ))}
+                {playerPortfolios.length > 5 && (
+                  <div className="text-gray-400 text-sm py-1">
+                    ... and {playerPortfolios.length - 5} more
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setSellAllConfirmOpen(false)}
+                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSellAll}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold"
+                disabled={loading}
+              >
+                {loading ? "Selling..." : "Confirm Sell All"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   )
 }

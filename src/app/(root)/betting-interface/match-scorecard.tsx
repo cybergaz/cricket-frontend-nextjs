@@ -320,7 +320,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
           </div>
         )}
 
-        Match ID : {matchId}
+        {/* Match ID : {matchId} */}
 
         {/* Title & Teams */}
         <div className="text-center mt-20 max-sm:mt-10">
