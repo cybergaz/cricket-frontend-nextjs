@@ -280,8 +280,8 @@ const CricketSchedulePage = () => {
           <canvas ref={canvasRef} className="w-full h-full opacity-100" />
         </div>
         <div className="absolute inset-0 z-10" />
-        <div className="relative z-20 container mx-auto px-4 h-full flex flex-col justify-center">
-          <div className="max-w-3xl px-5 sm:px-1">
+        <div className="relative z-20 container max-w-[95rem] mx-auto px-4 h-full flex flex-col justify-center">
+          <div className="max-w-3xl bg px-5 sm:px-1">
             <div className="flex items-center gap-2 text-green-400 mb-3 animate-fade-in">
               <TrendingUp className="h-5 w-5 animate-pulse" />
               <span className="text-sm font-semibold uppercase tracking-widest">

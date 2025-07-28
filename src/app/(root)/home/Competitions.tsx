@@ -45,7 +45,7 @@ export default function Competitions({ matches, isLoading }: CompetitionsProps) 
   const sortedMonthKeys = Object.keys(competitionsByMonth).sort();
 
   return (
-    <section className="relative max-w-[100rem] mx-auto z-10 py-16 px-2 md:px-8 w-full">
+    <section className="relative max-w-[96rem] mx-auto z-10 py-16 px-2 md:px-8 w-full">
       {isLoading ? (
         <p className="text-gray-400 text-center">Loading Competitions...</p>
       ) : (

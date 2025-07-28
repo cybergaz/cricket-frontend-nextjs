@@ -76,5 +76,5 @@ export default function BettingPage() {
   }
 
   if (matchFound)
-    return <MatchScorecard matchData={matchData!} />;
+    return <MatchScorecard matchData={matchData!} matchId={matchId} />;
 }

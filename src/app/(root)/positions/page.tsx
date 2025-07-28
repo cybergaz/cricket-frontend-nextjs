@@ -32,7 +32,7 @@ const calculatePlayerCurrentPrice = (batsmanData: Batsman | undefined, batsmanNu
   const basePrice = batsmanNumber <= 2 ? 35 : batsmanNumber < 5 ? 30 : 25
   const price =
     basePrice -
-    Number(batsmanData.run0 || 0) * 0.75 +
+    Number(batsmanData.run0 || 0) * 1.0 +
     Number(batsmanData.run1 || 0) * 0.75 +
     Number(batsmanData.run2 || 0) * 1.5 +
     Number(batsmanData.run3 || 0) * 2.25 +

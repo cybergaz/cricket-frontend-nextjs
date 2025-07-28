@@ -614,7 +614,7 @@ export default function AuthPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="signup-phone" className="text-gray-300">
-                    Phone Number
+                    Phone Number (Whatsapp)
                   </Label>
                   <div className="flex">
                     <Select defaultValue="+91">
@@ -771,6 +771,9 @@ export default function AuthPage() {
               className="mt-8 space-y-6 animate-slide-right"
             >
               <div className="rounded-md">
+                <Label htmlFor="signup-email" className="text-gray-300 text-lg font-light mb-6 mt-10 flex justify-center">
+                  Please check your Whatsapp for otp
+                </Label>
                 <div>
                   <Input
                     type="text"

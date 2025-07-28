@@ -21,7 +21,7 @@ const calculatePlayerPrice = (batsman: any, batsmanIndex: number) => {
   const basePrice = batsmanIndex <= 2 ? 35 : batsmanIndex < 5 ? 30 : 25
   return (
     basePrice -
-    Number(batsman.run0 || 0) * 0.75 +
+    Number(batsman.run0 || 0) * 1.0 +
     Number(batsman.run1 || 0) * 0.75 +
     Number(batsman.run2 || 0) * 1.5 +
     Number(batsman.run3 || 0) * 2.25 +
@@ -195,7 +195,7 @@ const TradeInningScorecard = ({
   )
 }
 
-export default function MatchScorecard({ matchData }: MatchScorecardProps) {
+export default function MatchScorecard({ matchData, matchId }: MatchScorecardProps) {
   // Component state
   const [isCommentaryOpen, setIsCommentaryOpen] = useState(false)
   const [isMatchInfoOpen, setIsMatchInfoOpen] = useState(false)
@@ -319,6 +319,8 @@ export default function MatchScorecard({ matchData }: MatchScorecardProps) {
             </div>
           </div>
         )}
+
+        Match ID : {matchId}
 
         {/* Title & Teams */}
         <div className="text-center mt-20 max-sm:mt-10">
