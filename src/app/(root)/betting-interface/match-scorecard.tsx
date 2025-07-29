@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -37,12 +37,22 @@ const TradeInningScorecard = ({
   inningTitle,
   openBettingModal,
   teamLogos,
+  sellWindowActive,
+  sellWindowTimeLeft,
+  isPlayerCurrentlyBatting,
+  isPlayerOut,
+  canPlayerTrade,
 }: {
   inning: Innings
   inningIndex: number
   inningTitle: string
   openBettingModal: (batsmanId: string, inningIndex: number) => void
   teamLogos: { teama: string; teamb: string }
+  sellWindowActive: Record<string, boolean>
+  sellWindowTimeLeft: Record<string, number>
+  isPlayerCurrentlyBatting: (player: any) => boolean
+  isPlayerOut: (player: any) => boolean
+  canPlayerTrade: (player: any, inningIndex: number) => boolean
 }) => {
   const [subTab, setSubTab] = useState("batsmen")
 
@@ -93,19 +103,25 @@ const TradeInningScorecard = ({
         </TabsList>
         <TabsContent value="batsmen" className="mt-4 space-y-2">
           {sortedBatsmen.map((batsman: any) => {
-            const isBatting = batsman.batting === "true" && batsman.dismissal === ""
-            const isOut = batsman.how_out !== "Not out" && batsman.dismissal !== ""
+            const isBatting = isPlayerCurrentlyBatting(batsman)
+            const isOut = isPlayerOut(batsman)
+            const canTrade = canPlayerTrade(batsman, inningIndex)
+            
             return (
               <div
                 key={batsman.batsman_id}
                 onClick={() => {
-                  if (inningIndex === 1) {
+                  if (canTrade) {
                     openBettingModal(batsman.batsman_id, inningIndex)
-                  } else {
+                  } else if (isOut) {
+                    toast.info("Player is out, cannot trade")
+                  } else if (!isBatting) {
+                    toast.info("Player is not currently batting")
+                  } else if (inningIndex !== 1) {
                     toast.info("Inning is Over")
                   }
                 }}
-                className={`flex items-center justify-between p-2 px-4 rounded-md transition text-xs sm:text-base ${!isOut ? "bg-white/20 hover:bg-white/30 cursor-pointer" : "bg-white/5 opacity-60 cursor-not-allowed"
+                className={`flex items-center justify-between p-2 px-4 rounded-md transition text-xs sm:text-base ${canTrade ? "bg-white/20 hover:bg-white/30 cursor-pointer" : "bg-white/5 opacity-60 cursor-not-allowed"
                   }`}
               >
                 <div>
@@ -139,17 +155,24 @@ const TradeInningScorecard = ({
                       </span>
                     </div>
                   </div>
-                  {!isOut && (
+                  {canTrade && (
                     <button
                       type="button"
                       onClick={() => {
-                        if (inningIndex === 1) {
-                          openBettingModal(batsman.batsman_id, inningIndex)
-                        }
+                        openBettingModal(batsman.batsman_id, inningIndex)
                       }}
-                      className="bg-green-600/80 sm:bg-green-500/20 text-white text-[13px] sm:text-sm font-extrabold px-4 py-2 rounded-lg shadow-md hover:bg-green-600/80 hover:scale-105 transition-all duration-200 flex items-center gap-2 cursor-pointer"
+                      className={`text-[13px] sm:text-sm font-extrabold px-4 py-2 rounded-lg shadow-md hover:scale-105 transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+                        sellWindowActive[batsman.batsman_id]
+                          ? "bg-green-600/80 text-white animate-pulse"
+                          : "bg-green-600/80 sm:bg-green-500/20 text-white"
+                      }`}
                     >
-                      <span>Trade</span>
+                      <span>
+                        {sellWindowActive[batsman.batsman_id]
+                          ? `Trade (${sellWindowTimeLeft[batsman.batsman_id]}s)`
+                          : "Trade"
+                        }
+                      </span>
                     </button>
                   )}
                 </div>
@@ -209,6 +232,13 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     batsmanId: string
     inningIndex: number
   } | null>(null)
+
+  // 5-second sell window state
+  const [sellWindowActive, setSellWindowActive] = useState<Record<string, boolean>>({})
+  const [sellWindowTimeLeft, setSellWindowTimeLeft] = useState<Record<string, number>>({})
+  
+  // Use useRef to maintain previous prices across renders
+  const previousPrices = useRef<Record<string, number>>({})
 
   // --- Derived State ---
   // No more useState for data-derived properties. They are now derived on every render,
@@ -276,6 +306,49 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     return { bettingPlayer: player, bettingPlayerIndex: playerIndex }
   }, [selectedBettingPlayerIdentity, data])
 
+  // Price change detection and sell window activation
+  useEffect(() => {
+    if (!data?.innings || !data.latest_inning_number) return
+
+    const currentInning = data.innings[Number(data.latest_inning_number) - 1]
+    if (!currentInning?.batsmen) return
+
+    currentInning.batsmen.forEach((batsman) => {
+      const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === batsman.batsman_id)
+      const currentPrice = calculatePlayerPrice(batsman, batsmanIndex)
+      
+      // Check if price has changed for this player
+      const lastPrice = previousPrices.current[batsman.batsman_id] || 0
+      if (currentPrice !== lastPrice && lastPrice !== 0) {
+        console.log(`Price changed for ${batsman.name}: ${lastPrice} -> ${currentPrice}`)
+        // Activate sell window for this player
+        setSellWindowActive(prev => ({ ...prev, [batsman.batsman_id]: true }))
+        setSellWindowTimeLeft(prev => ({ ...prev, [batsman.batsman_id]: 5 }))
+        // Update the previous price after processing the change
+        previousPrices.current[batsman.batsman_id] = currentPrice
+      } else if (lastPrice === 0) {
+        // First time setting price
+        previousPrices.current[batsman.batsman_id] = currentPrice
+      } else {
+        // Update previous price even when no change detected (for tracking)
+        previousPrices.current[batsman.batsman_id] = currentPrice
+      }
+    })
+  }, [data?.innings, data?.latest_inning_number])
+
+  // --- Helper Functions ---
+  const isPlayerCurrentlyBatting = (player: any) => {
+    return player.batting === "true" && player.dismissal === ""
+  }
+  
+  const isPlayerOut = (player: any) => {
+    return player.how_out !== "Not out" && player.dismissal !== ""
+  }
+  
+  const canPlayerTrade = (player: any, inningIndex: number) => {
+    return isPlayerCurrentlyBatting(player) && !isPlayerOut(player) && inningIndex === (latestInningNumber - 1)
+  }
+
   // --- Event Handlers ---
   const openBettingModal = (batsmanId: string, inningIndex: number) => {
     setSelectedBettingPlayerIdentity({ batsmanId, inningIndex })
@@ -293,6 +366,28 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
       window.scrollTo({ top: 0, behavior: "auto" })
     }
   }, [])
+
+  // Timer effect for sell window
+  useEffect(() => {
+    const timerEffects: any[] = []
+    Object.entries(sellWindowTimeLeft).forEach(([playerId, timeLeft]) => {
+      if (timeLeft > 0) {
+        const timer = setTimeout(() => {
+          setSellWindowTimeLeft(prev => {
+            const newTimeLeft = prev[playerId] - 1
+            if (newTimeLeft <= 0) {
+              // Close sell window for this player
+              setSellWindowActive(prev => ({ ...prev, [playerId]: false }))
+              return { ...prev, [playerId]: 0 }
+            }
+            return { ...prev, [playerId]: newTimeLeft }
+          })
+        }, 1000)
+        timerEffects.push(timer)
+      }
+    })
+    return () => timerEffects.forEach(clearTimeout)
+  }, [sellWindowTimeLeft])
 
   if (!data) {
     return (
@@ -754,6 +849,11 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     teama: data.teama?.logo_url || "",
                     teamb: data.teamb?.logo_url || "",
                   }}
+                  sellWindowActive={sellWindowActive}
+                  sellWindowTimeLeft={sellWindowTimeLeft}
+                  isPlayerCurrentlyBatting={isPlayerCurrentlyBatting}
+                  isPlayerOut={isPlayerOut}
+                  canPlayerTrade={canPlayerTrade}
                 />
               )}
               {previousInnings && (
@@ -767,6 +867,11 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     teama: data.teama?.logo_url,
                     teamb: data.teamb?.logo_url,
                   }}
+                  sellWindowActive={sellWindowActive}
+                  sellWindowTimeLeft={sellWindowTimeLeft}
+                  isPlayerCurrentlyBatting={isPlayerCurrentlyBatting}
+                  isPlayerOut={isPlayerOut}
+                  canPlayerTrade={canPlayerTrade}
                 />
               )}
             </TabsContent>
@@ -1021,6 +1126,38 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                   </button>
                 </div>
 
+                {/* Player Status Indicator */}
+                {(() => {
+                  const isCurrentlyBatting = isPlayerCurrentlyBatting(bettingPlayer)
+                  const isOut = isPlayerOut(bettingPlayer)
+                  
+                  if (isOut) {
+                    return (
+                      <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                        <p className="text-red-400 text-sm font-bold text-center">
+                          ⚠️ This player is out and cannot be traded
+                        </p>
+                      </div>
+                    )
+                  } else if (!isCurrentlyBatting) {
+                    return (
+                      <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
+                        <p className="text-yellow-400 text-sm font-bold text-center">
+                          ⏳ This player is not currently batting
+                        </p>
+                      </div>
+                    )
+                  } else {
+                    return (
+                      <div className="mb-4 p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
+                        <p className="text-green-400 text-sm font-bold text-center">
+                          ✅ This player is currently batting and can be traded
+                        </p>
+                      </div>
+                    )
+                  }
+                })()}
+
                 {/* Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 text-center">
                   {[
@@ -1154,8 +1291,25 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                 {/* Buy/Sell Buttons */}
                 <div className="mt-6 sm:mt-8 flex flex-col md:flex-row gap-3 sm:gap-4">
                   <button
-                    className="flex-1 rounded-lg sm:rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold py-3 text-sm sm:text-base shadow-md transition"
+                    className={`flex-1 rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${
+                      (() => {
+                        const isCurrentlyBatting = isPlayerCurrentlyBatting(bettingPlayer)
+                        const isOut = isPlayerOut(bettingPlayer)
+                        return isCurrentlyBatting && !isOut 
+                          ? "bg-green-600 hover:bg-green-700 text-white" 
+                          : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                      })()
+                    }`}
                     onClick={async () => {
+                      // Check if player is currently batting
+                      const isCurrentlyBatting = isPlayerCurrentlyBatting(bettingPlayer)
+                      const isOut = isPlayerOut(bettingPlayer)
+                      
+                      if (!isCurrentlyBatting || isOut) {
+                        toast.error("Cannot buy player who is not currently batting")
+                        return
+                      }
+                      
                       closeBettingModal()
                       if (
                         typeof data.status_note === "string" &&
@@ -1175,13 +1329,25 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       )
                       toast.success(buyingResponse.message)
                     }}
+                    disabled={(() => {
+                      const isCurrentlyBatting = isPlayerCurrentlyBatting(bettingPlayer)
+                      const isOut = isPlayerOut(bettingPlayer)
+                      return !isCurrentlyBatting || isOut
+                    })()}
                   >
                     Buy Player
                   </button>
                   <button
-                    className="flex-1 rounded-lg sm:rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold py-3 text-sm sm:text-base shadow-md transition"
+                    className={`flex-1 rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${
+                      sellWindowActive[bettingPlayer.batsman_id]
+                        ? "bg-green-600 hover:bg-green-700 text-white animate-pulse"
+                        : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                    }`}
                     onClick={async () => {
-                      closeBettingModal()
+                      if (!sellWindowActive[bettingPlayer.batsman_id]) {
+                        toast.info("Sell window is not active. Wait for price changes to enable selling.")
+                        return
+                      }
                       closeBettingModal()
                       if (
                         typeof data.status_note === "string" &&
@@ -1201,10 +1367,22 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       )
                       toast.success(sellingResponse.message)
                     }}
+                    disabled={!sellWindowActive[bettingPlayer.batsman_id]}
                   >
-                    Sell Player
+                    {sellWindowActive[bettingPlayer.batsman_id]
+                      ? `Sell Player (${sellWindowTimeLeft[bettingPlayer.batsman_id]}s)`
+                      : "Sell Player"
+                    }
                   </button>
                 </div>
+
+                {!sellWindowActive[bettingPlayer.batsman_id] && (
+                  <div className="mt-3 text-center">
+                    <p className="text-sm text-gray-400">
+                      ⏰ Sell button will be enabled for 5 seconds after price updates
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

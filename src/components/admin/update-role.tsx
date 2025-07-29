@@ -3,6 +3,13 @@ import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { ShieldCheck, X } from "lucide-react";
 import { getCookie } from "@/lib/helper";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 type Role = 'marketing' | 'financial' | 'super_admin' | 'user'
@@ -64,7 +71,7 @@ const UpdateRole = ({ children, user_id }: { children: React.ReactNode, user_id:
             onClick={() => setShowPromotePopup(false)}
             className="fixed inset-0 w-screen h-screen z-40"
           />
-          <div className="z-50 bg-[#181a20] border-2 rounded-2xl border-[#4c6590]/20 p-4 sm:p-5 flex flex-col gap-5 w-[95vw] max-w-md">
+          <div className="z-50 bg-[#181a20] border-2 rounded-2xl border-[#4c6590]/20 p-4 sm:p-5 flex flex-col gap-5 max-w-md">
             <div className="mb-5 flex justify-between items-center">
               <h1 className="font-bold">Promote to Admin</h1>
               <X
@@ -72,18 +79,19 @@ const UpdateRole = ({ children, user_id }: { children: React.ReactNode, user_id:
                 className="size-7 rounded-lg p-1 hover:bg-blue-900 cursor-pointer"
               />
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex gap-2 justify-center items-center">
               <label className="text-sm font-medium">Select Role</label>
-              <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value as Role)}
-                className="p-2 rounded-lg border bg-gray-400/10 border-gray-300/20 focus:outline-none focus:ring-2 focus:ring-white"
-              >
-                <option value="marketing">Marketing Admin</option>
-                <option value="financial">Financial Admin</option>
-                <option value="super_admin">Super Admin</option>
-                <option value="user">Normal User</option>
-              </select>
+              <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as Role)}>
+                <SelectTrigger className="p-2 rounded-lg border bg-gray-400/10 border-gray-300/20 focus:outline-none focus:ring-2 focus:ring-white">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#181a20] border border-gray-300/20">
+                  <SelectItem value="marketing">Marketing Admin</SelectItem>
+                  <SelectItem value="financial">Financial Admin</SelectItem>
+                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                  <SelectItem value="user">Normal User</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-3 mt-5">
               <Button

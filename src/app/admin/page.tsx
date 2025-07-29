@@ -349,46 +349,53 @@ const Dashboard = (): JSX.Element => {
 
             {/* div 2 */}
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
-              <div className="text-4xl mb-2">
+              <div className="text-2xl mb-2">
                 {renderMetricValue(companyProfit.totalProfits, isCompanyProfitLoading, companyProfitError)}
               </div>
-              <div className="text-lg font-light mb-1">Total company profit</div>
+              <div className="text-base font-light mb-1">Total company profit</div>
             </div>
 
             {/* div 3 */}
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
-              <div className="text-4xl mb-2">
+              <div className="text-2xl mb-2">
                 {renderMetricValue(companyProfit.profitFromProfitableCuts, isCompanyProfitLoading, companyProfitError)}
               </div>
-              <div className="text-lg font-light mb-1">Profit from 5% cuts</div>
+              <div className="text-base font-light mb-1">Profit from 5% cuts</div>
             </div>
 
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
-              <div className="text-4xl mb-2">
+              <div className="text-2xl mb-2">
                 {renderMetricValue(companyProfit.profitFromUserLoss, isCompanyProfitLoading, companyProfitError)}
               </div>
-              <div className="text-lg font-light mb-1">Profit from Users Loss</div>
+              <div className="text-base font-light mb-1">Profit from Users Loss</div>
             </div>
 
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
-              <div className="text-4xl mb-2">
+              <div className="text-2xl mb-2">
                 {renderMetricValue(companyProfit.profitFromPlatformFees, isCompanyProfitLoading, companyProfitError)}
               </div>
-              <div className="text-lg font-light mb-1">Profit from platform fee</div>
+              <div className="text-base font-light mb-1">Profit from platform fee</div>
             </div>
 
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
-              <div className="text-4xl mb-2">
+              <div className="text-2xl mb-2">
                 {renderMetricValue(companyProfit.profitFromAutoSell, isCompanyProfitLoading, companyProfitError)}
               </div>
-              <div className="text-lg font-light mb-1">Profit from auto sell</div>
+              <div className="text-base font-light mb-1">Profit from auto sell</div>
             </div>
 
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
-              <div className="text-4xl mb-2">
+              <div className="text-2xl mb-2">
                 {renderMetricValue(companyProfit.grossProfit, isCompanyProfitLoading, companyProfitError)}
               </div>
-              <div className="text-lg font-light mb-1">Gross Profit</div>
+              <div className="text-sm font-light mb-1">Deposit Amount - Current Amount</div>
+            </div>
+
+            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
+              <div className="text-2xl mb-2">
+                {renderMetricValue(companyProfit.totalSoldPortfolioProfit, isCompanyProfitLoading, companyProfitError)}
+              </div>
+              <div className="text-base font-light mb-1">All Users P/L</div>
             </div>
 
           </div>

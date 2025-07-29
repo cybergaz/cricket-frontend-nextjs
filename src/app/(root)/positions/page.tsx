@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Users, Trophy, Landmark, TrendingDown, Dot, IndianRupee, X } from "lucide-react"
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import type { PlayerPortfolio, TeamPortfolio } from "./types"
 import { formatINR } from "@/lib/helper"
@@ -60,13 +60,25 @@ export default function Portfolio() {
   const [autoSellingInProgress, setAutoSellingInProgress] = useState<Set<string>>(new Set())
   const [sellAllConfirmOpen, setSellAllConfirmOpen] = useState(false)
 
-  const [sellWindowActive, setSellWindowActive] = useState(false)
-  const [sellWindowTimeLeft, setSellWindowTimeLeft] = useState(0)
-  const [lastPriceUpdate, setLastPriceUpdate] = useState<Record<string, number>>({})
+  const [sellWindowActive, setSellWindowActive] = useState<Record<string, boolean>>({})
+  const [sellWindowTimeLeft, setSellWindowTimeLeft] = useState<Record<string, number>>({})
 
-  const fetchAllData = async () => {
+  // Use useRef to maintain previous prices across renders
+  const previousPrices = useRef<Record<string, number>>({})
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [hasNextPage, setHasNextPage] = useState(false)
+  const [hasPrevPage, setHasPrevPage] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+
+  const fetchAllData = async (page = 1) => {
     // console.log("called ")
     // setFiveSecondWindow(true)
+    setHistoryLoading(true)
     try {
       const getTokenFromCookies = () => {
         if (typeof document === "undefined") return null
@@ -81,7 +93,7 @@ export default function Portfolio() {
         return
       }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/all`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/all?page=${page}&limit=${itemsPerPage}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -92,27 +104,29 @@ export default function Portfolio() {
 
       const apiData = await res.json()
       if (!apiData.success) {
-        console.log(apiData.message)
+        // console.log(apiData.message)
         setLoading(false)
         return
       }
 
       setAvailableBalance(apiData.value)
-      setTotalProfit(apiData.profit)
+      setTotalProfit(apiData.totalPortfolioProfit)
 
-      const allPlayerPortfolios: PlayerPortfolio[] = apiData.playerPortfolios || []
-      const allTeamPortfolios: TeamPortfolio[] = apiData.teamPortfolios || []
+      // Update pagination state
+      if (apiData.playerHistoryPagination) {
+        setCurrentPage(apiData.playerHistoryPagination.currentPage)
+        setTotalPages(apiData.playerHistoryPagination.totalPages)
+        setTotalItems(apiData.playerHistoryPagination.totalItems)
+        setItemsPerPage(apiData.playerHistoryPagination.itemsPerPage)
+        setHasNextPage(apiData.playerHistoryPagination.hasNextPage)
+        setHasPrevPage(apiData.playerHistoryPagination.hasPrevPage)
+      }
 
-      const activePlayers = allPlayerPortfolios.filter((p) => (p.status || "").toLowerCase() === "buy")
-      const playerHistory = allPlayerPortfolios.filter((p) => (p.status || "").toLowerCase() !== "buy")
-      const activeTeams = allTeamPortfolios.filter((t) => (t.status || "").toLowerCase() === "buy")
-      const teamHistory = allTeamPortfolios.filter((t) => (t.status || "").toLowerCase() !== "buy")
+      setPlayerPortfoliosHistory(apiData.playerHistory || [])
+      setTeamPortfoliosHistory(apiData.teamHistory || [])
+      setTeamPortfolios(apiData.teamPortfolios || [])
 
-      setPlayerPortfoliosHistory(playerHistory)
-      setTeamPortfoliosHistory(teamHistory)
-      setTeamPortfolios(activeTeams)
-
-      const uniqueMatchIds = Array.from(new Set(activePlayers.map((p) => p.matchId)))
+      const uniqueMatchIds = Array.from(new Set((apiData.playerPortfolios as PlayerPortfolio[]).map((p) => p.matchId)))
 
       const newMatchData: Record<string, CricketMatchData> = {}
       if (uniqueMatchIds.length > 0) {
@@ -133,7 +147,7 @@ export default function Portfolio() {
 
       setMatchDataById((prev) => ({ ...prev, ...newMatchData }))
 
-      const updatedPlayerPortfolios = activePlayers.map((p) => {
+      const updatedPlayerPortfolios = apiData.playerPortfolios.map((p: PlayerPortfolio) => {
         const match = newMatchData[p.matchId] || matchDataById[p.matchId]
         let currentPrice = 0
         if (match && match.innings && match.latest_inning_number) {
@@ -144,16 +158,21 @@ export default function Portfolio() {
             currentPrice = calculatePlayerCurrentPrice(batsmanData, batsmanIndex)
 
             // Check if price has changed for this player
-            const lastPrice = lastPriceUpdate[p.playerId] || 0
+            const lastPrice = previousPrices.current[p.playerId] || 0
             if (currentPrice !== lastPrice && lastPrice !== 0) {
-              console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
-              setLastPriceUpdate(prev => ({ ...prev, [p.playerId]: currentPrice }))
+              // console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
+              // console.log(`Activating sell window for ${p.playerName}`)
               // Activate sell window for this player
-              setSellWindowActive(true)
-              setSellWindowTimeLeft(5)
+              setSellWindowActive(prev => ({ ...prev, [p.playerId]: true }))
+              setSellWindowTimeLeft(prev => ({ ...prev, [p.playerId]: 5 }))
+              // Update the previous price after processing the change
+              previousPrices.current[p.playerId] = currentPrice
             } else if (lastPrice === 0) {
               // First time setting price
-              setLastPriceUpdate(prev => ({ ...prev, [p.playerId]: currentPrice }))
+              previousPrices.current[p.playerId] = currentPrice
+            } else {
+              // Update previous price even when no change detected (for tracking)
+              previousPrices.current[p.playerId] = currentPrice
             }
           }
         }
@@ -166,30 +185,134 @@ export default function Portfolio() {
       console.error("Fetch error: " + (e?.message || "Unknown error"))
     } finally {
       setLoading(false)
+      setHistoryLoading(false)
     }
   }
 
+  // Separate function for real-time updates (active portfolios only)
+  const fetchRealTimeData = async () => {
+    try {
+      const getTokenFromCookies = () => {
+        if (typeof document === "undefined") return null
+        const cookies = document.cookie.split("; ")
+        const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="))
+        return tokenCookie ? tokenCookie.split("=")[1] : null
+      }
+      const token = getTokenFromCookies()
+      if (!token) return
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/all?page=1&limit=1`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+      })
+
+      const apiData = await res.json()
+      if (!apiData.success) return
+
+      // Only update active portfolios and balance, not history
+      setAvailableBalance(apiData.value)
+      setTotalProfit(apiData.totalPortfolioProfit)
+
+      const uniqueMatchIds = Array.from(new Set((apiData.playerPortfolios as PlayerPortfolio[]).map((p) => p.matchId)))
+
+      const newMatchData: Record<string, CricketMatchData> = {}
+      if (uniqueMatchIds.length > 0) {
+        await Promise.all(
+          uniqueMatchIds.map(async (matchId) => {
+            try {
+              const matchRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`)
+              const matchResJson = await matchRes.json()
+              if (matchResJson.success) {
+                newMatchData[matchId] = matchResJson.data
+              }
+            } catch (e) {
+              console.error(`Failed to fetch match data for ${matchId}`, e)
+            }
+          }),
+        )
+      }
+
+      setMatchDataById((prev) => ({ ...prev, ...newMatchData }))
+
+      const updatedPlayerPortfolios = apiData.playerPortfolios.map((p: PlayerPortfolio) => {
+        const match = newMatchData[p.matchId] || matchDataById[p.matchId]
+        let currentPrice = 0
+        if (match && match.innings && match.latest_inning_number) {
+          const currentInning = match.innings[Number(match.latest_inning_number) - 1]
+          if (currentInning && currentInning.batsmen) {
+            const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
+            const batsmanData = currentInning.batsmen[batsmanIndex]
+            currentPrice = calculatePlayerCurrentPrice(batsmanData, batsmanIndex)
+
+            // Check if price has changed for this player
+            const lastPrice = previousPrices.current[p.playerId] || 0
+            // console.log("lastPrice -> ", lastPrice)
+            // console.log("currentPrice -> ", currentPrice)
+            if (currentPrice !== lastPrice && lastPrice !== 0) {
+              console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
+              // Activate sell window for this player
+              setSellWindowActive(prev => ({ ...prev, [p.playerId]: true }))
+              setSellWindowTimeLeft(prev => ({ ...prev, [p.playerId]: 5 }))
+              // Update the previous price after processing the change
+              previousPrices.current[p.playerId] = currentPrice
+            } else if (lastPrice === 0) {
+              // First time setting price
+              previousPrices.current[p.playerId] = currentPrice
+            } else {
+              // Update previous price even when no change detected (for tracking)
+              previousPrices.current[p.playerId] = currentPrice
+            }
+          }
+        }
+        return { ...p, currentPrice: String(currentPrice) }
+      })
+
+      setPlayerPortfolios(updatedPlayerPortfolios)
+
+    } catch (e: any) {
+      console.error("Real-time fetch error: " + (e?.message || "Unknown error"))
+    }
+  }
+
+  // Initial load and pagination changes
   useEffect(() => {
-    fetchAllData()
-    const intervalId = setInterval(fetchAllData, 1000) // Fetch every 5 seconds
+    if (currentPage === 1) {
+      setLoading(true)
+    }
+    fetchAllData(currentPage)
+  }, [currentPage])
+
+  // Real-time updates for active portfolios only
+  useEffect(() => {
+    const intervalId = setInterval(fetchRealTimeData, 1000)
     return () => clearInterval(intervalId)
   }, [])
 
   // Timer effect for sell window
   useEffect(() => {
-    if (sellWindowActive && sellWindowTimeLeft > 0) {
-      const timer = setTimeout(() => {
-        setSellWindowTimeLeft(prev => {
-          if (prev <= 1) {
-            setSellWindowActive(false)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [sellWindowActive, sellWindowTimeLeft])
+    const timerEffects: any[] = []
+    Object.entries(sellWindowTimeLeft).forEach(([playerId, timeLeft]) => {
+      if (timeLeft > 0) {
+        const timer = setTimeout(() => {
+          setSellWindowTimeLeft(prev => {
+            const newTimeLeft = prev[playerId] - 1
+            if (newTimeLeft <= 0) {
+              // Close sell window for this player
+              setSellWindowActive(prev => ({ ...prev, [playerId]: false }))
+              return { ...prev, [playerId]: 0 }
+            }
+            return { ...prev, [playerId]: newTimeLeft }
+          })
+        }, 1000)
+        timerEffects.push(timer)
+      }
+    })
+    return () => timerEffects.forEach(clearTimeout)
+  }, [sellWindowTimeLeft])
 
   useEffect(() => {
     if (loading || playerPortfolios.length === 0) return
@@ -237,6 +360,12 @@ export default function Portfolio() {
           price: p.currentPrice || "0",
           reason: `Match is Over`,
         })
+
+        // Close trade modal if this player is currently being traded
+        if (tradeModalPortfolio && tradeModalPortfolio.playerId === p.playerId) {
+          setTradeModalOpen(false)
+          setTradeModalPortfolio(null)
+        }
         return
       }
 
@@ -250,6 +379,12 @@ export default function Portfolio() {
             price: (Number.parseFloat(p.boughtPrice) / 2).toString(),
             reason: `${p.playerName} is Out`,
           })
+
+          // Close trade modal if this player is currently being traded
+          if (tradeModalPortfolio && tradeModalPortfolio.playerId === p.playerId) {
+            setTradeModalOpen(false)
+            setTradeModalPortfolio(null)
+          }
         }
       }
     })
@@ -294,7 +429,8 @@ export default function Portfolio() {
 
       Promise.allSettled(sellPromises).then(() => {
         setTimeout(() => {
-          fetchAllData().then(() => {
+          fetchAllData(currentPage).then(() => {
+            fetchRealTimeData() // Also refresh real-time data
             setAutoSellingInProgress(new Set()) // Clear the set after successful fetch
           })
         }, 2000)
@@ -347,7 +483,8 @@ export default function Portfolio() {
 
       toast.success(response?.message || `${action.charAt(0).toUpperCase() + action.slice(1)} successful`)
       setTradeModalOpen(false)
-      await fetchAllData() // Refresh data after trade
+      await fetchAllData(currentPage) // Refresh data after trade
+      await fetchRealTimeData() // Also refresh real-time data
     } catch (e: any) {
       console.error(e?.message || `${action.charAt(0).toUpperCase() + action.slice(1)} failed`)
     } finally {
@@ -397,7 +534,8 @@ export default function Portfolio() {
 
       await Promise.allSettled(sellPromises)
       toast.success(`Successfully sold all ${playerPortfolios.length} holdings`)
-      await fetchAllData() // Refresh data after selling all
+      await fetchAllData(currentPage) // Refresh data after selling all
+      await fetchRealTimeData() // Also refresh real-time data
     } catch (e: any) {
       console.error("Sell all failed:", e?.message || "Unknown error")
       toast.error("Failed to sell all holdings")
@@ -574,189 +712,273 @@ export default function Portfolio() {
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-white text-xl">Active Player Holdings</CardTitle>
-                  {playerPortfolios.length > 0 && (
-                    <Button
-                      onClick={() => setSellAllConfirmOpen(true)}
-                      disabled={loading}
-                      className="bg-red-600 hover:bg-red-700 text-white font-bold"
-                      size="sm"
-                    >
-                      Sell All Holdings
-                    </Button>
-                  )}
+                  {/* {playerPortfolios.length > 0 && ( */}
+                  {/*   <Button */}
+                  {/*     onClick={() => setSellAllConfirmOpen(true)} */}
+                  {/*     disabled={loading} */}
+                  {/*     className="bg-red-600 hover:bg-red-700 text-white font-bold" */}
+                  {/*     size="sm" */}
+                  {/*   > */}
+                  {/*     Sell All Holdings */}
+                  {/*   </Button> */}
+                  {/* )} */}
                 </div>
               </CardHeader>
               <CardContent>
-                {playerPortfolios.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Users className="mx-auto h-12 w-12 text-gray-500 mb-4" />
-                    <h3 className="text-lg font-bold text-white">No Active Player Holdings</h3>
-                    <p className="text-gray-400">Invest in players to see them here.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-700">
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Player</th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Qty</th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
-                            Buy Price
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
-                            Current Price
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">P&L</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {playerPortfolios.map((p, idx) => {
-                          const boughtPrice = Number.parseFloat(p.boughtPrice) || 0
-                          const currentPrice = Number.parseFloat(p.currentPrice || "0") || 0
-                          const quantity = Number.parseInt(p.quantity, 10) || 0
-                          const pnl = (currentPrice - boughtPrice) * quantity
-                          const pnlPercent = boughtPrice > 0 ? (pnl / (boughtPrice * quantity)) * 100 : 0
-                          const match = matchDataById[p.matchId]
-                          const isPriceLoading =
-                            currentPrice === 0 &&
-                            (match?.status?.toLowerCase() === "live" || match?.status?.toLowerCase() === "inprogress")
+                {
+                  playerPortfolios.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Users className="mx-auto h-12 w-12 text-gray-500 mb-4" />
+                      <h3 className="text-lg font-bold text-white">No Active Player Holdings</h3>
+                      <p className="text-gray-400">Invest in players to see them here.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-700">
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Player</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Qty</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
+                              Buy Price
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
+                              Current Price
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">P&L</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {playerPortfolios.map((p, idx) => {
+                            const boughtPrice = Number.parseFloat(p.boughtPrice) || 0
+                            const currentPrice = Number.parseFloat(p.currentPrice || "0") || 0
+                            const quantity = Number.parseInt(p.quantity, 10) || 0
+                            const pnl = (currentPrice - boughtPrice) * quantity
+                            const pnlPercent = boughtPrice > 0 ? (pnl / (boughtPrice * quantity)) * 100 : 0
+                            const match = matchDataById[p.matchId]
+                            const isPriceLoading =
+                              currentPrice === 0 &&
+                              (match?.status?.toLowerCase() === "live" || match?.status?.toLowerCase() === "inprogress")
 
-                          return (
-                            <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-700/20 cursor-pointer"
-                              onClick={() => openTradeModal(p)}>
-                              <td className="px-4 py-4">
-                                <div className="flex items-center gap-4">
-                                  <div className="flex flex-col">
-                                    <p className="font-bold text-white">{p.playerName}</p>
-                                    <p className="text-xs text-gray-400">{match?.short_title || "..."}</p>
+                            return (
+                              <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-700/20 cursor-pointer"
+                                onClick={() => openTradeModal(p)}>
+                                <td className="px-4 py-4">
+                                  <div className="flex items-center gap-4">
+                                    <div className="flex flex-col">
+                                      <p className="font-bold text-white">{p.playerName}</p>
+                                      <p className="text-xs text-gray-400">{match?.short_title || "..."}</p>
+                                    </div>
+                                    <Button
+                                      variant="secondary"
+                                      size="sm"
+                                      className={`font-bold text-xs ${sellWindowActive[p.playerId]
+                                        ? "bg-green-600 hover:bg-green-700 text-white animate-pulse"
+                                        : "bg-green-600/50 hover:bg-green-600 text-white"
+                                        }`}
+                                      disabled={isPriceLoading}
+                                      onClick={() => openTradeModal(p)}
+                                    >
+                                      {sellWindowActive[p.playerId]
+                                        ? `Sell (${sellWindowTimeLeft[p.playerId]}s)`
+                                        : "Trade"
+                                      }
+                                    </Button>
                                   </div>
-                                  <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    className="font-bold text-xs bg-green-600/50 hover:bg-green-600 text-white"
-                                    disabled={isPriceLoading}
-                                    onClick={() => openTradeModal(p)}
-                                  >
-                                    Trade
-                                  </Button>
-                                </div>
-                              </td>
-                              <td className="px-4 py-4 text-right font-mono text-white">{p.quantity}</td>
-                              <td className="px-4 py-4 text-right font-mono text-gray-300">{formatINR(boughtPrice)}</td>
-                              <td className="px-4 py-4 text-right font-mono text-white">
-                                {isPriceLoading ? (
-                                  <div className="flex justify-end">
-                                    <div className="w-4 h-4 border-2 border-transparent border-t-sky-400 rounded-full animate-spin"></div>
-                                  </div>
-                                ) : (
-                                  formatINR(currentPrice)
-                                )}
-                              </td>
-                              <td
-                                className={`px-4 py-4 text-right font-mono font-bold ${pnl > 0 ? "text-emerald-400" : pnl < 0 ? "text-red-400" : "text-gray-300"}`}
-                              >
-                                {formatINR(pnl)}
-                                <p className="text-xs">({pnlPercent.toFixed(2)}%)</p>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                                </td>
+                                <td className="px-4 py-4 text-right font-mono text-white">{p.quantity}</td>
+                                <td className="px-4 py-4 text-right font-mono text-gray-300">{formatINR(boughtPrice)}</td>
+                                <td className="px-4 py-4 text-right font-mono text-white">
+                                  {isPriceLoading ? (
+                                    <div className="flex justify-end">
+                                      <div className="w-4 h-4 border-2 border-transparent border-t-sky-400 rounded-full animate-spin"></div>
+                                    </div>
+                                  ) : (
+                                    formatINR(currentPrice)
+                                  )}
+                                </td>
+                                <td
+                                  className={`px-4 py-4 text-right font-mono font-bold ${pnl > 0 ? "text-emerald-400" : pnl < 0 ? "text-red-400" : "text-gray-300"}`}
+                                >
+                                  {formatINR(pnl)}
+                                  <p className="text-xs">({pnlPercent.toFixed(2)}%)</p>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
               </CardContent>
             </Card>
 
             <Card className="bg-gray-800/50 border-gray-700 mt-8">
               <CardHeader>
-                <CardTitle className="text-white text-xl">Player Trade History</CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-white text-xl">Player Trade History</CardTitle>
+                  {totalItems > 0 && (
+                    <div className="text-sm text-gray-400">
+                      Showing {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} trades
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
-                {playerPortfoliosHistory.length === 0 ? (
+                {historyLoading ? (
+                  <div className="text-center py-12">
+                    <div className="flex justify-center mb-4">
+                      <div className="relative">
+                        <div className="w-8 h-8 border-2 border-transparent border-t-sky-400 rounded-full animate-spin"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-4 h-4 bg-sky-400 rounded-full animate-pulse"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-400">Loading trade history...</p>
+                  </div>
+                ) : playerPortfoliosHistory.length === 0 ? (
                   <div className="text-center py-12">
                     <Users className="mx-auto h-12 w-12 text-gray-500 mb-4" />
                     <h3 className="text-lg font-bold text-white">No Trade History</h3>
                     <p className="text-gray-400">Your completed trades will appear here.</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-700">
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Player</th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Qty</th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Buy Price</th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Sold Price</th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">P&L</th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">% P&L</th>
-                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase">Status</th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {playerPortfoliosHistory.map((p, idx) => {
-                          const profit = Number.parseFloat(p.profit || "0")
-                          const boughtPrice = Number.parseFloat(p.boughtPrice || "0")
-                          const soldPrice = Number.parseFloat(p.soldPrice || "0")
-                          const quantity = Number.parseInt(p.quantity || "0", 10)
-                          const totalBuy = boughtPrice * quantity
-                          const pnlPercent = totalBuy !== 0 ? (profit / totalBuy) * 100 : 0
-                          let status = p.status
-                          let badgeClass = "border-0 bg-gray-600 text-white font-bold text-xs"
-                          if (
-                            status &&
-                            status.toLowerCase() === "sold" &&
-                            Math.abs(pnlPercent + 50) < 0.01 // allow for floating point error
-                          ) {
-                            status = "Auto Sold"
-                            badgeClass = "border-0 bg-red-600/40 text-red-200 font-bold text-xs"
-                          }
-                          return (
-                            <tr key={idx} className="border-b border-gray-700/50">
-                              <td className="px-4 py-4">
-                                <p className="font-mono text-white">{p.playerName}</p>
-                              </td>
-                              <td className="px-4 py-4 text-right font-mono text-white">{p.quantity}</td>
-                              <td className="px-4 py-4 text-right font-mono text-white">
-                                {p.boughtPrice ? formatINR(boughtPrice) : "--"}
-                              </td>
-                              <td
-                                className={`px-4 py-4 text-right font-mono ${p.soldPrice
-                                  ? soldPrice > boughtPrice
-                                    ? "text-emerald-400"
-                                    : soldPrice < boughtPrice
-                                      ? "text-red-400"
-                                      : "text-gray-300"
-                                  : "text-white"
-                                  }`}
-                              >
-                                {p.soldPrice ? formatINR(soldPrice) : "--"}
-                              </td>
-                              <td
-                                className={`px-4 py-4 text-right font-mono ${profit > 0 ? "text-emerald-400" : profit < 0 ? "text-red-400" : "text-gray-300"}`}
-                              >
-                                {formatINR(profit)}
-                              </td>
-                              <td
-                                className={`px-4 py-4 text-right font-mono ${pnlPercent > 0 ? "text-emerald-400" : pnlPercent < 0 ? "text-red-400" : "text-gray-300"}`}
-                              >
-                                {totalBuy !== 0 ? `${pnlPercent.toFixed(2)}%` : "--"}
-                              </td>
-                              <td className="px-4 py-4 text-center">
-                                <Badge variant="outline" className={badgeClass}>
-                                  {status}
-                                </Badge>
-                              </td>
-                              <td className="px-4 py-4 text-right text-xs text-gray-400">
-                                {formatTimestamp(p.timestamp)}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-700">
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Player</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Qty</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Buy Price</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Sold Price</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">P&L</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">% P&L</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase">Status</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {playerPortfoliosHistory.map((p, idx) => {
+                            const profit = Number.parseFloat(p.profit || "0")
+                            const boughtPrice = Number.parseFloat(p.boughtPrice || "0")
+                            const soldPrice = Number.parseFloat(p.soldPrice || "0")
+                            const quantity = Number.parseInt(p.quantity || "0", 10)
+                            const totalBuy = boughtPrice * quantity
+                            const pnlPercent = totalBuy !== 0 ? (profit / totalBuy) * 100 : 0
+                            let status = p.status
+                            let badgeClass = "border-0 bg-gray-600 text-white font-bold text-xs"
+                            if (
+                              status &&
+                              status.toLowerCase() === "sold" &&
+                              Math.abs(pnlPercent + 50) < 0.01 // allow for floating point error
+                            ) {
+                              status = "Auto Sold"
+                              badgeClass = "border-0 bg-red-600/40 text-red-200 font-bold text-xs"
+                            }
+                            return (
+                              <tr key={idx} className="border-b border-gray-700/50">
+                                <td className="px-4 py-4">
+                                  <p className="font-mono text-white">{p.playerName}</p>
+                                </td>
+                                <td className="px-4 py-4 text-right font-mono text-white">{p.quantity}</td>
+                                <td className="px-4 py-4 text-right font-mono text-white">
+                                  {p.boughtPrice ? formatINR(boughtPrice) : "--"}
+                                </td>
+                                <td
+                                  className={`px-4 py-4 text-right font-mono ${p.soldPrice
+                                    ? soldPrice > boughtPrice
+                                      ? "text-emerald-400"
+                                      : soldPrice < boughtPrice
+                                        ? "text-red-400"
+                                        : "text-gray-300"
+                                    : "text-white"
+                                    }`}
+                                >
+                                  {p.soldPrice ? formatINR(soldPrice) : "--"}
+                                </td>
+                                <td
+                                  className={`px-4 py-4 text-right font-mono ${profit > 0 ? "text-emerald-400" : profit < 0 ? "text-red-400" : "text-gray-300"}`}
+                                >
+                                  {formatINR(profit)}
+                                </td>
+                                <td
+                                  className={`px-4 py-4 text-right font-mono ${pnlPercent > 0 ? "text-emerald-400" : pnlPercent < 0 ? "text-red-400" : "text-gray-300"}`}
+                                >
+                                  {totalBuy !== 0 ? `${pnlPercent.toFixed(2)}%` : "--"}
+                                </td>
+                                <td className="px-4 py-4 text-center">
+                                  <Badge variant="outline" className={badgeClass}>
+                                    {status}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-4 text-right text-xs text-gray-400">
+                                  {formatTimestamp(p.timestamp)}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-700">
+                        <div className="text-sm text-gray-400">
+                          Page {currentPage} of {totalPages}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={!hasPrevPage || historyLoading}
+                            className="bg-gray-700 hover:bg-gray-600 text-white font-bold"
+                            size="sm"
+                          >
+                            Previous
+                          </Button>
+                          <div className="flex gap-1">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                              let pageNum;
+                              if (totalPages <= 5) {
+                                pageNum = i + 1;
+                              } else if (currentPage <= 3) {
+                                pageNum = i + 1;
+                              } else if (currentPage >= totalPages - 2) {
+                                pageNum = totalPages - 4 + i;
+                              } else {
+                                pageNum = currentPage - 2 + i;
+                              }
+
+                              return (
+                                <Button
+                                  key={pageNum}
+                                  onClick={() => setCurrentPage(pageNum)}
+                                  disabled={historyLoading}
+                                  className={`font-bold text-sm ${currentPage === pageNum
+                                    ? "bg-sky-600 text-white"
+                                    : "bg-gray-700 hover:bg-gray-600 text-white"
+                                    }`}
+                                  size="sm"
+                                >
+                                  {pageNum}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                          <Button
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={!hasNextPage || historyLoading}
+                            className="bg-gray-700 hover:bg-gray-600 text-white font-bold"
+                            size="sm"
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -876,23 +1098,21 @@ export default function Portfolio() {
                       value={tradeQuantity === 0 ? "" : tradeQuantity}
                       className=" placeholder:text-gray-400 bg-gray-800/60 rounded-lg px-3 py-2 sm:text-base text-center text-xl font-bold text-white border-0 focus:ring-0"
                       onChange={(e) => {
-                        const sval = e.target.value;
+                        const val = e.target.value;
 
                         // Only allow digits
-                        if (!/^\d*$/.test(sval)) return;
+                        if (!/^\d*$/.test(val)) return;
 
-                        if (sval === "") {
+                        if (val === "") {
                           setTradeQuantity(0);
                           return;
                         }
 
-                        let val = Number.parseInt(sval, 10);
-                        const maxQty = Number(portfolio.quantity);
+                        let numVal = Number(val);
+                        const maxQty = Math.max(0, Math.floor(25000 / boughtPrice || 1));
+                        if (numVal > maxQty) numVal = maxQty;
 
-                        if (isNaN(val) || val < 1) val = 1;
-                        if (val > maxQty) val = maxQty;
-
-                        setTradeQuantity(val);
+                        setTradeQuantity(numVal);
                       }}
                       onWheel={(e) => e.currentTarget.blur()}
                       onKeyDown={(e) => {
@@ -926,18 +1146,18 @@ export default function Portfolio() {
                   </Button>
                   <Button
                     size="lg"
-                    className={`font-bold text-base ${sellWindowActive
+                    className={`font-bold text-base ${sellWindowActive[portfolio.playerId]
                       ? "bg-green-600 hover:bg-green-700 text-white"
                       : "bg-gray-600 text-gray-400 cursor-not-allowed"
                       }`}
                     onClick={() => handleTradeAction("sell")}
-                    disabled={!sellWindowActive}
+                    disabled={!sellWindowActive[portfolio.playerId]}
                   >
-                    {sellWindowActive ? `Sell (${sellWindowTimeLeft}s)` : "Sell"}
+                    {sellWindowActive[portfolio.playerId] ? `Sell (${sellWindowTimeLeft[portfolio.playerId]}s)` : "Sell"}
                   </Button>
                 </div>
 
-                {!sellWindowActive && (
+                {!sellWindowActive[portfolio.playerId] && (
                   <div className="mt-3 text-center">
                     <p className="text-sm text-gray-400">
                       ⏰ Sell button will be enabled for 5 seconds after price updates

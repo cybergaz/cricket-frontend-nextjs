@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -16,14 +16,98 @@ export default function WithdrawModal() {
     pan: "",
   });
   const [errors, setErrors] = useState<any>({});
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleOpen = () => setIsOpen(true);
-  const handleClose = () => setIsOpen(false);
+  // Calculate GST and TDS and final amount
+  const calculateDeductions = (amount: string) => {
+    const numAmount = parseFloat(amount) || 0;
+    const gstAmount = numAmount * 0.28; // 28% GST
+    const tdsAmount = numAmount * 0.01; // 1% TDS
+    const totalDeductions = gstAmount + tdsAmount;
+    const finalAmount = numAmount - totalDeductions;
+    return {
+      originalAmount: numAmount,
+      gstAmount: gstAmount,
+      tdsAmount: tdsAmount,
+      totalDeductions: totalDeductions,
+      finalAmount: finalAmount
+    };
+  };
+
+  const deductionCalculation = calculateDeductions(formData.amount);
+
+  const handleOpen = async () => {
+    setIsOpen(true);
+    await fetchLastWithdrawalData();
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+    // Reset form when closing
+    setFormData({
+      amount: "",
+      accountNumber: "",
+      accountName: "",
+      ifsc: "",
+      bankName: "",
+      email: "",
+      phone: "",
+      aadhar: "",
+      pan: "",
+    });
+    setErrors({});
+  };
+
+  const fetchLastWithdrawalData = async () => {
+    try {
+      setIsLoading(true);
+      const getTokenFromCookies = () => {
+        if (typeof document === "undefined") return null;
+        const cookies = document.cookie.split("; ");
+        const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="));
+        return tokenCookie ? tokenCookie.split("=")[1] : null;
+      };
+      const token = getTokenFromCookies();
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/last-withdrawal`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: 'include',
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success && data.data) {
+        // Auto-fill the form with last withdrawal data (excluding amount)
+        setFormData(prev => ({
+          ...prev,
+          accountName: data.data.accountName || "",
+          accountNumber: data.data.accountNumber || "",
+          ifsc: data.data.ifsc || "",
+          bankName: data.data.bankName || "",
+          email: data.data.email || "",
+          phone: data.data.phone || "",
+          aadhar: data.data.aadhar || "",
+          pan: data.data.pan || "",
+        }));
+        toast.success("Previous withdrawal details loaded");
+      }
+    } catch (error) {
+      console.error("Error fetching last withdrawal data:", error);
+      // Don't show error toast as this is optional functionality
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
   const validate = () => {
     const newErrors: any = {};
     if (!formData.amount || isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) {
@@ -109,6 +193,7 @@ export default function WithdrawModal() {
       toast.dismiss(toastID);
     }
   };
+
   return (
     <div>
       <Button
@@ -125,15 +210,22 @@ export default function WithdrawModal() {
           }}
         >
           <div
-            className="bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-8 relative"
+            className="bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-8 relative max-h-[90vh] overflow-y-auto hide-scrollbar"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold mb-6">Withdraw Money</h2>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Existing Fields */}
-              {/* Same as before: Amount, Account Name, Account Number, IFSC, Bank Name, Email, Phone */}
+            {isLoading && (
+              <div className="absolute inset-0 bg-gray-800/80 rounded-2xl flex items-center justify-center z-10">
+                <div className="text-white text-center">
+                  <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-2"></div>
+                  <p className="text-sm">Loading previous details...</p>
+                </div>
+              </div>
+            )}
 
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Amount Field with GST Calculation */}
               <div>
                 <input
                   type="number"
@@ -145,6 +237,33 @@ export default function WithdrawModal() {
                   placeholder="Enter Amount"
                 />
                 {errors.amount && <div className="text-red-500 text-sm mt-1">{errors.amount}</div>}
+
+                {/* GST Calculation Display */}
+                {formData.amount && parseFloat(formData.amount) > 0 && (
+                  <div className="mt-3 p-3 bg-gray-700/50 rounded-lg border border-gray-600/30">
+                    <div className="text-sm text-gray-300 mb-2">Amount Breakdown:</div>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Requested Amount:</span>
+                        <span className="text-white">₹{parseFloat(formData.amount).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">GST (28%):</span>
+                        <span className="text-red-400">-₹{deductionCalculation.gstAmount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">TDS (1%):</span>
+                        <span className="text-red-400">-₹{deductionCalculation.tdsAmount.toLocaleString()}</span>
+                      </div>
+                      <div className="border-t border-gray-600/30 pt-1 mt-2">
+                        <div className="flex justify-between font-semibold">
+                          <span className="text-green-400">Final Amount:</span>
+                          <span className="text-green-400">₹{deductionCalculation.finalAmount.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
