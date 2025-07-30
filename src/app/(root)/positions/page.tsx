@@ -49,6 +49,9 @@ export default function Portfolio() {
   const [playerPortfoliosHistory, setPlayerPortfoliosHistory] = useState<PlayerPortfolio[]>([])
   const [teamPortfoliosHistory, setTeamPortfoliosHistory] = useState<TeamPortfolio[]>([])
 
+  const [playerPortfoliosLoading, setPlayerPortfoliosLoading] = useState(false)
+  const [teamPortfoliosLoading, setTeamPortfoliosLoading] = useState(false)
+
   const [availableBalance, setAvailableBalance] = useState(0)
   const [totalProfit, setTotalProfit] = useState(0)
 
@@ -81,6 +84,8 @@ export default function Portfolio() {
   const [historyLoading, setHistoryLoading] = useState(false)
 
   const fetchAllData = async (page = 1) => {
+    setPlayerPortfoliosLoading(true)
+    setTeamPortfoliosLoading(true)
     // console.log("called ")
     // setFiveSecondWindow(true)
     setHistoryLoading(true)
@@ -134,14 +139,14 @@ export default function Portfolio() {
       const updatedTeamPortfolios = (apiData.teamPortfolios || []).map(async (p: TeamPortfolio) => {
         let match = newMatchData[p.matchId] || matchDataById[p.matchId]
         let currentPrice = 50 // Default fallback price
-        
+
         if (match) {
           // Initialize team stock prices if they are missing or 0
-          if (!match.teamStockPrices || 
-              !match.teamStockPrices.teama || 
-              !match.teamStockPrices.teamb ||
-              match.teamStockPrices.teama === 0 ||
-              match.teamStockPrices.teamb === 0) {
+          if (!match.teamStockPrices ||
+            !match.teamStockPrices.teama ||
+            !match.teamStockPrices.teamb ||
+            match.teamStockPrices.teama === 0 ||
+            match.teamStockPrices.teamb === 0) {
             try {
               await initializeTeamStockPrices(p.matchId)
               // Fetch updated match data after initialization
@@ -155,21 +160,22 @@ export default function Portfolio() {
               console.error(`Failed to initialize team stock prices for ${p.matchId}`, e)
             }
           }
-          
+
           if (match.teamStockPrices) {
             // Determine which team this portfolio belongs to
             const isTeamA = p.team === match.teama?.team_id
             const teamPrice = isTeamA ? match.teamStockPrices.teama : match.teamStockPrices.teamb
-            currentPrice = teamPrice || 50 // Use fallback if price is 0 or undefined
+            currentPrice = teamPrice !== undefined && teamPrice !== null ? teamPrice : 50 // Use fallback only if price is undefined or null
           }
         }
-        
+
         return { ...p, currentPrice: String(currentPrice) }
       })
-      
+
       // Wait for all team portfolio updates to complete
       const resolvedTeamPortfolios = await Promise.all(updatedTeamPortfolios)
       setTeamPortfolios(resolvedTeamPortfolios)
+      setTeamPortfoliosLoading(false)
 
       const uniqueMatchIds = Array.from(new Set([
         ...(apiData.playerPortfolios as PlayerPortfolio[]).map((p) => p.matchId),
@@ -228,12 +234,15 @@ export default function Portfolio() {
       })
 
       setPlayerPortfolios(updatedPlayerPortfolios)
+      setPlayerPortfoliosLoading(false)
 
     } catch (e: any) {
       console.error("Fetch error: " + (e?.message || "Unknown error"))
     } finally {
       setLoading(false)
       setHistoryLoading(false)
+      // setPlayerPortfoliosLoading(false)
+      // setTeamPortfoliosLoading(false)
     }
   }
 
@@ -325,14 +334,14 @@ export default function Portfolio() {
       const updatedTeamPortfolios = (apiData.teamPortfolios || []).map(async (p: TeamPortfolio) => {
         let match = newMatchData[p.matchId] || matchDataById[p.matchId]
         let currentPrice = 50 // Default fallback price
-        
+
         if (match) {
           // Initialize team stock prices if they are missing or 0
-          if (!match.teamStockPrices || 
-              !match.teamStockPrices.teama || 
-              !match.teamStockPrices.teamb ||
-              match.teamStockPrices.teama === 0 ||
-              match.teamStockPrices.teamb === 0) {
+          if (!match.teamStockPrices ||
+            !match.teamStockPrices.teama ||
+            !match.teamStockPrices.teamb ||
+            match.teamStockPrices.teama === 0 ||
+            match.teamStockPrices.teamb === 0) {
             try {
               await initializeTeamStockPrices(p.matchId)
               // Fetch updated match data after initialization
@@ -346,18 +355,18 @@ export default function Portfolio() {
               console.error(`Failed to initialize team stock prices for ${p.matchId}`, e)
             }
           }
-          
+
           if (match.teamStockPrices) {
             // Determine which team this portfolio belongs to
             const isTeamA = p.team === match.teama?.team_id
             const teamPrice = isTeamA ? match.teamStockPrices.teama : match.teamStockPrices.teamb
-            currentPrice = teamPrice || 50 // Use fallback if price is 0 or undefined
+            currentPrice = teamPrice !== undefined && teamPrice !== null ? teamPrice : 50 // Use fallback only if price is undefined or null
           }
         }
-        
+
         return { ...p, currentPrice: String(currentPrice) }
       })
-      
+
       // Wait for all team portfolio updates to complete
       const resolvedTeamPortfolios = await Promise.all(updatedTeamPortfolios)
       setTeamPortfolios(resolvedTeamPortfolios)
@@ -686,9 +695,9 @@ export default function Portfolio() {
     }
 
     // Check if we have valid team stock prices (with fallback)
-    const teamAPrice = match.teamStockPrices?.teama || 50
-    const teamBPrice = match.teamStockPrices?.teamb || 50
-    
+    const teamAPrice = match.teamStockPrices?.teama !== undefined && match.teamStockPrices?.teama !== null ? match.teamStockPrices?.teama : 50
+    const teamBPrice = match.teamStockPrices?.teamb !== undefined && match.teamStockPrices?.teamb !== null ? match.teamStockPrices?.teamb : 50
+
     if (typeof teamAPrice !== 'number' || typeof teamBPrice !== 'number') {
       return { allowed: false, reason: "Team stock prices not available" }
     }
@@ -1039,90 +1048,106 @@ export default function Portfolio() {
               </CardHeader>
               <CardContent>
                 {
-                  playerPortfolios.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Users className="mx-auto h-12 w-12 text-gray-500 mb-4" />
-                      <h3 className="text-lg font-bold text-white">No Active Player Holdings</h3>
-                      <p className="text-gray-400">Invest in players to see them here.</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-700">
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Player</th>
-                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Qty</th>
-                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
-                              Buy Price
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
-                              Current Price
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">P&L</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {playerPortfolios.map((p, idx) => {
-                            const boughtPrice = Number.parseFloat(p.boughtPrice) || 0
-                            const currentPrice = Number.parseFloat(p.currentPrice || "0") || 0
-                            const quantity = Number.parseInt(p.quantity, 10) || 0
-                            const pnl = (currentPrice - boughtPrice) * quantity
-                            const pnlPercent = boughtPrice > 0 ? (pnl / (boughtPrice * quantity)) * 100 : 0
-                            const match = matchDataById[p.matchId]
-                            const isPriceLoading =
-                              currentPrice === 0 &&
-                              (match?.status?.toLowerCase() === "live" || match?.status?.toLowerCase() === "inprogress")
-
-                            return (
-                              <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-700/20 cursor-pointer"
-                                onClick={() => openTradeModal(p)}>
-                                <td className="px-4 py-4">
-                                  <div className="flex items-center gap-4">
-                                    <div className="flex flex-col">
-                                      <p className="font-bold text-white">{p.playerName}</p>
-                                      <p className="text-xs text-gray-400">{match?.short_title || "..."}</p>
-                                    </div>
-                                    <Button
-                                      variant="secondary"
-                                      size="sm"
-                                      className={`font-bold text-xs ${sellWindowActive[p.playerId]
-                                        ? "bg-red-600 hover:bg-red-700 text-white animate-pulse"
-                                        : "bg-green-600/50 hover:bg-green-600 text-white"
-                                        }`}
-                                      disabled={isPriceLoading}
-                                      onClick={() => openTradeModal(p)}
-                                    >
-                                      {sellWindowActive[p.playerId]
-                                        ? `Sell (${sellWindowTimeLeft[p.playerId]}s)`
-                                        : "Trade"
-                                      }
-                                    </Button>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-4 text-right font-mono text-white">{p.quantity}</td>
-                                <td className="px-4 py-4 text-right font-mono text-gray-300">{formatINR(boughtPrice)}</td>
-                                <td className="px-4 py-4 text-right font-mono text-white">
-                                  {isPriceLoading ? (
-                                    <div className="flex justify-end">
-                                      <div className="w-4 h-4 border-2 border-transparent border-t-sky-400 rounded-full animate-spin"></div>
-                                    </div>
-                                  ) : (
-                                    formatINR(currentPrice)
-                                  )}
-                                </td>
-                                <td
-                                  className={`px-4 py-4 text-right font-mono font-bold ${pnl > 0 ? "text-emerald-400" : pnl < 0 ? "text-red-400" : "text-gray-300"}`}
-                                >
-                                  {formatINR(pnl)}
-                                  <p className="text-xs">({pnlPercent.toFixed(2)}%)</p>
-                                </td>
+                  playerPortfolios.length === 0 && playerPortfoliosLoading
+                    ? (
+                      <div className="text-center py-12">
+                        <div className="flex justify-center mb-4">
+                          <div className="relative">
+                            <div className="w-8 h-8 border-2 border-transparent border-t-sky-400 rounded-full animate-spin"></div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="w-4 h-4 bg-sky-400 rounded-full animate-pulse"></div>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-400">Loading player holdings...</p>
+                      </div>
+                    )
+                    : playerPortfolios.length === 0
+                      ? (
+                        <div className="text-center py-12">
+                          <Users className="mx-auto h-12 w-12 text-gray-500 mb-4" />
+                          <h3 className="text-lg font-bold text-white">No Active Player Holdings</h3>
+                          <p className="text-gray-400">Invest in players to see them here.</p>
+                        </div>
+                      )
+                      : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-gray-700">
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Player</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Qty</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
+                                  Buy Price
+                                </th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
+                                  Current Price
+                                </th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">P&L</th>
                               </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                            </thead>
+                            <tbody>
+                              {playerPortfolios.map((p, idx) => {
+                                const boughtPrice = Number.parseFloat(p.boughtPrice) || 0
+                                const currentPrice = Number.parseFloat(p.currentPrice || "0") || 0
+                                const quantity = Number.parseInt(p.quantity, 10) || 0
+                                const pnl = (currentPrice - boughtPrice) * quantity
+                                const pnlPercent = boughtPrice > 0 ? (pnl / (boughtPrice * quantity)) * 100 : 0
+                                const match = matchDataById[p.matchId]
+                                const isPriceLoading =
+                                  currentPrice === 0 &&
+                                  (match?.status?.toLowerCase() === "live" || match?.status?.toLowerCase() === "inprogress")
+
+                                return (
+                                  <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-700/20 cursor-pointer"
+                                    onClick={() => openTradeModal(p)}>
+                                    <td className="px-4 py-4">
+                                      <div className="flex items-center gap-4">
+                                        <div className="flex flex-col">
+                                          <p className="font-bold text-white">{p.playerName}</p>
+                                          <p className="text-xs text-gray-400">{match?.short_title || "..."}</p>
+                                        </div>
+                                        <Button
+                                          variant="secondary"
+                                          size="sm"
+                                          className={`font-bold text-xs ${sellWindowActive[p.playerId]
+                                            ? "bg-red-600 hover:bg-red-700 text-white animate-pulse"
+                                            : "bg-green-600/50 hover:bg-green-600 text-white"
+                                            }`}
+                                          disabled={isPriceLoading}
+                                          onClick={() => openTradeModal(p)}
+                                        >
+                                          {sellWindowActive[p.playerId]
+                                            ? `Sell (${sellWindowTimeLeft[p.playerId]}s)`
+                                            : "Trade"
+                                          }
+                                        </Button>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-4 text-right font-mono text-white">{p.quantity}</td>
+                                    <td className="px-4 py-4 text-right font-mono text-gray-300">{formatINR(boughtPrice)}</td>
+                                    <td className="px-4 py-4 text-right font-mono text-white">
+                                      {isPriceLoading ? (
+                                        <div className="flex justify-end">
+                                          <div className="w-4 h-4 border-2 border-transparent border-t-sky-400 rounded-full animate-spin"></div>
+                                        </div>
+                                      ) : (
+                                        formatINR(currentPrice)
+                                      )}
+                                    </td>
+                                    <td
+                                      className={`px-4 py-4 text-right font-mono font-bold ${pnl > 0 ? "text-emerald-400" : pnl < 0 ? "text-red-400" : "text-gray-300"}`}
+                                    >
+                                      {formatINR(pnl)}
+                                      <p className="text-xs">({pnlPercent.toFixed(2)}%)</p>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
               </CardContent>
             </Card>
 
@@ -1303,119 +1328,136 @@ export default function Portfolio() {
                 <CardTitle className="text-white text-xl">Active Team Holdings</CardTitle>
               </CardHeader>
               <CardContent>
-                {teamPortfolios.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Trophy className="mx-auto h-12 w-12 text-gray-500 mb-4" />
-                    <h3 className="text-lg font-bold text-white">No Active Team Holdings</h3>
-                    <p className="text-gray-400">Invest in teams to see them here.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-700">
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Team</th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Qty</th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
-                            Buy Price
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
-                            Current Price
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">P&L</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {teamPortfolios.map((p, idx) => {
-                          const boughtPrice = Number.parseFloat(p.boughtPrice) || 0
-                          const currentPrice = Number.parseFloat(p.currentPrice || "0") || 0
-                          const quantity = Number.parseInt(p.quantity, 10) || 0
-                          const pnl = (currentPrice - boughtPrice) * quantity
-                          const pnlPercent = boughtPrice > 0 ? (pnl / (boughtPrice * quantity)) * 100 : 0
-                          const match = matchDataById[p.matchId]
-                          const isPriceLoading = currentPrice === 0 && (match?.status?.toLowerCase() === "live" || match?.status?.toLowerCase() === "inprogress")
+                {
+                  teamPortfolios.length === 0 && teamPortfoliosLoading
+                    ? (
+                      <div className="text-center py-12">
+                        <div className="flex justify-center mb-4">
+                          <div className="relative">
+                            <div className="w-8 h-8 border-2 border-transparent border-t-sky-400 rounded-full animate-spin"></div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="w-4 h-4 bg-sky-400 rounded-full animate-pulse"></div>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-400">Loading player holdings...</p>
+                      </div>
+                    )
+                    : teamPortfolios.length === 0
+                      ? (
+                        <div className="text-center py-12">
+                          <Trophy className="mx-auto h-12 w-12 text-gray-500 mb-4" />
+                          <h3 className="text-lg font-bold text-white">No Active Team Holdings</h3>
+                          <p className="text-gray-400">Invest in teams to see them here.</p>
+                        </div>
+                      )
+                      : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-gray-700">
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Team</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Qty</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
+                                  Buy Price
+                                </th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
+                                  Current Price
+                                </th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">P&L</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {teamPortfolios.map((p, idx) => {
+                                const boughtPrice = Number.parseFloat(p.boughtPrice) || 0
+                                const currentPrice = Number.parseFloat(p.currentPrice || "0") || 0
+                                const quantity = Number.parseInt(p.quantity, 10) || 0
+                                const pnl = (currentPrice - boughtPrice) * quantity
+                                const pnlPercent = boughtPrice > 0 ? (pnl / (boughtPrice * quantity)) * 100 : 0
+                                const match = matchDataById[p.matchId]
+                                const isPriceLoading = currentPrice === 0 && (match?.status?.toLowerCase() === "live" || match?.status?.toLowerCase() === "inprogress")
 
-                          // Check if team trading is allowed
-                          const tradingCheck = isTeamTradingAllowed(p.matchId)
-                          const canTrade = tradingCheck.allowed
+                                // Check if team trading is allowed
+                                const tradingCheck = isTeamTradingAllowed(p.matchId)
+                                const canTrade = tradingCheck.allowed
 
-                          // Check if match/inning is over for this team
-                          const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "finished", "ended"]
-                          const statusNote = `${match?.status_note || ""} ${match?.live || ""}`.toLowerCase()
-                          const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
+                                // Check if match/inning is over for this team
+                                const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "finished", "ended"]
+                                const statusNote = `${match?.status_note || ""} ${match?.live || ""}`.toLowerCase()
+                                const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
 
-                          // Check if inning is over for this team
-                          let isInningOver = false
-                          if (match?.innings && match?.latest_inning_number) {
-                            const latestInning = match.innings.find((inn) => inn.number === match.latest_inning_number)
-                            isInningOver = Boolean(latestInning?.status?.toLowerCase().includes("over") ||
-                              latestInning?.status?.toLowerCase().includes("completed") ||
-                              latestInning?.status?.toLowerCase().includes("finished"))
-                          }
-
-                          const teamInning = match?.innings?.find(inn => inn.batting_team_id === p.team)
-                          const isTeamUnavailable = isMatchOver || (isInningOver && teamInning?.number === match?.latest_inning_number) || false
-
-                          return (
-                            <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-700/20 cursor-pointer"
-                              onClick={() => {
-                                if (canTrade && !isTeamUnavailable) {
-                                  openTeamTradeModal(p)
-                                } else {
-                                  toast.error(tradingCheck.reason || "Team trading is not available at this time")
+                                // Check if inning is over for this team
+                                let isInningOver = false
+                                if (match?.innings && match?.latest_inning_number) {
+                                  const latestInning = match.innings.find((inn) => inn.number === match.latest_inning_number)
+                                  isInningOver = Boolean(latestInning?.status?.toLowerCase().includes("over") ||
+                                    latestInning?.status?.toLowerCase().includes("completed") ||
+                                    latestInning?.status?.toLowerCase().includes("finished"))
                                 }
-                              }}>
-                              <td className="px-4 py-4">
-                                <div className="flex items-center gap-4">
-                                  <div className="flex flex-col">
-                                    <p className="font-bold text-white">{p.teamName}</p>
-                                    <p className="text-xs text-gray-400">{match?.short_title || "..."}</p>
-                                  </div>
-                                  <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    className={`font-bold text-xs ${canTrade && !isTeamUnavailable
-                                      ? "bg-green-600/50 hover:bg-green-600 text-white"
-                                      : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
-                                      }`}
-                                    disabled={isPriceLoading || !canTrade || isTeamUnavailable}
-                                    onClick={(e) => {
-                                      e.stopPropagation()
+
+                                const teamInning = match?.innings?.find(inn => inn.batting_team_id === p.team)
+                                const isTeamUnavailable = isMatchOver || (isInningOver && teamInning?.number === match?.latest_inning_number) || false
+
+                                return (
+                                  <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-700/20 cursor-pointer"
+                                    onClick={() => {
                                       if (canTrade && !isTeamUnavailable) {
                                         openTeamTradeModal(p)
                                       } else {
                                         toast.error(tradingCheck.reason || "Team trading is not available at this time")
                                       }
-                                    }}
-                                  >
-                                    {canTrade && !isTeamUnavailable ? "Trade" : "Unavailable"}
-                                  </Button>
-                                </div>
-                              </td>
-                              <td className="px-4 py-4 text-right font-mono text-white">{p.quantity}</td>
-                              <td className="px-4 py-4 text-right font-mono text-gray-300">{formatINR(boughtPrice)}</td>
-                              <td className="px-4 py-4 text-right font-mono text-white">
-                                {isPriceLoading ? (
-                                  <div className="flex justify-end">
-                                    <div className="w-4 h-4 border-2 border-transparent border-t-sky-400 rounded-full animate-spin"></div>
-                                  </div>
-                                ) : (
-                                  formatINR(currentPrice)
-                                )}
-                              </td>
-                              <td
-                                className={`px-4 py-4 text-right font-mono font-bold ${pnl > 0 ? "text-emerald-400" : pnl < 0 ? "text-red-400" : "text-gray-300"}`}
-                              >
-                                {formatINR(pnl)}
-                                <p className="text-xs">({pnlPercent.toFixed(2)}%)</p>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                                    }}>
+                                    <td className="px-4 py-4">
+                                      <div className="flex items-center gap-4">
+                                        <div className="flex flex-col">
+                                          <p className="font-bold text-white">{p.teamName}</p>
+                                          <p className="text-xs text-gray-400">{match?.short_title || "..."}</p>
+                                        </div>
+                                        <Button
+                                          variant="secondary"
+                                          size="sm"
+                                          className={`font-bold text-xs ${canTrade && !isTeamUnavailable
+                                            ? "bg-green-600/50 hover:bg-green-600 text-white"
+                                            : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
+                                            }`}
+                                          disabled={isPriceLoading || !canTrade || isTeamUnavailable}
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            if (canTrade && !isTeamUnavailable) {
+                                              openTeamTradeModal(p)
+                                            } else {
+                                              toast.error(tradingCheck.reason || "Team trading is not available at this time")
+                                            }
+                                          }}
+                                        >
+                                          {canTrade && !isTeamUnavailable ? "Trade" : "Unavailable"}
+                                        </Button>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-4 text-right font-mono text-white">{p.quantity}</td>
+                                    <td className="px-4 py-4 text-right font-mono text-gray-300">{formatINR(boughtPrice)}</td>
+                                    <td className="px-4 py-4 text-right font-mono text-white">
+                                      {isPriceLoading ? (
+                                        <div className="flex justify-end">
+                                          <div className="w-4 h-4 border-2 border-transparent border-t-sky-400 rounded-full animate-spin"></div>
+                                        </div>
+                                      ) : (
+                                        formatINR(currentPrice)
+                                      )}
+                                    </td>
+                                    <td
+                                      className={`px-4 py-4 text-right font-mono font-bold ${pnl > 0 ? "text-emerald-400" : pnl < 0 ? "text-red-400" : "text-gray-300"}`}
+                                    >
+                                      {formatINR(pnl)}
+                                      <p className="text-xs">({pnlPercent.toFixed(2)}%)</p>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
               </CardContent>
             </Card>
 

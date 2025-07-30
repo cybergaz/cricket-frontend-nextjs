@@ -121,18 +121,18 @@ const TradeInningScorecard = ({
                 alt={battingTeam.name}
                 className="w-12 h-12 rounded-full"
               />
-                              <div>
-                  <h3 className="text-lg font-bold text-white">{battingTeam.name}</h3>
-                  <p className="text-sm text-gray-300 flex items-center gap-2">
-                    Current Price: ₹{data?.teamStockPrices?.[battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'].toFixed(2) || 50}
-                    {isUpdatingTeamStocks && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-yellow-400 bg-yellow-400/20 text-xs font-bold animate-pulse">
-                        <span className="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></span>
-                        Updating...
-                      </span>
-                    )}
-                  </p>
-                </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">{battingTeam.name}</h3>
+                <p className="text-sm text-gray-300 flex items-center gap-2">
+                  Current Price: ₹{data?.teamStockPrices?.[battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'].toFixed(2) || 50}
+                  {isUpdatingTeamStocks && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-yellow-400 bg-yellow-400/20 text-xs font-bold animate-pulse">
+                      <span className="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></span>
+                      Updating...
+                    </span>
+                  )}
+                </p>
+              </div>
             </div>
             <div className="text-right">
               <button
@@ -544,7 +544,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     const isCurrentInning = inningIndex === (latestInningNumber - 1)
     const isInningActive = !isInningOver(inningIndex)
     const isTeamBatting = team.team_id === data?.innings?.[inningIndex]?.batting_team_id
-    
+
     return isCurrentInning && isInningActive && isTeamBatting
   }
 
@@ -1689,7 +1689,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                 <div className="mb-6 text-center">
                   <p className="text-gray-300 text-sm mb-2">Current Team Stock Price</p>
                   <p className="text-3xl font-bold text-white flex items-center justify-center gap-2">
-                    ₹{data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50}
+                    ₹{data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'].toFixed(2) || 50}
                     {isUpdatingTeamStocks && (
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-yellow-400 bg-yellow-400/20 text-xs font-bold animate-pulse">
                         <span className="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></span>
@@ -1710,7 +1710,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       }
                     }}
                     defaultValue={[1]}
-                    max={Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50)))}
+                    max={Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)))}
                     step={1}
                     className={`my-4 ${(() => {
                       const isInningOverForTeam = selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)
@@ -1720,12 +1720,12 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                         return ""
                       }
                     })()}`}
-                                              disabled={selectedTeam && selectedTeamInningIndex >= 0 && !canTeamTrade(selectedTeam, selectedTeamInningIndex)}
+                    disabled={selectedTeam && selectedTeamInningIndex >= 0 && !canTeamTrade(selectedTeam, selectedTeamInningIndex)}
                   />
                   <div className="flex justify-between w-full text-xs font-semibold mb-4">
                     <span>{teamQuantity[0]}</span>
                     <span>
-                      {Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50)))}
+                      {Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)))}
                     </span>
                   </div>
 
@@ -1757,7 +1757,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                           onChange={(e) => {
                             const isInningOverForTeam = selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)
                             if (isInningOverForTeam) return;
-                            
+
                             const val = e.target.value;
                             if (!/^\d*$/.test(val)) return;
                             if (val === "") {
@@ -1765,7 +1765,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                               return;
                             }
                             let numVal = Number(val);
-                            const maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50)));
+                            const maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)));
                             if (numVal > maxQty) numVal = maxQty;
                             setTeamQuantity([numVal]);
                           }}
@@ -1796,8 +1796,8 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                               return "text-gray-300"
                             }
                           })()}`}
-                          placeholder={`₹${(data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50) * teamQuantity[0]}`}
-                          value={`₹${(data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50) * teamQuantity[0]}`}
+                          placeholder={`₹${((data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50) * teamQuantity[0]).toFixed(2)}`}
+                          value={`₹${((data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50) * teamQuantity[0]).toFixed(2)}`}
                           disabled={selectedTeam && selectedTeamInningIndex >= 0 && !canTeamTrade(selectedTeam, selectedTeamInningIndex)}
                         />
                       </div>
@@ -1818,7 +1818,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     })()}`}
                     onClick={async () => {
                       const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
-                      
+
                       if (!canTradeTeam) {
                         if (selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)) {
                           toast.info("Inning is over, cannot trade team stocks")
@@ -1844,7 +1844,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
 
                       const result = await buyTeam(
                         selectedTeam,
-                        String(data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50),
+                        String((data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50).toFixed(2)),
                         String(teamQuantity[0]),
                         matchId || "",
                       )
