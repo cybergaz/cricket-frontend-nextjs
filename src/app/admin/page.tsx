@@ -386,16 +386,23 @@ const Dashboard = (): JSX.Element => {
 
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
               <div className="text-2xl mb-2">
-                {renderMetricValue(companyProfit.grossProfit, isCompanyProfitLoading, companyProfitError)}
+                {renderMetricValue(companyProfit.totalTdsCut, isCompanyProfitLoading, companyProfitError)}
               </div>
-              <div className="text-sm font-light mb-1">Deposit Amount - Current Amount</div>
+              <div className="text-base font-light mb-1">Total TDS cuts</div>
+            </div>
+
+            <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
+              <div className="text-2xl mb-2">
+                {renderMetricValue(companyProfit.usersCurrentAmount, isCompanyProfitLoading, companyProfitError)}
+              </div>
+              <div className="text-sm font-light mb-1">Total Users Current Amount</div>
             </div>
 
             <div className="bg-[#181a20] border-[#1e293b] rounded-2xl p-5 flex flex-col justify-between">
               <div className="text-2xl mb-2">
                 {renderMetricValue(companyProfit.totalSoldPortfolioProfit, isCompanyProfitLoading, companyProfitError)}
               </div>
-              <div className="text-base font-light mb-1">All Users P/L</div>
+              <div className="text-base font-light mb-1">All Users Total P/L</div>
             </div>
 
           </div>

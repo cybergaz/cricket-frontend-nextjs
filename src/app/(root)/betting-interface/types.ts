@@ -289,6 +289,10 @@ export interface CricketMatchData {
   wagon: string
   win_margin: string
   winning_team_id: string
+  teamStockPrices?: {
+    teama: number
+    teamb: number
+  }
 }
 export interface MatchScorecardProps {
   matchData: CricketMatchData

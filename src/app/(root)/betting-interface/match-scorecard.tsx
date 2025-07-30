@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Target, TrendingUp, Users, Star, HardHat, Radio, Mic2, Twitter, Instagram } from "lucide-react"
 import type { CricketMatchData, Player, MatchScorecardProps, Innings } from "./types"
-import { getRoleColor, buyPlayer, sellPlayer, formatMatchNotes } from "./services"
+import { getRoleColor, buyPlayer, sellPlayer, formatMatchNotes, updateTeamStockPrice, buyTeam } from "./services"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -42,6 +42,12 @@ const TradeInningScorecard = ({
   isPlayerCurrentlyBatting,
   isPlayerOut,
   canPlayerTrade,
+  isInningOver,
+  data,
+  latestInningNumber,
+  openTeamBettingModal,
+  isUpdatingTeamStocks,
+  canTeamTrade,
 }: {
   inning: Innings
   inningIndex: number
@@ -53,6 +59,12 @@ const TradeInningScorecard = ({
   isPlayerCurrentlyBatting: (player: any) => boolean
   isPlayerOut: (player: any) => boolean
   canPlayerTrade: (player: any, inningIndex: number) => boolean
+  isInningOver: (inningIndex: number) => boolean
+  data: any
+  latestInningNumber: number
+  openTeamBettingModal: (team: any, inningIndex: number) => void
+  isUpdatingTeamStocks: boolean
+  canTeamTrade: (team: any, inningIndex: number) => boolean
 }) => {
   const [subTab, setSubTab] = useState("batsmen")
 
@@ -64,6 +76,9 @@ const TradeInningScorecard = ({
     if (aNotOut === bNotOut) return 0
     return aNotOut ? -1 : 1
   })
+
+  // Determine which team is currently batting
+  const battingTeam = inning.batting_team_id === data?.teama?.team_id ? data.teama : data?.teamb
 
   return (
     <div className="mb-8">
@@ -86,6 +101,62 @@ const TradeInningScorecard = ({
           </h2>
         </CardContent>
       </Card>
+
+      {/* Team Stocks Section - Only show for the current active inning when team is batting */}
+      {battingTeam && canTeamTrade(battingTeam, inningIndex) && (
+        <div className="mb-6">
+          <div className="text-center mb-4">
+            <p className="text-gray-400 text-xs mt-5">
+              💡 Team stocks : +20% of runs scored, -10% when players get out
+            </p>
+          </div>
+
+          <div className={`flex items-center justify-between p-4 rounded-lg transition ${!isInningOver(inningIndex)
+            ? "bg-white/20 hover:bg-white/30"
+            : "bg-white/5 opacity-60"
+            }`}>
+            <div className="flex items-center gap-4">
+              <img
+                src={battingTeam.logo_url || "/placeholder.svg"}
+                alt={battingTeam.name}
+                className="w-12 h-12 rounded-full"
+              />
+                              <div>
+                  <h3 className="text-lg font-bold text-white">{battingTeam.name}</h3>
+                  <p className="text-sm text-gray-300 flex items-center gap-2">
+                    Current Price: ₹{data?.teamStockPrices?.[battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'].toFixed(2) || 50}
+                    {isUpdatingTeamStocks && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-yellow-400 bg-yellow-400/20 text-xs font-bold animate-pulse">
+                        <span className="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></span>
+                        Updating...
+                      </span>
+                    )}
+                  </p>
+                </div>
+            </div>
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isInningOver(inningIndex)) {
+                    openTeamBettingModal(battingTeam, inningIndex)
+                  } else {
+                    toast.info("Inning is over, cannot trade")
+                  }
+                }}
+                className={`text-sm font-bold px-4 py-2 rounded-lg shadow-md transition-all duration-200 ${!isInningOver(inningIndex)
+                  ? "bg-green-600/80 hover:bg-green-700/80 text-white cursor-pointer"
+                  : "bg-gray-600/80 text-gray-400 cursor-not-allowed"
+                  }`}
+                disabled={isInningOver(inningIndex)}
+              >
+                Buy Team Stocks
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Tabs value={subTab} onValueChange={setSubTab} className="w-full mt-2">
         <TabsList className="flex w-full overflow-x-auto scrollbar-hide h-auto gap-1 md:gap-2 p-1 bg-white/5 rounded-xl">
           <TabsTrigger
@@ -106,7 +177,7 @@ const TradeInningScorecard = ({
             const isBatting = isPlayerCurrentlyBatting(batsman)
             const isOut = isPlayerOut(batsman)
             const canTrade = canPlayerTrade(batsman, inningIndex)
-            
+
             return (
               <div
                 key={batsman.batsman_id}
@@ -117,7 +188,7 @@ const TradeInningScorecard = ({
                     toast.info("Player is out, cannot trade")
                   } else if (!isBatting) {
                     toast.info("Player is not currently batting")
-                  } else if (inningIndex !== 1) {
+                  } else if (isInningOver(inningIndex)) {
                     toast.info("Inning is Over")
                   }
                 }}
@@ -161,11 +232,10 @@ const TradeInningScorecard = ({
                       onClick={() => {
                         openBettingModal(batsman.batsman_id, inningIndex)
                       }}
-                      className={`text-[13px] sm:text-sm font-extrabold px-4 py-2 rounded-lg shadow-md hover:scale-105 transition-all duration-200 flex items-center gap-2 cursor-pointer ${
-                        sellWindowActive[batsman.batsman_id]
-                          ? "bg-green-600/80 text-white animate-pulse"
-                          : "bg-green-600/80 sm:bg-green-500/20 text-white"
-                      }`}
+                      className={`text-[13px] sm:text-sm font-extrabold px-4 py-2 rounded-lg shadow-md hover:scale-105 transition-all duration-200 flex items-center gap-2 cursor-pointer ${sellWindowActive[batsman.batsman_id]
+                        ? "bg-green-600/80 text-white animate-pulse"
+                        : "bg-green-600/80 sm:bg-green-500/20 text-white"
+                        }`}
                     >
                       <span>
                         {sellWindowActive[batsman.batsman_id]
@@ -233,12 +303,22 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     inningIndex: number
   } | null>(null)
 
+  // Team betting modal state
+  const [isTeamBettingModalOpen, setIsTeamBettingModalOpen] = useState(false)
+  const [selectedTeam, setSelectedTeam] = useState<any>(null)
+  const [teamQuantity, setTeamQuantity] = useState<number[]>([1])
+  const [selectedTeamInningIndex, setSelectedTeamInningIndex] = useState<number>(-1)
+  const [isUpdatingTeamStocks, setIsUpdatingTeamStocks] = useState(false)
+
   // 5-second sell window state
   const [sellWindowActive, setSellWindowActive] = useState<Record<string, boolean>>({})
   const [sellWindowTimeLeft, setSellWindowTimeLeft] = useState<Record<string, number>>({})
-  
+
   // Use useRef to maintain previous prices across renders
   const previousPrices = useRef<Record<string, number>>({})
+
+  // Use useRef to maintain previous player stats for detecting changes
+  const previousPlayerStats = useRef<Record<string, any>>({})
 
   // --- Derived State ---
   // No more useState for data-derived properties. They are now derived on every render,
@@ -316,7 +396,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     currentInning.batsmen.forEach((batsman) => {
       const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === batsman.batsman_id)
       const currentPrice = calculatePlayerPrice(batsman, batsmanIndex)
-      
+
       // Check if price has changed for this player
       const lastPrice = previousPrices.current[batsman.batsman_id] || 0
       if (currentPrice !== lastPrice && lastPrice !== 0) {
@@ -336,17 +416,136 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     })
   }, [data?.innings, data?.latest_inning_number])
 
+  // Team stock price update detection
+  useEffect(() => {
+    if (!data?.innings || !data.latest_inning_number || !data.match_id) return
+
+    const currentInning = data.innings[Number(data.latest_inning_number) - 1]
+    if (!currentInning?.batsmen) return
+
+    // Update team stocks for both 1st and 2nd innings
+    if (Number(data.latest_inning_number) !== 1 && Number(data.latest_inning_number) !== 2) return
+
+    const battingTeam = currentInning.batting_team_id === data.teama?.team_id ? data.teama : data.teamb
+    if (!battingTeam) return
+
+    currentInning.batsmen.forEach((batsman) => {
+      const playerId = batsman.batsman_id
+      const previousStats = previousPlayerStats.current[playerId]
+
+      if (previousStats) {
+        // Check if runs have increased (runs scored)
+        const currentRuns = Number(batsman.runs) || 0
+        const previousRuns = Number(previousStats.runs) || 0
+
+        if (currentRuns > previousRuns) {
+          const runsScored = currentRuns - previousRuns
+          console.log(`${batsman.name} scored ${runsScored} runs`)
+
+          // Show loading state for team stock updates
+          setIsUpdatingTeamStocks(true)
+
+          // Update team stock price for runs scored
+          updateTeamStockPrice(data.match_id, battingTeam.team_id, "runs_scored", runsScored)
+            .then((result) => {
+              if (result.success) {
+                console.log(`Team stock price updated: ${result.data.reason}`)
+                toast.success(`Team stock updated: ${result.data.reason}`)
+              } else {
+                console.error("Failed to update team stock price:", result.message)
+                toast.error("Failed to update team stock price")
+              }
+            })
+            .catch((error) => {
+              console.error("Error updating team stock price:", error)
+              toast.error("Error updating team stock price")
+            })
+            .finally(() => {
+              setIsUpdatingTeamStocks(false)
+              // Force a small delay to ensure backend has updated the data
+              setTimeout(() => {
+                // The parent component will fetch fresh data on the next interval
+                // This just ensures we give the backend time to update
+              }, 500)
+            })
+        }
+
+        // Check if player got out
+        const wasOut = previousStats.how_out !== "Not out" && previousStats.dismissal !== ""
+        const isOut = batsman.how_out !== "Not out" && batsman.dismissal !== ""
+
+        if (!wasOut && isOut) {
+          console.log(`${batsman.name} got out`)
+
+          // Show loading state for team stock updates
+          setIsUpdatingTeamStocks(true)
+
+          // Update team stock price for player getting out
+          updateTeamStockPrice(data.match_id, battingTeam.team_id, "player_out")
+            .then((result) => {
+              if (result.success) {
+                console.log(`Team stock price updated: ${result.data.reason}`)
+                toast.success(`Team stock updated: ${result.data.reason}`)
+              } else {
+                console.error("Failed to update team stock price:", result.message)
+                toast.error("Failed to update team stock price")
+              }
+            })
+            .catch((error) => {
+              console.error("Error updating team stock price:", error)
+              toast.error("Error updating team stock price")
+            })
+            .finally(() => {
+              setIsUpdatingTeamStocks(false)
+              // Force a small delay to ensure backend has updated the data
+              setTimeout(() => {
+                // The parent component will fetch fresh data on the next interval
+                // This just ensures we give the backend time to update
+              }, 500)
+            })
+        }
+      }
+
+      // Update previous stats for this player
+      previousPlayerStats.current[playerId] = {
+        runs: batsman.runs,
+        how_out: batsman.how_out,
+        dismissal: batsman.dismissal,
+      }
+    })
+  }, [data?.innings, data?.latest_inning_number, data?.match_id, data?.teama, data?.teamb])
+
   // --- Helper Functions ---
   const isPlayerCurrentlyBatting = (player: any) => {
     return player.batting === "true" && player.dismissal === ""
   }
-  
+
   const isPlayerOut = (player: any) => {
     return player.how_out !== "Not out" && player.dismissal !== ""
   }
-  
+
   const canPlayerTrade = (player: any, inningIndex: number) => {
-    return isPlayerCurrentlyBatting(player) && !isPlayerOut(player) && inningIndex === (latestInningNumber - 1)
+    return isPlayerCurrentlyBatting(player) && !isPlayerOut(player) && inningIndex === (latestInningNumber - 1) && !isInningOver(inningIndex)
+  }
+
+  const isInningOver = (inningIndex: number) => {
+    if (!data?.innings || inningIndex < 0 || inningIndex >= data.innings.length) return false
+    const inning = data.innings[inningIndex]
+    return inning?.status?.toLowerCase().includes("over") ||
+      inning?.status?.toLowerCase().includes("completed") ||
+      inning?.status?.toLowerCase().includes("finished")
+  }
+
+  const canTeamTrade = (team: any, inningIndex: number) => {
+    // Only allow trading if:
+    // 1. This is the current active inning
+    // 2. The inning is not over
+    // 3. The team is currently batting in this inning
+    const isCurrentInning = inningIndex === (latestInningNumber - 1)
+    const isInningActive = !isInningOver(inningIndex)
+    const isTeamBatting = team.team_id === data?.innings?.[inningIndex]?.batting_team_id
+    
+    return isCurrentInning && isInningActive && isTeamBatting
   }
 
   // --- Event Handlers ---
@@ -359,6 +558,19 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
   const closeBettingModal = () => {
     setIsBettingModalOpen(false)
     setSelectedBettingPlayerIdentity(null)
+  }
+
+  const openTeamBettingModal = (team: any, inningIndex: number) => {
+    setSelectedTeam(team)
+    setSelectedTeamInningIndex(inningIndex)
+    setIsTeamBettingModalOpen(true)
+    setTeamQuantity([1]) // Reset quantity on open
+  }
+
+  const closeTeamBettingModal = () => {
+    setIsTeamBettingModalOpen(false)
+    setSelectedTeam(null)
+    setSelectedTeamInningIndex(-1)
   }
 
   useEffect(() => {
@@ -854,6 +1066,12 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                   isPlayerCurrentlyBatting={isPlayerCurrentlyBatting}
                   isPlayerOut={isPlayerOut}
                   canPlayerTrade={canPlayerTrade}
+                  isInningOver={isInningOver}
+                  data={data}
+                  latestInningNumber={latestInningNumber}
+                  openTeamBettingModal={openTeamBettingModal}
+                  isUpdatingTeamStocks={isUpdatingTeamStocks}
+                  canTeamTrade={canTeamTrade}
                 />
               )}
               {previousInnings && (
@@ -872,6 +1090,12 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                   isPlayerCurrentlyBatting={isPlayerCurrentlyBatting}
                   isPlayerOut={isPlayerOut}
                   canPlayerTrade={canPlayerTrade}
+                  isInningOver={isInningOver}
+                  data={data}
+                  latestInningNumber={latestInningNumber}
+                  openTeamBettingModal={openTeamBettingModal}
+                  isUpdatingTeamStocks={isUpdatingTeamStocks}
+                  canTeamTrade={canTeamTrade}
                 />
               )}
             </TabsContent>
@@ -1130,7 +1354,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                 {(() => {
                   const isCurrentlyBatting = isPlayerCurrentlyBatting(bettingPlayer)
                   const isOut = isPlayerOut(bettingPlayer)
-                  
+
                   if (isOut) {
                     return (
                       <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
@@ -1291,25 +1515,24 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                 {/* Buy/Sell Buttons */}
                 <div className="mt-6 sm:mt-8 flex flex-col md:flex-row gap-3 sm:gap-4">
                   <button
-                    className={`flex-1 rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${
-                      (() => {
-                        const isCurrentlyBatting = isPlayerCurrentlyBatting(bettingPlayer)
-                        const isOut = isPlayerOut(bettingPlayer)
-                        return isCurrentlyBatting && !isOut 
-                          ? "bg-green-600 hover:bg-green-700 text-white" 
-                          : "bg-gray-600 text-gray-400 cursor-not-allowed"
-                      })()
-                    }`}
+                    className={`flex-1 rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${(() => {
+                      const isCurrentlyBatting = isPlayerCurrentlyBatting(bettingPlayer)
+                      const isOut = isPlayerOut(bettingPlayer)
+                      return isCurrentlyBatting && !isOut
+                        ? "bg-green-600 hover:bg-green-700 text-white"
+                        : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                    })()
+                      }`}
                     onClick={async () => {
                       // Check if player is currently batting
                       const isCurrentlyBatting = isPlayerCurrentlyBatting(bettingPlayer)
                       const isOut = isPlayerOut(bettingPlayer)
-                      
+
                       if (!isCurrentlyBatting || isOut) {
                         toast.error("Cannot buy player who is not currently batting")
                         return
                       }
-                      
+
                       closeBettingModal()
                       if (
                         typeof data.status_note === "string" &&
@@ -1318,7 +1541,16 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                         toast.info("Match is over, Redirecting...");
                         setTimeout(() => {
                           redirect("/live-matches")
-                        }, 1000);
+                        }, 200);
+                        return;
+                      }
+
+                      // Check if inning is over
+                      if (selectedBettingPlayerIdentity && isInningOver(selectedBettingPlayerIdentity.inningIndex)) {
+                        toast.info("Inning is over, Redirecting...");
+                        setTimeout(() => {
+                          redirect("/live-matches")
+                        }, 200);
                         return;
                       }
                       const buyingResponse = await buyPlayer(
@@ -1338,11 +1570,10 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     Buy Player
                   </button>
                   <button
-                    className={`flex-1 rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${
-                      sellWindowActive[bettingPlayer.batsman_id]
-                        ? "bg-green-600 hover:bg-green-700 text-white animate-pulse"
-                        : "bg-gray-600 text-gray-400 cursor-not-allowed"
-                    }`}
+                    className={`flex-1 rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${sellWindowActive[bettingPlayer.batsman_id]
+                      ? "bg-red-600 hover:bg-red-700 text-white animate-pulse"
+                      : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                      }`}
                     onClick={async () => {
                       if (!sellWindowActive[bettingPlayer.batsman_id]) {
                         toast.info("Sell window is not active. Wait for price changes to enable selling.")
@@ -1354,6 +1585,15 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                         /(won|loss|draw|tie|abandon|no result|match over|match ended|match finished)/i.test(data.status_note)
                       ) {
                         toast.info("Match is over, Redirecting...");
+                        setTimeout(() => {
+                          redirect("/live-matches")
+                        }, 1000);
+                        return;
+                      }
+
+                      // Check if inning is over
+                      if (selectedBettingPlayerIdentity && isInningOver(selectedBettingPlayerIdentity.inningIndex)) {
+                        toast.info("Inning is over, Redirecting...");
                         setTimeout(() => {
                           redirect("/live-matches")
                         }, 1000);
@@ -1383,6 +1623,256 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     </p>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Team Betting Modal */}
+          {isTeamBettingModalOpen && selectedTeam && (
+            <div className="fixed inset-0 z-50 w-full h-full flex items-center justify-center bg-black/70 backdrop-blur-lg p-4">
+              <div className="w-full max-w-lg rounded-2xl bg-gradient-to-br from-gray-900/90 to-gray-900 p-4 sm:p-6 md:p-8 shadow-2xl">
+                {/* Header */}
+                <div className="mb-4 sm:mb-6 flex items-center justify-between">
+                  <div className="flex items-center gap-2 sm:gap-4">
+                    <img
+                      src={selectedTeam.logo_url || "/placeholder.svg"}
+                      alt={selectedTeam.name}
+                      className="size-12 sm:size-14 rounded-full shadow-xl"
+                    />
+                    <h2 className="text-lg sm:text-xl font-extrabold text-white">{selectedTeam.name}</h2>
+                  </div>
+                  <button
+                    onClick={closeTeamBettingModal}
+                    className="text-gray-400 transition-colors hover:text-white text-xl sm:text-2xl"
+                    aria-label="Close"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Team Status */}
+                <div className={`mb-4 p-3 border rounded-lg ${(() => {
+                  const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
+                  if (!canTradeTeam) {
+                    return "bg-red-500/20 border-red-500/30"
+                  } else {
+                    return "bg-green-500/20 border-green-500/30"
+                  }
+                })()}`}>
+                  <p className={`text-sm font-bold text-center ${(() => {
+                    const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
+                    if (!canTradeTeam) {
+                      return "text-red-400"
+                    } else {
+                      return "text-green-400"
+                    }
+                  })()}`}>
+                    {(() => {
+                      const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
+                      if (!canTradeTeam) {
+                        if (selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)) {
+                          return "❌ Inning is over, team trading is not available"
+                        } else if (selectedTeam && selectedTeamInningIndex >= 0 && selectedTeam.team_id !== data?.innings?.[selectedTeamInningIndex]?.batting_team_id) {
+                          return "❌ This team is not currently batting"
+                        } else {
+                          return "❌ Team trading is not available at this time"
+                        }
+                      } else {
+                        const inningText = selectedTeamInningIndex === 0 ? "1st" : selectedTeamInningIndex === 1 ? "2nd" : `${selectedTeamInningIndex + 1}th`
+                        return `✅ Team trading is available in the ${inningText} innings`
+                      }
+                    })()}
+                  </p>
+                </div>
+
+                {/* Current Price */}
+                <div className="mb-6 text-center">
+                  <p className="text-gray-300 text-sm mb-2">Current Team Stock Price</p>
+                  <p className="text-3xl font-bold text-white flex items-center justify-center gap-2">
+                    ₹{data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50}
+                    {isUpdatingTeamStocks && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-yellow-400 bg-yellow-400/20 text-xs font-bold animate-pulse">
+                        <span className="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></span>
+                        Updating...
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Quantity Slider & Input */}
+                <div className="mt-6 sm:mt-8">
+                  <Slider
+                    value={teamQuantity}
+                    onValueChange={(value) => {
+                      const isInningOverForTeam = selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)
+                      if (!isInningOverForTeam) {
+                        setTeamQuantity(value)
+                      }
+                    }}
+                    defaultValue={[1]}
+                    max={Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50)))}
+                    step={1}
+                    className={`my-4 ${(() => {
+                      const isInningOverForTeam = selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)
+                      if (isInningOverForTeam) {
+                        return "opacity-50 pointer-events-none"
+                      } else {
+                        return ""
+                      }
+                    })()}`}
+                                              disabled={selectedTeam && selectedTeamInningIndex >= 0 && !canTeamTrade(selectedTeam, selectedTeamInningIndex)}
+                  />
+                  <div className="flex justify-between w-full text-xs font-semibold mb-4">
+                    <span>{teamQuantity[0]}</span>
+                    <span>
+                      {Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50)))}
+                    </span>
+                  </div>
+
+                  {/* Quantity Selector */}
+                  <div className="mt-6 sm:mt-8">
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                      <div className="flex-1 flex flex-col">
+                        <label
+                          className="text-xs sm:text-sm font-bold text-gray-300 mb-1"
+                          htmlFor="team-quantity-input"
+                        >
+                          Quantity
+                        </label>
+                        <Input
+                          id="team-quantity-input"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          pattern="[0-9]*"
+                          value={teamQuantity[0] === 0 ? "" : teamQuantity[0]}
+                          className={`text-white placeholder:text-gray-400 border-0 font-extrabold rounded-lg px-3 py-2 text-sm sm:text-base ${(() => {
+                            const isInningOverForTeam = selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)
+                            if (isInningOverForTeam) {
+                              return "bg-gray-700/60 text-gray-500 cursor-not-allowed"
+                            } else {
+                              return "bg-gray-800/60"
+                            }
+                          })()}`}
+                          onChange={(e) => {
+                            const isInningOverForTeam = selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)
+                            if (isInningOverForTeam) return;
+                            
+                            const val = e.target.value;
+                            if (!/^\d*$/.test(val)) return;
+                            if (val === "") {
+                              setTeamQuantity([0]);
+                              return;
+                            }
+                            let numVal = Number(val);
+                            const maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50)));
+                            if (numVal > maxQty) numVal = maxQty;
+                            setTeamQuantity([numVal]);
+                          }}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          onKeyDown={(e) => {
+                            if (["ArrowUp", "ArrowDown", "e", "+", "-"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          style={{ MozAppearance: "textfield" }}
+                          disabled={selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)}
+                        />
+                      </div>
+                      <div className="flex-1 flex flex-col lg:items-end">
+                        <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="team-price-input">
+                          Price
+                          <span className="ml-2 text-xs mt-1 font-bold text-gray-400">
+                            (Max: ₹25000)
+                          </span>
+                        </label>
+                        <Input
+                          id="team-price-input"
+                          className={`border-0 font-extrabold bg-transparent rounded-lg px-3 py-2 lg:text-end text-sm sm:text-base ${(() => {
+                            const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
+                            if (!canTradeTeam) {
+                              return "text-gray-500"
+                            } else {
+                              return "text-gray-300"
+                            }
+                          })()}`}
+                          placeholder={`₹${(data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50) * teamQuantity[0]}`}
+                          value={`₹${(data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50) * teamQuantity[0]}`}
+                          disabled={selectedTeam && selectedTeamInningIndex >= 0 && !canTeamTrade(selectedTeam, selectedTeamInningIndex)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Buy Button */}
+                <div className="mt-6 sm:mt-8">
+                  <button
+                    className={`w-full rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${(() => {
+                      const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
+                      if (!canTradeTeam) {
+                        return "bg-gray-600 text-gray-400 cursor-not-allowed"
+                      } else {
+                        return "bg-green-600 hover:bg-green-700 text-white"
+                      }
+                    })()}`}
+                    onClick={async () => {
+                      const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
+                      
+                      if (!canTradeTeam) {
+                        if (selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)) {
+                          toast.info("Inning is over, cannot trade team stocks")
+                        } else if (selectedTeam && selectedTeamInningIndex >= 0 && selectedTeam.team_id !== data?.innings?.[selectedTeamInningIndex]?.batting_team_id) {
+                          toast.info("This team is not currently batting")
+                        } else {
+                          toast.info("Team trading is not available at this time")
+                        }
+                        return
+                      }
+
+                      closeTeamBettingModal()
+                      if (
+                        typeof data.status_note === "string" &&
+                        /(won|loss|draw|tie|abandon|no result|match over|match ended|match finished)/i.test(data.status_note)
+                      ) {
+                        toast.info("Match is over, Redirecting...");
+                        setTimeout(() => {
+                          redirect("/live-matches")
+                        }, 1000);
+                        return;
+                      }
+
+                      const result = await buyTeam(
+                        selectedTeam,
+                        String(data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] || 50),
+                        String(teamQuantity[0]),
+                        matchId || "",
+                      )
+
+                      if (result.success) {
+                        toast.success(result.message)
+                      } else {
+                        toast.error(result.message || "Failed to buy team stocks")
+                      }
+                    }}
+                    disabled={selectedTeam && selectedTeamInningIndex >= 0 && !canTeamTrade(selectedTeam, selectedTeamInningIndex)}
+                  >
+                    {(() => {
+                      const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
+                      if (!canTradeTeam) {
+                        if (selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)) {
+                          return "Inning Over - Cannot Trade"
+                        } else if (selectedTeam && selectedTeamInningIndex >= 0 && selectedTeam.team_id !== data?.innings?.[selectedTeamInningIndex]?.batting_team_id) {
+                          return "Not Batting - Cannot Trade"
+                        } else {
+                          return "Cannot Trade"
+                        }
+                      } else {
+                        return "Buy Team Stocks"
+                      }
+                    })()}
+                  </button>
+                </div>
               </div>
             </div>
           )}

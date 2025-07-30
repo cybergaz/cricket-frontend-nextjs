@@ -14,21 +14,22 @@ export default function LiveMatches() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [retryCount, setRetryCount] = useState(0);
   const [countdown, setCountdown] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
       setIsError(false);
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/today`);
-      
+
       if (res.status === 404) {
         // Handle "No Matches Today" case - this is not an error
         setMatches([]);
         return;
       }
-      
+
       if (!res.ok) throw new Error("API Error");
-      
+
       const data = await res.json();
       const unwantedWords = ["won", "loss", "draw", "abandoned", "no result", "cancelled", "tie", "postponed", "completed", "finished"];
       const matches = data.data.filter(
@@ -46,17 +47,24 @@ export default function LiveMatches() {
       setTimeout(() => { fetchData(); }, 3000); // Retry after 3 seconds
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setRetryCount(0);
+    fetchData();
   };
 
   // Auto-retry logic when no matches are found
   useEffect(() => {
-    if (matches.length === 0 && !isLoading && !isError && retryCount < 10) {
-      setCountdown(10); // Start 10 second countdown
+    if (matches.length === 0 && !isLoading && !isError && retryCount < 3) {
+      setCountdown(3); // Start 3 second countdown
       const timer = setTimeout(() => {
         setRetryCount(prev => prev + 1);
         fetchData();
-      }, 10000); // Retry every 10 seconds
+      }, 3000); // Retry every 3 seconds
 
       return () => clearTimeout(timer);
     }
@@ -137,7 +145,7 @@ export default function LiveMatches() {
             <div className="text-center">
               <h2 className="text-2xl font-bold text-red-400 mb-4">Failed to load matches</h2>
               <p className="text-gray-400 mb-6">There was an error loading the live matches. Please try again.</p>
-              <button 
+              <button
                 onClick={fetchData}
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
               >
@@ -172,11 +180,41 @@ export default function LiveMatches() {
 
         <div>
           {matches.length > 0 ? (
-            matches.map((match) => (
-              <MatchCard key={match._id} match={match} />
-            ))
+            <div className="relative">
+              {/* Floating Refresh Button */}
+              <div className="fixed bottom-6 right-6 z-50">
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing || isLoading}
+                  className="group relative inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold rounded-full shadow-xl transition-all duration-200 transform hover:scale-110 disabled:transform-none disabled:cursor-not-allowed"
+                  title="Refresh Matches"
+                >
+                  <svg
+                    className={`w-5 h-5 transition-transform duration-200 ${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180'}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  <span className="hidden sm:inline">
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                  </span>
+                </button>
+              </div>
+
+              {matches.map((match) => (
+                <MatchCard key={match._id} match={match} />
+              ))}
+            </div>
           ) : (
-            <div className="flex flex-col items-center justify-center min-h-[400px]">
+            <div className="flex flex-col items-center justify-center">
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-gray-300 mb-4">No Live Matches</h2>
                 <p className="text-gray-400 mb-2">There are currently no live matches available.</p>
@@ -184,15 +222,43 @@ export default function LiveMatches() {
                   {retryCount > 0 && `Checking for new matches... (Attempt ${retryCount}/10)`}
                   {retryCount === 0 && `Auto-checking for new matches in ${countdown} seconds`}
                 </p>
-                <button 
-                  onClick={() => {
-                    setRetryCount(0);
-                    fetchData();
-                  }}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-                >
-                  Check Now
-                </button>
+
+                {/* Prominent Refresh Button */}
+                <div className="flex items-center justify-center gap-4 max-sm:flex-col">
+                  <button
+                    onClick={handleRefresh}
+                    disabled={isRefreshing || isLoading}
+                    className="group relative mr-5 flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold rounded-lg shadow-xl transition-all duration-200 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed"
+                  >
+                    <svg
+                      className={`w-6 h-6 transition-transform duration-200 ${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180'}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                    <span>
+                      {isRefreshing ? 'Refreshing Matches...' : 'Refresh Matches'}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setRetryCount(0);
+                      fetchData();
+                    }}
+                    className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors"
+                  >
+                    Check Now
+                  </button>
+                </div>
               </div>
             </div>
           )}

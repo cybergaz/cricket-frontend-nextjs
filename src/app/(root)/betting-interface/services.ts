@@ -73,16 +73,18 @@ export const sellPlayer = async (player: BettingPlayer, price: string, quantity:
     return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 };
-export const buyTeam = async (team: Team, price: string, quantity: string, match_id: string) => {
+export const buyTeam = async (team: any, price: string, quantity: string, matchId: string) => {
   try {
-    // Get token from cookies
     const getTokenFromCookies = () => {
-      if (typeof document === "undefined") return null;
-      const cookies = document.cookie.split("; ");
-      const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="));
-      return tokenCookie ? tokenCookie.split("=")[1] : null;
-    };
-    const token = getTokenFromCookies();
+      if (typeof document === "undefined") return null
+      const cookies = document.cookie.split("; ")
+      const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="))
+      return tokenCookie ? tokenCookie.split("=")[1] : null
+    }
+    const token = getTokenFromCookies()
+    if (!token) {
+      throw new Error("Authentication token not found")
+    }
 
     const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/buy-team`, {
       method: "POST",
@@ -90,25 +92,39 @@ export const buyTeam = async (team: Team, price: string, quantity: string, match
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ team, price, quantity, match_id }),
-      credentials: 'include',
-    });
-    const data = await response.json();
-    return data
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+      credentials: "include",
+      body: JSON.stringify({
+        team,
+        price,
+        quantity,
+        match_id: matchId,
+      }),
+    })
+
+    const result = await response.json()
+    if (!result.success) {
+      throw new Error(result.message || "Failed to buy team stocks")
+    }
+
+    return result
+  } catch (error: any) {
+    console.error("Error buying team stocks:", error)
+    throw new Error(error.message || "Failed to buy team stocks")
   }
-};
-export const sellTeam = async (team: Team, price: string, quantity: string, match_id: string) => {
+}
+
+export const sellTeam = async (team: any, price: string, quantity: string, matchId: string) => {
   try {
-    // Get token from cookies
     const getTokenFromCookies = () => {
-      if (typeof document === "undefined") return null;
-      const cookies = document.cookie.split("; ");
-      const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="));
-      return tokenCookie ? tokenCookie.split("=")[1] : null;
-    };
-    const token = getTokenFromCookies();
+      if (typeof document === "undefined") return null
+      const cookies = document.cookie.split("; ")
+      const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="))
+      return tokenCookie ? tokenCookie.split("=")[1] : null
+    }
+    const token = getTokenFromCookies()
+    if (!token) {
+      throw new Error("Authentication token not found")
+    }
 
     const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/sell-team`, {
       method: "POST",
@@ -116,12 +132,55 @@ export const sellTeam = async (team: Team, price: string, quantity: string, matc
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ team, price, quantity, match_id }),
-      credentials: 'include',
-    });
-    const data = await response.json();
+      credentials: "include",
+      body: JSON.stringify({
+        team,
+        price,
+        quantity,
+        match_id: matchId,
+      }),
+    })
+
+    const data = await response.json()
     return data
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
   }
-};
+}
+
+export const updateTeamStockPrice = async (matchId: string, teamId: string, eventType: "runs_scored" | "player_out", runs?: number) => {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/update-team-stocks/${matchId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        teamId,
+        eventType,
+        runs: runs || 0,
+      }),
+    })
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
+  }
+}
+
+export const initializeTeamStockPrices = async (matchId: string) => {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/initialize-team-stocks/${matchId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
+  }
+}
