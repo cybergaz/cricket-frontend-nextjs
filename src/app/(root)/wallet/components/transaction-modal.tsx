@@ -165,15 +165,16 @@ export function TransactionModal({ transaction, onClose }: TransactionModalProps
     : transaction.amount;
 
   let gst = 0;
-  let tds = 0;
+  // let tds = 0;
   let netAmount = originalAmount;
 
   if (transaction.type === "Withdrawal") {
     gst = originalAmount * 0.28;
-    if (originalAmount > 10000) {
-      tds = originalAmount * 0.01;
-    }
-    netAmount = originalAmount - gst - tds;
+    // if (originalAmount > 10000) {
+    //   tds = originalAmount * 0.01;
+    // }
+    // netAmount = originalAmount - gst - tds;
+    netAmount = originalAmount - gst;
   }
 
   const formattedAmount = new Intl.NumberFormat("en-IN", {
@@ -186,10 +187,10 @@ export function TransactionModal({ transaction, onClose }: TransactionModalProps
     maximumFractionDigits: 2,
   }).format(gst);
 
-  const formattedTDS = new Intl.NumberFormat("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(tds);
+  // const formattedTDS = new Intl.NumberFormat("en-IN", {
+  //   minimumFractionDigits: 2,
+  //   maximumFractionDigits: 2,
+  // }).format(tds);
 
   const formattedNetAmount = new Intl.NumberFormat("en-IN", {
     minimumFractionDigits: 2,
@@ -252,17 +253,17 @@ export function TransactionModal({ transaction, onClose }: TransactionModalProps
                     <span>GST (28%)</span>
                     <span>-₹{formattedGST}</span>
                   </div>
-                  {originalAmount > 10000 && (
-                    <div className="flex justify-between text-xs text-gray-400">
-                      <span>TDS (1%)</span>
-                      <span>-₹{formattedTDS}</span>
-                    </div>
-                  )}
+                  {/* {originalAmount > 10000 && ( */}
+                  {/*   <div className="flex justify-between text-xs text-gray-400"> */}
+                  {/*     <span>TDS (1%)</span> */}
+                  {/*     <span>-₹{formattedTDS}</span> */}
+                  {/*   </div> */}
+                  {/* )} */}
                   <div className="flex justify-between text-xs font-semibold text-white border-t border-gray-700 pt-1">
                     <span>Final Amount</span>
                     <span className="text-orange-400">₹{formattedNetAmount}</span>
                   </div>
-                  <span className="block text-xs text-gray-400 mt-1">GST and TDS (if applicable) are applied on the requested withdrawal amount.</span>
+                  <span className="block text-xs text-gray-400 mt-1">GST applied on the requested withdrawal amount.</span>
                   <span className="block text-xs text-orange-400 bg-orange-900/30 rounded px-2 py-1 mt-1">
                     Amount will be reflected within 2 to 3 business days
                   </span>

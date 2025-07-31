@@ -22,13 +22,14 @@ export default function WithdrawModal() {
   const calculateDeductions = (amount: string) => {
     const numAmount = parseFloat(amount) || 0;
     const gstAmount = numAmount * 0.28; // 28% GST
-    const tdsAmount = numAmount * 0.01; // 1% TDS
-    const totalDeductions = gstAmount + tdsAmount;
+    // const tdsAmount = numAmount * 0.01; // 1% TDS
+    // const totalDeductions = gstAmount + tdsAmount;
+    const totalDeductions = gstAmount;
     const finalAmount = numAmount - totalDeductions;
     return {
       originalAmount: numAmount,
       gstAmount: gstAmount,
-      tdsAmount: tdsAmount,
+      // tdsAmount: tdsAmount,
       totalDeductions: totalDeductions,
       finalAmount: finalAmount
     };
@@ -195,12 +196,12 @@ export default function WithdrawModal() {
   };
 
   return (
-    <div>
+    <div className="">
       <Button
         onClick={handleOpen}
-        className="bg-orange-500/50 hover:bg-orange-600 text-white font-semibold px-6 py-2"
+        className="bg-green-500/50 hover:bg-green-600 text-white font-semibold px-6 py-5"
       >
-        Withdraw
+        Withdraw Money
       </Button>
       {isOpen && (
         <div
@@ -210,7 +211,7 @@ export default function WithdrawModal() {
           }}
         >
           <div
-            className="bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-8 relative max-h-[90vh] overflow-y-auto hide-scrollbar"
+            className="bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-8 mx-2 relative max-h-[90vh] overflow-y-auto hide-scrollbar"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold mb-6">Withdraw Money</h2>
@@ -251,10 +252,10 @@ export default function WithdrawModal() {
                         <span className="text-gray-400">GST (28%):</span>
                         <span className="text-red-400">-₹{deductionCalculation.gstAmount.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">TDS (1%):</span>
-                        <span className="text-red-400">-₹{deductionCalculation.tdsAmount.toLocaleString()}</span>
-                      </div>
+                      {/* <div className="flex justify-between"> */}
+                      {/*   <span className="text-gray-400">TDS (1%):</span> */}
+                      {/*   <span className="text-red-400">-₹{deductionCalculation.tdsAmount.toLocaleString()}</span> */}
+                      {/* </div> */}
                       <div className="border-t border-gray-600/30 pt-1 mt-2">
                         <div className="flex justify-between font-semibold">
                           <span className="text-green-400">Final Amount:</span>

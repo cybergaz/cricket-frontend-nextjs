@@ -356,11 +356,11 @@ export default function MoneyTransactionsPage() {
   }
   return (
     <div className="p-5 h-full min-h-screen bg-gradient-to-tl from-transparent via-transparent to-sky-600/30">
-      <div className="container mx-auto px-4 py-4 sm:py-6 md:py-8">
+      <div className="container mx-auto px-5 max-sm:px-0 py-4 sm:py-6 md:py-8">
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-5xl font-bold tracking-tight text-white">My Wallet</h1>
-            <p className="text-gray-400 text-lg font-bold">
+            <h1 className="text-5xl max-sm:text-3xl font-bold tracking-tight text-white">My Wallet</h1>
+            <p className="text-gray-400 text-lg max-sm:text-base">
               Manage your wallet, view your available balance, and keep track of all your deposit and withdrawal transactions
             </p>
           </div>
@@ -478,13 +478,15 @@ export default function MoneyTransactionsPage() {
           <Card className="bg-gradient-to-br from-gray-600/30 via-transparent to-transparent rounded-none rounded-tl-4xl mt-10">
 
             <CardHeader className="px-7 py-2">
-              <div className="flex justify-between">
-                <div>
+              <div className="flex max-sm:flex-col gap-8 justify-between">
+                <div className="max-sm:order-2">
                   <CardTitle className="text-4xl text-white">Add Funds</CardTitle>
                   <CardDescription className="text-lg text-gray-400">Add funds to your wallet</CardDescription>
                 </div>
 
-                <WithdrawModal />
+                <div className="max-sm:order-first">
+                  <WithdrawModal />
+                </div>
 
               </div>
             </CardHeader>
