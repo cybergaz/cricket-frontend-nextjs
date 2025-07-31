@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Target, TrendingUp, Users, Star, HardHat, Radio, Mic2, Twitter, Instagram } from "lucide-react"
 import type { CricketMatchData, Player, MatchScorecardProps, Innings } from "./types"
-import { getRoleColor, buyPlayer, sellPlayer, formatMatchNotes, updateTeamStockPrice, buyTeam } from "./services"
+import { getRoleColor, buyPlayer, sellPlayer, formatMatchNotes, updateTeamStockPrice, buyTeam, sellTeam, checkPlayerHoldings, checkTeamHoldings } from "./services"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -173,6 +173,11 @@ const TradeInningScorecard = ({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="batsmen" className="mt-4 space-y-2">
+          {
+            inning.batsmen.length === 0 && (
+              <div className="text-center text-gray-400">No batsmen data available</div>
+            )
+          }
           {sortedBatsmen.map((batsman: any) => {
             const isBatting = isPlayerCurrentlyBatting(batsman)
             const isOut = isPlayerOut(batsman)
@@ -251,6 +256,12 @@ const TradeInningScorecard = ({
           })}
         </TabsContent>
         <TabsContent value="bowlers" className="mt-4 space-y-2">
+          {
+            (inning.bowlers || []).length === 0 && (
+              <div className="text-center text-gray-400">No bowlers data available</div>
+            )
+          }
+
           {(inning.bowlers || []).map((bowler) => {
             const isCurrentBowler = bowler.bowling === "true"
             return (
@@ -309,6 +320,14 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
   const [teamQuantity, setTeamQuantity] = useState<number[]>([1])
   const [selectedTeamInningIndex, setSelectedTeamInningIndex] = useState<number>(-1)
   const [isUpdatingTeamStocks, setIsUpdatingTeamStocks] = useState(false)
+
+  // Player holdings state
+  const [playerHoldings, setPlayerHoldings] = useState<any>(null)
+  const [isLoadingHoldings, setIsLoadingHoldings] = useState(false)
+
+  // Team holdings state
+  const [teamHoldings, setTeamHoldings] = useState<any>(null)
+  const [isLoadingTeamHoldings, setIsLoadingTeamHoldings] = useState(false)
 
   // 5-second sell window state
   const [sellWindowActive, setSellWindowActive] = useState<Record<string, boolean>>({})
@@ -451,6 +470,11 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
               if (result.success) {
                 console.log(`Team stock price updated: ${result.data.reason}`)
                 toast.success(`Team stock updated: ${result.data.reason}`)
+                
+                // Activate sell window for team stocks
+                const teamKey = battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'
+                setSellWindowActive(prev => ({ ...prev, [`team_${teamKey}`]: true }))
+                setSellWindowTimeLeft(prev => ({ ...prev, [`team_${teamKey}`]: 5 }))
               } else {
                 console.error("Failed to update team stock price:", result.message)
                 toast.error("Failed to update team stock price")
@@ -486,6 +510,11 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
               if (result.success) {
                 console.log(`Team stock price updated: ${result.data.reason}`)
                 toast.success(`Team stock updated: ${result.data.reason}`)
+                
+                // Activate sell window for team stocks
+                const teamKey = battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'
+                setSellWindowActive(prev => ({ ...prev, [`team_${teamKey}`]: true }))
+                setSellWindowTimeLeft(prev => ({ ...prev, [`team_${teamKey}`]: 5 }))
               } else {
                 console.error("Failed to update team stock price:", result.message)
                 toast.error("Failed to update team stock price")
@@ -549,10 +578,31 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
   }
 
   // --- Event Handlers ---
-  const openBettingModal = (batsmanId: string, inningIndex: number) => {
+  const openBettingModal = async (batsmanId: string, inningIndex: number) => {
     setSelectedBettingPlayerIdentity({ batsmanId, inningIndex })
     setIsBettingModalOpen(true)
     setQuantity([1]) // Reset quantity on open
+
+    // Fetch player holdings
+    setIsLoadingHoldings(true)
+    try {
+      if (matchId) {
+        const holdingsResponse = await checkPlayerHoldings(matchId, batsmanId)
+        if (holdingsResponse.success) {
+          setPlayerHoldings(holdingsResponse.data)
+        } else {
+          console.error("Failed to fetch player holdings:", holdingsResponse.message)
+          setPlayerHoldings(null)
+        }
+      } else {
+        setPlayerHoldings(null)
+      }
+    } catch (error) {
+      console.error("Error fetching player holdings:", error)
+      setPlayerHoldings(null)
+    } finally {
+      setIsLoadingHoldings(false)
+    }
   }
 
   const closeBettingModal = () => {
@@ -560,11 +610,32 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     setSelectedBettingPlayerIdentity(null)
   }
 
-  const openTeamBettingModal = (team: any, inningIndex: number) => {
+  const openTeamBettingModal = async (team: any, inningIndex: number) => {
     setSelectedTeam(team)
     setSelectedTeamInningIndex(inningIndex)
     setIsTeamBettingModalOpen(true)
     setTeamQuantity([1]) // Reset quantity on open
+
+    // Fetch team holdings
+    setIsLoadingTeamHoldings(true)
+    try {
+      if (matchId) {
+        const holdingsResponse = await checkTeamHoldings(matchId, team.team_id)
+        if (holdingsResponse.success) {
+          setTeamHoldings(holdingsResponse.data)
+        } else {
+          console.error("Failed to fetch team holdings:", holdingsResponse.message)
+          setTeamHoldings(null)
+        }
+      } else {
+        setTeamHoldings(null)
+      }
+    } catch (error) {
+      console.error("Error fetching team holdings:", error)
+      setTeamHoldings(null)
+    } finally {
+      setIsLoadingTeamHoldings(false)
+    }
   }
 
   const closeTeamBettingModal = () => {
@@ -640,7 +711,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
           <div className="flex items-center justify-center gap-4 sm:gap-8 md:gap-12 text-white px-4">
             <div className="flex items-center justify-center w-full">
               {/* Team A */}
-              <div className="flex-1 flex flex-col items-center gap-2 md:gap-4 group cursor-pointer">
+              <div className="flex-1 flex flex-col items-center gap-2 md:gap-4 group">
                 <img
                   src={data.teama?.logo_url || "/placeholder.svg"}
                   alt={data.teama?.name ?? "Team A"}
@@ -661,13 +732,31 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       : ""}
                   </span>
                 </div>
+                {/* Team A Trading Button */}
+                <button
+                  onClick={() => {
+                    if (data.teama && canTeamTrade(data.teama, latestInningNumber - 1)) {
+                      openTeamBettingModal(data.teama, latestInningNumber - 1)
+                    } else {
+                      toast.info("Team trading is not available at this time")
+                    }
+                  }}
+                  className={`mt-2 px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 ${
+                    canTeamTrade(data.teama, latestInningNumber - 1)
+                      ? "bg-green-600/80 hover:bg-green-700/80 text-white"
+                      : "bg-gray-600/80 text-gray-400 cursor-not-allowed"
+                  }`}
+                  disabled={!canTeamTrade(data.teama, latestInningNumber - 1)}
+                >
+                  Trade Team
+                </button>
               </div>
               {/* VS in center */}
               <div className="flex-1 flex flex-col items-center justify-center px-2">
                 <span className="text-2xl md:text-3xl font-extrabold text-sky-400 animate-pulse text-center">VS</span>
               </div>
               {/* Team B */}
-              <div className="flex-1 flex flex-col items-center gap-2 md:gap-4 group cursor-pointer">
+              <div className="flex-1 flex flex-col items-center gap-2 md:gap-4 group">
                 <img
                   src={data.teamb?.logo_url || "/placeholder.svg"}
                   alt={data.teamb?.name ?? "Team B"}
@@ -688,6 +777,24 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       : ""}
                   </span>
                 </div>
+                {/* Team B Trading Button */}
+                <button
+                  onClick={() => {
+                    if (data.teamb && canTeamTrade(data.teamb, latestInningNumber - 1)) {
+                      openTeamBettingModal(data.teamb, latestInningNumber - 1)
+                    } else {
+                      toast.info("Team trading is not available at this time")
+                    }
+                  }}
+                  className={`mt-2 px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 ${
+                    canTeamTrade(data.teamb, latestInningNumber - 1)
+                      ? "bg-green-600/80 hover:bg-green-700/80 text-white"
+                      : "bg-gray-600/80 text-gray-400 cursor-not-allowed"
+                  }`}
+                  disabled={!canTeamTrade(data.teamb, latestInningNumber - 1)}
+                >
+                  Trade Team
+                </button>
               </div>
             </div>
           </div>
@@ -1323,7 +1430,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
             </div>
           )}          {/* Betting Modal (Now fully dynamic) */}
           {isBettingModalOpen && bettingPlayer && bettingPlayerIndex !== -1 && (
-            <div className="fixed inset-0 z-50 w-full h-full flex items-center justify-center bg-black/70 backdrop-blur-lg p-4">
+            <div className="fixed inset-0 z-50 w-full h-full flex items-center justify-center bg-black/70 backdrop-blur-lg p-4 overflow-y-auto">
               <div className="w-full max-w-lg rounded-2xl bg-gradient-to-br from-gray-900/90 to-gray-900 p-4 sm:p-6 md:p-8 shadow-2xl">
                 {/* Header */}
                 <div className="mb-4 sm:mb-6 flex items-center justify-between">
@@ -1382,6 +1489,37 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                   }
                 })()}
 
+                {/* Player Holdings Info */}
+                {isLoadingHoldings && (
+                  <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                    <div className="text-center">
+                      <p className="text-blue-300">Loading holdings information...</p>
+                    </div>
+                  </div>
+                )}
+                {playerHoldings && !isLoadingHoldings && (
+                  <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-center text-sm">
+                      <div>
+                        <p className="text-blue-300">Total Investment</p>
+                        <p className="text-white font-bold">₹{playerHoldings.totalInvestment}</p>
+                      </div>
+                      <div>
+                        <p className="text-blue-300">Current Holdings</p>
+                        <p className="text-white font-bold">{playerHoldings.totalQuantity}</p>
+                      </div>
+                      <div>
+                        <p className="text-blue-300">Remaining Limit</p>
+                        <p className="text-white font-bold">₹{playerHoldings.remainingInvestment}</p>
+                      </div>
+                      {/* <div> */}
+                      {/*   <p className="text-blue-300">Max Quantity</p> */}
+                      {/*   <p className="text-white font-bold">{playerHoldings.maxQuantity}</p> */}
+                      {/* </div> */}
+                    </div>
+                  </div>
+                )}
+
                 {/* Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 text-center">
                   {[
@@ -1436,14 +1574,32 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     value={quantity}
                     onValueChange={setQuantity}
                     defaultValue={[1]}
-                    max={Math.max(0, Math.floor(25000 / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)))}
+                    max={(() => {
+                      if (playerHoldings) {
+                        // Use the remaining investment limit from holdings
+                        const maxFromHoldings = Math.floor(Number(playerHoldings.remainingInvestment) / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex))
+                        const maxFromBalance = Math.max(0, Math.floor(25000 / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)))
+                        return Math.min(maxFromHoldings, maxFromBalance)
+                      } else {
+                        // Fallback to original calculation
+                        return Math.max(0, Math.floor(25000 / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)))
+                      }
+                    })()}
                     step={1}
                     className="my-4"
                   />
                   <div className="flex justify-between w-full text-xs font-semibold mb-4">
                     <span>{quantity[0]}</span>
                     <span>
-                      {Math.max(0, Math.floor(25000 / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)))}
+                      {(() => {
+                        if (playerHoldings) {
+                          const maxFromHoldings = Math.floor(Number(playerHoldings.remainingInvestment) / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex))
+                          const maxFromBalance = Math.max(0, Math.floor(25000 / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)))
+                          return Math.min(maxFromHoldings, maxFromBalance)
+                        } else {
+                          return Math.max(0, Math.floor(25000 / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)))
+                        }
+                      })()}
                     </span>
                   </div>
 
@@ -1477,7 +1633,15 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                             }
 
                             let numVal = Number(val);
-                            const maxQty = Math.max(0, Math.floor(25000 / (calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) || 1)));
+                            const maxQty = (() => {
+                              if (playerHoldings) {
+                                const maxFromHoldings = Math.floor(Number(playerHoldings.remainingInvestment) / (calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) || 1))
+                                const maxFromBalance = Math.max(0, Math.floor(25000 / (calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) || 1)))
+                                return Math.min(maxFromHoldings, maxFromBalance)
+                              } else {
+                                return Math.max(0, Math.floor(25000 / (calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) || 1)))
+                              }
+                            })()
                             if (numVal > maxQty) numVal = maxQty;
 
                             setQuantity([numVal]);
@@ -1495,10 +1659,12 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                         <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="price-input">
                           Price
                           <span
-                            className={`ml-2 text-xs mt-1 font-bold ${calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) * quantity[0] > 25000 ? "text-red-500" : "text-gray-400"
-                              }`}
+                            className={`ml-2 text-xs mt-1 font-bold ${(() => {
+                              const maxAmount = playerHoldings ? Number(playerHoldings.remainingInvestment) : 25000
+                              return calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) * quantity[0] > maxAmount ? "text-red-500" : "text-gray-400"
+                            })()}`}
                           >
-                            (Max: ₹25000)
+                            (Max: ₹{playerHoldings ? playerHoldings.remainingInvestment : "25000"})
                           </span>
                         </label>
                         <Input
@@ -1699,6 +1865,33 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                   </p>
                 </div>
 
+                {/* Team Holdings Info */}
+                {isLoadingTeamHoldings && (
+                  <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                    <div className="text-center">
+                      <p className="text-blue-300">Loading holdings information...</p>
+                    </div>
+                  </div>
+                )}
+                {teamHoldings && !isLoadingTeamHoldings && (
+                  <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-center text-sm">
+                      <div>
+                        <p className="text-blue-300">Total Investment</p>
+                        <p className="text-white font-bold">₹{teamHoldings.totalInvestment}</p>
+                      </div>
+                      <div>
+                        <p className="text-blue-300">Current Holdings</p>
+                        <p className="text-white font-bold">{teamHoldings.totalQuantity}</p>
+                      </div>
+                      <div>
+                        <p className="text-blue-300">Remaining Limit</p>
+                        <p className="text-white font-bold">₹{teamHoldings.remainingInvestment}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Quantity Slider & Input */}
                 <div className="mt-6 sm:mt-8">
                   <Slider
@@ -1710,7 +1903,19 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       }
                     }}
                     defaultValue={[1]}
-                    max={Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)))}
+                    max={(() => {
+                      let maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)));
+                      
+                      // If we have team holdings data, use the remaining investment limit
+                      if (teamHoldings) {
+                        const remainingInvestment = Number(teamHoldings.remainingInvestment);
+                        const currentPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50;
+                        const maxFromHoldings = Math.floor(remainingInvestment / currentPrice);
+                        maxQty = Math.min(maxQty, maxFromHoldings);
+                      }
+                      
+                      return maxQty;
+                    })()}
                     step={1}
                     className={`my-4 ${(() => {
                       const isInningOverForTeam = selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)
@@ -1725,7 +1930,19 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                   <div className="flex justify-between w-full text-xs font-semibold mb-4">
                     <span>{teamQuantity[0]}</span>
                     <span>
-                      {Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)))}
+                      {(() => {
+                        let maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)));
+                        
+                        // If we have team holdings data, use the remaining investment limit
+                        if (teamHoldings) {
+                          const remainingInvestment = Number(teamHoldings.remainingInvestment);
+                          const currentPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50;
+                          const maxFromHoldings = Math.floor(remainingInvestment / currentPrice);
+                          maxQty = Math.min(maxQty, maxFromHoldings);
+                        }
+                        
+                        return maxQty;
+                      })()}
                     </span>
                   </div>
 
@@ -1765,8 +1982,24 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                               return;
                             }
                             let numVal = Number(val);
-                            const maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)));
-                            if (numVal > maxQty) numVal = maxQty;
+                            
+                            // Calculate max quantity based on remaining investment limit
+                            let maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)));
+                            
+                            // If we have team holdings data, use the remaining investment limit
+                            if (teamHoldings) {
+                              const remainingInvestment = Number(teamHoldings.remainingInvestment);
+                              const currentPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50;
+                              const maxFromHoldings = Math.floor(remainingInvestment / currentPrice);
+                              maxQty = Math.min(maxQty, maxFromHoldings);
+                            }
+                            
+                            if (numVal > maxQty) {
+                              numVal = maxQty;
+                              if (teamHoldings && Number(teamHoldings.remainingInvestment) < 25000) {
+                                toast.error(`Investment limit exceeded. You can only invest ₹${teamHoldings.remainingInvestment} more in this team.`);
+                              }
+                            }
                             setTeamQuantity([numVal]);
                           }}
                           onWheel={(e) => e.currentTarget.blur()}
@@ -1782,8 +2015,14 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       <div className="flex-1 flex flex-col lg:items-end">
                         <label className="text-xs sm:text-sm font-bold text-gray-300 mb-1" htmlFor="team-price-input">
                           Price
-                          <span className="ml-2 text-xs mt-1 font-bold text-gray-400">
-                            (Max: ₹25000)
+                          <span className={`ml-2 text-xs mt-1 font-bold ${(() => {
+                            if (teamHoldings) {
+                              const requestedInvestment = (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50) * teamQuantity[0];
+                              return requestedInvestment > Number(teamHoldings.remainingInvestment) ? "text-red-500" : "text-gray-400";
+                            }
+                            return "text-gray-400";
+                          })()}`}>
+                            (Max: ₹{teamHoldings ? teamHoldings.remainingInvestment : "25000"})
                           </span>
                         </label>
                         <Input
@@ -1805,10 +2044,10 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                   </div>
                 </div>
 
-                {/* Buy Button */}
-                <div className="mt-6 sm:mt-8">
+                {/* Buy/Sell Buttons */}
+                <div className="mt-6 sm:mt-8 flex flex-col md:flex-row gap-3 sm:gap-4">
                   <button
-                    className={`w-full rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${(() => {
+                    className={`flex-1 rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${(() => {
                       const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
                       if (!canTradeTeam) {
                         return "bg-gray-600 text-gray-400 cursor-not-allowed"
@@ -1872,7 +2111,94 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       }
                     })()}
                   </button>
+                  <button
+                    className={`flex-1 rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${(() => {
+                      const teamKey = selectedTeam?.team_id === data.teama?.team_id ? 'teama' : 'teamb'
+                      const sellWindowKey = `team_${teamKey}`
+                      const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
+                      
+                      if (!canTradeTeam) {
+                        return "bg-gray-600 text-gray-400 cursor-not-allowed"
+                      } else if (sellWindowActive[sellWindowKey]) {
+                        return "bg-red-600 hover:bg-red-700 text-white animate-pulse"
+                      } else {
+                        return "bg-gray-600 text-gray-400 cursor-not-allowed"
+                      }
+                    })()}`}
+                    onClick={async () => {
+                      const teamKey = selectedTeam?.team_id === data.teama?.team_id ? 'teama' : 'teamb'
+                      const sellWindowKey = `team_${teamKey}`
+                      const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
+
+                      if (!sellWindowActive[sellWindowKey]) {
+                        toast.info("Sell window is not active. Wait for price changes to enable selling.")
+                        return
+                      }
+
+                      if (!canTradeTeam) {
+                        toast.info("Team trading is not available at this time")
+                        return
+                      }
+
+                      closeTeamBettingModal()
+                      if (
+                        typeof data.status_note === "string" &&
+                        /(won|loss|draw|tie|abandon|no result|match over|match ended|match finished)/i.test(data.status_note)
+                      ) {
+                        toast.info("Match is over, Redirecting...");
+                        setTimeout(() => {
+                          redirect("/live-matches")
+                        }, 1000);
+                        return;
+                      }
+
+                      const result = await sellTeam(
+                        selectedTeam,
+                        String((data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50).toFixed(2)),
+                        String(teamQuantity[0]),
+                        matchId || "",
+                      )
+
+                      if (result.success) {
+                        toast.success(result.message)
+                      } else {
+                        toast.error(result.message || "Failed to sell team stocks")
+                      }
+                    }}
+                    disabled={(() => {
+                      const teamKey = selectedTeam?.team_id === data.teama?.team_id ? 'teama' : 'teamb'
+                      const sellWindowKey = `team_${teamKey}`
+                      const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
+                      return !canTradeTeam || !sellWindowActive[sellWindowKey]
+                    })()}
+                  >
+                    {(() => {
+                      const teamKey = selectedTeam?.team_id === data.teama?.team_id ? 'teama' : 'teamb'
+                      const sellWindowKey = `team_${teamKey}`
+                      const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
+                      
+                      if (!canTradeTeam) {
+                        return "Cannot Trade"
+                      } else if (sellWindowActive[sellWindowKey]) {
+                        return `Sell Team (${sellWindowTimeLeft[sellWindowKey]}s)`
+                      } else {
+                        return "Sell Team"
+                      }
+                    })()}
+                  </button>
                 </div>
+
+                {(() => {
+                  const teamKey = selectedTeam?.team_id === data.teama?.team_id ? 'teama' : 'teamb'
+                  const sellWindowKey = `team_${teamKey}`
+                  return !sellWindowActive[sellWindowKey] && (
+                    <div className="mt-3 text-center">
+                      <p className="text-sm text-gray-400">
+                        ⏰ Sell button will be enabled for 5 seconds after price updates
+                      </p>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           )}

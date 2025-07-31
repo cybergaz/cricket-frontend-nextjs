@@ -27,19 +27,19 @@ const banners: Banners[] = [
     icons: ChartColumn,
     title: "Cricket Meets Stock Market",
     description: "Buy low, sell high, and beat the competition. Trade players like stocks and build your fantasy portfolio.",
-    image: "/images/bn.png",
+    image: "/images/bn.jpeg",
   },
   {
     icons: Activity,
     title: "The Future of Fantasy Cricket Is Here",
     description: "Experience cricket like never before. Buy, sell, and trade players based on their real-time stats.",
-    image: "/images/bn1.png",
+    image: "/images/bn1.jpeg",
   },
   {
     icons: Brain,
     title: "Outsmart the Crowd. Own the Game",
     description: "Use your cricket IQ to invest in real-time player performance. Analyse right, trade smart, and win real rewards.",
-    image: "/images/bn2.png",
+    image: "/images/bn2.jpeg",
   },
 ]
 

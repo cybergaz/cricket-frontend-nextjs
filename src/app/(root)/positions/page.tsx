@@ -10,7 +10,7 @@ import type { PlayerPortfolio, TeamPortfolio } from "./types"
 import { formatINR } from "@/lib/helper"
 import type { Batsman, BettingPlayer, CricketMatchData } from "../betting-interface/types"
 import { Button } from "@/components/ui/button"
-import { sellPlayer, buyPlayer, sellTeam, buyTeam, initializeTeamStockPrices } from "../betting-interface/services"
+import { sellPlayer, buyPlayer, sellTeam, buyTeam, initializeTeamStockPrices, checkPlayerHoldings } from "../betting-interface/services"
 import AnimatedNumber from "@/components/ui/animated-number"
 import { Input } from "@/components/ui/input"
 
@@ -63,6 +63,10 @@ export default function Portfolio() {
   const [autoSellingInProgress, setAutoSellingInProgress] = useState<Set<string>>(new Set())
   const [sellAllConfirmOpen, setSellAllConfirmOpen] = useState(false)
 
+  // Player holdings state for investment limit
+  const [playerHoldings, setPlayerHoldings] = useState<any>(null)
+  const [isLoadingHoldings, setIsLoadingHoldings] = useState(false)
+
   // Team trading modal state
   const [teamTradeModalOpen, setTeamTradeModalOpen] = useState(false)
   const [teamTradeModalPortfolio, setTeamTradeModalPortfolio] = useState<TeamPortfolio | null>(null)
@@ -73,6 +77,9 @@ export default function Portfolio() {
 
   // Use useRef to maintain previous prices across renders
   const previousPrices = useRef<Record<string, number>>({})
+  
+  // Use useRef to maintain previous team stock prices for detecting changes
+  const previousTeamStockPrices = useRef<Record<string, number>>({})
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -135,7 +142,31 @@ export default function Portfolio() {
       setPlayerPortfoliosHistory(apiData.playerHistory || [])
       setTeamPortfoliosHistory(apiData.teamHistory || [])
 
-      // Update team portfolios with current prices
+      const uniqueMatchIds = Array.from(new Set([
+        ...(apiData.playerPortfolios as PlayerPortfolio[]).map((p) => p.matchId),
+        ...(apiData.teamPortfolios as TeamPortfolio[]).map((p) => p.matchId)
+      ]))
+
+      const newMatchData: Record<string, CricketMatchData> = {}
+      if (uniqueMatchIds.length > 0) {
+        await Promise.all(
+          uniqueMatchIds.map(async (matchId) => {
+            try {
+              const matchRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`)
+              const matchResJson = await matchRes.json()
+              if (matchResJson.success) {
+                newMatchData[matchId] = matchResJson.data
+              }
+            } catch (e) {
+              console.error(`Failed to fetch match data for ${matchId}`, e)
+            }
+          }),
+        )
+      }
+
+      setMatchDataById((prev) => ({ ...prev, ...newMatchData }))
+
+      // Update team portfolios with current prices AFTER fetching fresh match data
       const updatedTeamPortfolios = (apiData.teamPortfolios || []).map(async (p: TeamPortfolio) => {
         let match = newMatchData[p.matchId] || matchDataById[p.matchId]
         let currentPrice = 50 // Default fallback price
@@ -177,30 +208,6 @@ export default function Portfolio() {
       setTeamPortfolios(resolvedTeamPortfolios)
       setTeamPortfoliosLoading(false)
 
-      const uniqueMatchIds = Array.from(new Set([
-        ...(apiData.playerPortfolios as PlayerPortfolio[]).map((p) => p.matchId),
-        ...(apiData.teamPortfolios as TeamPortfolio[]).map((p) => p.matchId)
-      ]))
-
-      const newMatchData: Record<string, CricketMatchData> = {}
-      if (uniqueMatchIds.length > 0) {
-        await Promise.all(
-          uniqueMatchIds.map(async (matchId) => {
-            try {
-              const matchRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`)
-              const matchResJson = await matchRes.json()
-              if (matchResJson.success) {
-                newMatchData[matchId] = matchResJson.data
-              }
-            } catch (e) {
-              console.error(`Failed to fetch match data for ${matchId}`, e)
-            }
-          }),
-        )
-      }
-
-      setMatchDataById((prev) => ({ ...prev, ...newMatchData }))
-
       const updatedPlayerPortfolios = apiData.playerPortfolios.map((p: PlayerPortfolio) => {
         const match = newMatchData[p.matchId] || matchDataById[p.matchId]
         let currentPrice = 0
@@ -241,6 +248,10 @@ export default function Portfolio() {
     } finally {
       setLoading(false)
       setHistoryLoading(false)
+      setTimeout(() => {
+        setPlayerPortfoliosLoading(false)
+        setTeamPortfoliosLoading(false)
+      }, 10000) // Reset the loading state after 10 seconds
       // setPlayerPortfoliosLoading(false)
       // setTeamPortfoliosLoading(false)
     }
@@ -330,7 +341,27 @@ export default function Portfolio() {
 
       setPlayerPortfolios(updatedPlayerPortfolios)
 
-      // Update team portfolios with current prices
+      // Also fetch match data for team portfolios in real-time updates
+      const teamMatchIds = Array.from(new Set((apiData.teamPortfolios as TeamPortfolio[]).map((p) => p.matchId)))
+      if (teamMatchIds.length > 0) {
+        await Promise.all(
+          teamMatchIds.map(async (matchId) => {
+            try {
+              const matchRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`)
+              const matchResJson = await matchRes.json()
+              if (matchResJson.success) {
+                newMatchData[matchId] = matchResJson.data
+              }
+            } catch (e) {
+              console.error(`Failed to fetch match data for ${matchId}`, e)
+            }
+          }),
+        )
+      }
+
+      setMatchDataById((prev) => ({ ...prev, ...newMatchData }))
+
+      // Update team portfolios with current prices AFTER fetching fresh match data
       const updatedTeamPortfolios = (apiData.teamPortfolios || []).map(async (p: TeamPortfolio) => {
         let match = newMatchData[p.matchId] || matchDataById[p.matchId]
         let currentPrice = 50 // Default fallback price
@@ -371,25 +402,33 @@ export default function Portfolio() {
       const resolvedTeamPortfolios = await Promise.all(updatedTeamPortfolios)
       setTeamPortfolios(resolvedTeamPortfolios)
 
-      // Also fetch match data for team portfolios in real-time updates
-      const teamMatchIds = Array.from(new Set((apiData.teamPortfolios as TeamPortfolio[]).map((p) => p.matchId)))
-      if (teamMatchIds.length > 0) {
-        await Promise.all(
-          teamMatchIds.map(async (matchId) => {
-            try {
-              const matchRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`)
-              const matchResJson = await matchRes.json()
-              if (matchResJson.success) {
-                newMatchData[matchId] = matchResJson.data
-              }
-            } catch (e) {
-              console.error(`Failed to fetch match data for ${matchId}`, e)
-            }
-          }),
-        )
-      }
+      // Check team stock price changes
+      resolvedTeamPortfolios.forEach((p) => {
+        const match = newMatchData[p.matchId] || matchDataById[p.matchId]
+        if (!match) return
 
-      setMatchDataById((prev) => ({ ...prev, ...newMatchData }))
+        const isTeamA = p.team === match.teama?.team_id
+        const teamKey = isTeamA ? 'teama' : 'teamb'
+        const currentTeamPrice = match.teamStockPrices?.[teamKey] !== undefined && match.teamStockPrices?.[teamKey] !== null ? match.teamStockPrices?.[teamKey] : 50
+        const sellWindowKey = `team_${teamKey}`
+
+        // Check if team stock price has changed
+        const lastTeamPrice = previousTeamStockPrices.current[sellWindowKey] || 0
+        if (currentTeamPrice !== lastTeamPrice && lastTeamPrice !== 0) {
+          console.log(`Team stock price changed for ${p.teamName}: ${lastTeamPrice} -> ${currentTeamPrice}`)
+          // Activate sell window for this team
+          setSellWindowActive(prev => ({ ...prev, [sellWindowKey]: true }))
+          setSellWindowTimeLeft(prev => ({ ...prev, [sellWindowKey]: 5 }))
+          // Update the previous price after processing the change
+          previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
+        } else if (lastTeamPrice === 0) {
+          // First time setting price
+          previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
+        } else {
+          // Update previous price even when no change detected (for tracking)
+          previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
+        }
+      })
 
     } catch (e: any) {
       console.error("Real-time fetch error: " + (e?.message || "Unknown error"))
@@ -660,10 +699,27 @@ export default function Portfolio() {
     }
   }, [playerPortfolios, teamPortfolios, matchDataById, loading, fetchAllData, autoSellingInProgress, tradeModalPortfolio])
 
-  const openTradeModal = (portfolio: PlayerPortfolio) => {
+  const openTradeModal = async (portfolio: PlayerPortfolio) => {
     setTradeModalPortfolio(portfolio)
     setTradeQuantity(1)
     setTradeModalOpen(true)
+
+    // Fetch player holdings for investment limit
+    setIsLoadingHoldings(true)
+    try {
+      const holdingsResponse = await checkPlayerHoldings(portfolio.matchId, portfolio.playerId)
+      if (holdingsResponse.success) {
+        setPlayerHoldings(holdingsResponse.data)
+      } else {
+        console.error("Failed to fetch player holdings:", holdingsResponse.message)
+        setPlayerHoldings(null)
+      }
+    } catch (error) {
+      console.error("Error fetching player holdings:", error)
+      setPlayerHoldings(null)
+    } finally {
+      setIsLoadingHoldings(false)
+    }
   }
 
   const openTeamTradeModal = (portfolio: TeamPortfolio) => {
@@ -757,6 +813,18 @@ export default function Portfolio() {
       const quantityStr = String(tradeQuantity)
       const matchId = tradeModalPortfolio.matchId
 
+      // Check investment limit for buy actions
+      if (action === "buy" && playerHoldings) {
+        const requestedInvestment = Number(price) * Number(quantityStr)
+        const remainingInvestment = Number(playerHoldings.remainingInvestment)
+
+        if (requestedInvestment > remainingInvestment) {
+          toast.error(`Investment limit exceeded. You can only invest ₹${remainingInvestment.toFixed(2)} more in this player.`)
+          setLoading(false)
+          return
+        }
+      }
+
       const response =
         action === "buy"
           ? await buyPlayer(player, price, quantityStr, matchId)
@@ -768,6 +836,7 @@ export default function Portfolio() {
       await fetchRealTimeData() // Also refresh real-time data
     } catch (e: any) {
       console.error(e?.message || `${action.charAt(0).toUpperCase() + action.slice(1)} failed`)
+      toast.error(e?.message || `${action.charAt(0).toUpperCase() + action.slice(1)} failed`)
     } finally {
       setLoading(false)
     }
@@ -795,7 +864,16 @@ export default function Portfolio() {
         return
       }
 
-      const price = teamTradeModalPortfolio.currentPrice || "0"
+      // Get real-time current price from match data
+      let price = teamTradeModalPortfolio.currentPrice || "0"
+      if (match && match.teamStockPrices) {
+        const isTeamA = teamTradeModalPortfolio.team === match.teama?.team_id
+        const teamKey = isTeamA ? 'teama' : 'teamb'
+        const realTimePrice = match.teamStockPrices[teamKey]
+        if (realTimePrice !== undefined && realTimePrice !== null) {
+          price = String(realTimePrice)
+        }
+      }
       const quantityStr = String(teamTradeQuantity)
       const matchId = teamTradeModalPortfolio.matchId
 
@@ -1416,10 +1494,19 @@ export default function Portfolio() {
                                         <Button
                                           variant="secondary"
                                           size="sm"
-                                          className={`font-bold text-xs ${canTrade && !isTeamUnavailable
-                                            ? "bg-green-600/50 hover:bg-green-600 text-white"
-                                            : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
-                                            }`}
+                                          className={`font-bold text-xs ${(() => {
+                                            const teamKey = p.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                                            const sellWindowKey = `team_${teamKey}`
+                                            if (canTrade && !isTeamUnavailable) {
+                                              if (sellWindowActive[sellWindowKey]) {
+                                                return "bg-red-600/50 hover:bg-red-600 text-white animate-pulse"
+                                              } else {
+                                                return "bg-green-600/50 hover:bg-green-600 text-white"
+                                              }
+                                            } else {
+                                              return "bg-gray-600/50 text-gray-400 cursor-not-allowed"
+                                            }
+                                          })()}`}
                                           disabled={isPriceLoading || !canTrade || isTeamUnavailable}
                                           onClick={(e) => {
                                             e.stopPropagation()
@@ -1430,7 +1517,19 @@ export default function Portfolio() {
                                             }
                                           }}
                                         >
-                                          {canTrade && !isTeamUnavailable ? "Trade" : "Unavailable"}
+                                          {(() => {
+                                            const teamKey = p.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                                            const sellWindowKey = `team_${teamKey}`
+                                            if (canTrade && !isTeamUnavailable) {
+                                              if (sellWindowActive[sellWindowKey]) {
+                                                return `Sell (${sellWindowTimeLeft[sellWindowKey]}s)`
+                                              } else {
+                                                return "Trade"
+                                              }
+                                            } else {
+                                              return "Unavailable"
+                                            }
+                                          })()}
                                         </Button>
                                       </div>
                                     </td>
@@ -1592,6 +1691,33 @@ export default function Portfolio() {
                   <h3 className="text-2xl font-bold text-white">{portfolio.playerName}</h3>
                   <p className="text-sm text-gray-400">{match?.short_title}</p>
                 </div>
+
+                {/* Player Holdings Info */}
+                {isLoadingHoldings && (
+                  <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                    <div className="text-center">
+                      <p className="text-blue-300">Loading holdings information...</p>
+                    </div>
+                  </div>
+                )}
+                {playerHoldings && !isLoadingHoldings && (
+                  <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-center text-sm">
+                      <div>
+                        <p className="text-blue-300">Total Investment</p>
+                        <p className="text-white font-bold">₹{playerHoldings.totalInvestment}</p>
+                      </div>
+                      <div>
+                        <p className="text-blue-300">Current Holdings</p>
+                        <p className="text-white font-bold">{playerHoldings.totalQuantity}</p>
+                      </div>
+                      <div>
+                        <p className="text-blue-300">Remaining Limit</p>
+                        <p className="text-white font-bold">₹{playerHoldings.remainingInvestment}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3 mb-4 text-center">
                   <div className="bg-gray-800 p-3 rounded-lg">
@@ -1801,7 +1927,18 @@ export default function Portfolio() {
           const team = isTeamA ? match?.teama : match?.teamb
 
           const boughtPrice = Number.parseFloat(portfolio.boughtPrice) || 0
-          const currentPrice = Number.parseFloat(portfolio.currentPrice || "0") || 0
+          
+          // Get real-time current price from match data
+          let currentPrice = Number.parseFloat(portfolio.currentPrice || "0") || 0
+          if (match && match.teamStockPrices) {
+            const isTeamA = portfolio.team === match.teama?.team_id
+            const teamKey = isTeamA ? 'teama' : 'teamb'
+            const realTimePrice = match.teamStockPrices[teamKey]
+            if (realTimePrice !== undefined && realTimePrice !== null) {
+              currentPrice = realTimePrice
+            }
+          }
+          
           const totalValue = teamTradeQuantity * currentPrice
           const pnl = (currentPrice - boughtPrice) * Number.parseInt(portfolio.quantity, 10)
 
@@ -1915,7 +2052,7 @@ export default function Portfolio() {
                         }
 
                         let numVal = Number(val);
-                        const maxQty = Math.max(0, Math.floor(25000 / boughtPrice || 1));
+                        const maxQty = Math.max(0, Math.floor(25000 / (currentPrice || 1)));
                         if (numVal > maxQty) numVal = maxQty;
 
                         setTeamTradeQuantity(numVal);
@@ -1958,16 +2095,64 @@ export default function Portfolio() {
                   </Button>
                   <Button
                     size="lg"
-                    className={`font-bold text-base ${canTrade
-                      ? "bg-red-600 hover:bg-red-700 text-white"
-                      : "bg-gray-600 text-gray-400 cursor-not-allowed"
-                      }`}
-                    onClick={() => handleTeamTradeAction("sell")}
-                    disabled={!canTrade}
+                    className={`font-bold text-base ${(() => {
+                      const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                      const sellWindowKey = `team_${teamKey}`
+                      if (canTrade) {
+                        if (sellWindowActive[sellWindowKey]) {
+                          return "bg-red-600 hover:bg-red-700 text-white animate-pulse"
+                        } else {
+                          return "bg-red-600 hover:bg-red-700 text-white"
+                        }
+                      } else {
+                        return "bg-gray-600 text-gray-400 cursor-not-allowed"
+                      }
+                    })()}`}
+                    onClick={() => {
+                      const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                      const sellWindowKey = `team_${teamKey}`
+                      
+                      if (!sellWindowActive[sellWindowKey]) {
+                        toast.info("Sell window is not active. Wait for price changes to enable selling.")
+                        return
+                      }
+                      
+                      handleTeamTradeAction("sell")
+                    }}
+                    disabled={(() => {
+                      const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                      const sellWindowKey = `team_${teamKey}`
+                      return !canTrade || !sellWindowActive[sellWindowKey]
+                    })()}
                   >
-                    Sell
+                    {(() => {
+                      const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                      const sellWindowKey = `team_${teamKey}`
+                      if (canTrade) {
+                        if (sellWindowActive[sellWindowKey]) {
+                          return `Sell (${sellWindowTimeLeft[sellWindowKey]}s)`
+                        } else {
+                          return "Sell"
+                        }
+                      } else {
+                        return "Sell"
+                      }
+                    })()}
                   </Button>
                 </div>
+
+                {/* Sell window message */}
+                {(() => {
+                  const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                  const sellWindowKey = `team_${teamKey}`
+                  return !sellWindowActive[sellWindowKey] && canTrade && (
+                    <div className="mt-3 text-center">
+                      <p className="text-sm text-gray-400">
+                        ⏰ Sell button will be enabled for 5 seconds after price updates
+                      </p>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           )

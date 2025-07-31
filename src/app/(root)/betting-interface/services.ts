@@ -21,8 +21,76 @@ export const formatMatchNotes = (notes: string[][]) => {
     .filter((note) => typeof note === "string" && note.trim() !== "");
 }
 
+// New function to check player holdings
+export const checkPlayerHoldings = async (matchId: string, playerId: string) => {
+  try {
+    const getTokenFromCookies = () => {
+      if (typeof document === "undefined") return null;
+      const cookies = document.cookie.split("; ");
+      const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="));
+      return tokenCookie ? tokenCookie.split("=")[1] : null;
+    };
+    const token = getTokenFromCookies();
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/player-holdings/${matchId}/${playerId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      credentials: 'include',
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+};
+
+export const checkTeamHoldings = async (matchId: string, teamId: string) => {
+  try {
+    const getTokenFromCookies = () => {
+      if (typeof document === "undefined") return null;
+      const cookies = document.cookie.split("; ");
+      const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="));
+      return tokenCookie ? tokenCookie.split("=")[1] : null;
+    };
+    const token = getTokenFromCookies();
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/team-holdings/${matchId}/${teamId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      credentials: 'include',
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+};
+
 export const buyPlayer = async (player: BettingPlayer, price: string, quantity: string, match_id: string) => {
   try {
+    // First check current holdings to enforce ₹25,000 limit
+    const holdingsResponse = await checkPlayerHoldings(match_id, player.batsman_id);
+    
+    if (!holdingsResponse.success) {
+      return { success: false, message: "Failed to check current holdings" };
+    }
+
+    const { remainingInvestment, maxQuantity } = holdingsResponse.data;
+    const requestedInvestment = Number(quantity) * Number(price);
+    
+    if (requestedInvestment > Number(remainingInvestment)) {
+      return {
+        success: false,
+        message: `Investment limit exceeded. You can only invest ₹${remainingInvestment} more in this player (max ${maxQuantity} stocks at current price).`
+      };
+    }
+
     // Get token from cookies
     const getTokenFromCookies = () => {
       if (typeof document === "undefined") return null;
@@ -75,6 +143,23 @@ export const sellPlayer = async (player: BettingPlayer, price: string, quantity:
 };
 export const buyTeam = async (team: any, price: string, quantity: string, matchId: string) => {
   try {
+    // First check current holdings to enforce ₹25,000 limit
+    const holdingsResponse = await checkTeamHoldings(matchId, team.team_id);
+    
+    if (!holdingsResponse.success) {
+      return { success: false, message: "Failed to check current holdings" };
+    }
+
+    const { remainingInvestment } = holdingsResponse.data;
+    const requestedInvestment = Number(quantity) * Number(price);
+    
+    if (requestedInvestment > Number(remainingInvestment)) {
+      return {
+        success: false,
+        message: `Investment limit exceeded. You can only invest ₹${remainingInvestment} more in this team (max ₹25,000 total).`
+      };
+    }
+
     const getTokenFromCookies = () => {
       if (typeof document === "undefined") return null
       const cookies = document.cookie.split("; ")
