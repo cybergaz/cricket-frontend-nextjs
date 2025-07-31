@@ -77,7 +77,7 @@ export default function Portfolio() {
 
   // Use useRef to maintain previous prices across renders
   const previousPrices = useRef<Record<string, number>>({})
-  
+
   // Use useRef to maintain previous team stock prices for detecting changes
   const previousTeamStockPrices = useRef<Record<string, number>>({})
 
@@ -959,7 +959,7 @@ export default function Portfolio() {
       return acc + boughtPrice * quantity
     }, 0)
 
-    const currentHoldingsProfit = playerPortfolios.reduce((acc, curr) => {
+    const currentHoldingsProfit = activePortfolios.reduce((acc, curr) => {
       const quantity = Number.parseFloat(curr.quantity) || 0
       const boughtPrice = Number.parseFloat(curr.boughtPrice) || 0
       const currentPrice = Number.parseFloat(curr.currentPrice || "0") || 0
@@ -1927,7 +1927,7 @@ export default function Portfolio() {
           const team = isTeamA ? match?.teama : match?.teamb
 
           const boughtPrice = Number.parseFloat(portfolio.boughtPrice) || 0
-          
+
           // Get real-time current price from match data
           let currentPrice = Number.parseFloat(portfolio.currentPrice || "0") || 0
           if (match && match.teamStockPrices) {
@@ -1938,7 +1938,7 @@ export default function Portfolio() {
               currentPrice = realTimePrice
             }
           }
-          
+
           const totalValue = teamTradeQuantity * currentPrice
           const pnl = (currentPrice - boughtPrice) * Number.parseInt(portfolio.quantity, 10)
 
@@ -2111,12 +2111,12 @@ export default function Portfolio() {
                     onClick={() => {
                       const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
                       const sellWindowKey = `team_${teamKey}`
-                      
+
                       if (!sellWindowActive[sellWindowKey]) {
                         toast.info("Sell window is not active. Wait for price changes to enable selling.")
                         return
                       }
-                      
+
                       handleTeamTradeAction("sell")
                     }}
                     disabled={(() => {
