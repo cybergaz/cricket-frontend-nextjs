@@ -470,7 +470,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
               if (result.success) {
                 console.log(`Team stock price updated: ${result.data.reason}`)
                 toast.success(`Team stock updated: ${result.data.reason}`)
-                
+
                 // Activate sell window for team stocks
                 const teamKey = battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'
                 setSellWindowActive(prev => ({ ...prev, [`team_${teamKey}`]: true }))
@@ -510,7 +510,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
               if (result.success) {
                 console.log(`Team stock price updated: ${result.data.reason}`)
                 toast.success(`Team stock updated: ${result.data.reason}`)
-                
+
                 // Activate sell window for team stocks
                 const teamKey = battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'
                 setSellWindowActive(prev => ({ ...prev, [`team_${teamKey}`]: true }))
@@ -672,6 +672,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     return () => timerEffects.forEach(clearTimeout)
   }, [sellWindowTimeLeft])
 
+  // console.log(data)
   if (!data) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -741,11 +742,10 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       toast.info("Team trading is not available at this time")
                     }
                   }}
-                  className={`mt-2 px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 ${
-                    canTeamTrade(data.teama, latestInningNumber - 1)
-                      ? "bg-green-600/80 hover:bg-green-700/80 text-white"
-                      : "bg-gray-600/80 text-gray-400 cursor-not-allowed"
-                  }`}
+                  className={`mt-2 px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 ${canTeamTrade(data.teama, latestInningNumber - 1)
+                    ? "bg-green-600/80 hover:bg-green-700/80 text-white"
+                    : "bg-gray-600/80 text-gray-400 cursor-not-allowed"
+                    }`}
                   disabled={!canTeamTrade(data.teama, latestInningNumber - 1)}
                 >
                   Trade Team
@@ -786,11 +786,10 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       toast.info("Team trading is not available at this time")
                     }
                   }}
-                  className={`mt-2 px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 ${
-                    canTeamTrade(data.teamb, latestInningNumber - 1)
-                      ? "bg-green-600/80 hover:bg-green-700/80 text-white"
-                      : "bg-gray-600/80 text-gray-400 cursor-not-allowed"
-                  }`}
+                  className={`mt-2 px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 ${canTeamTrade(data.teamb, latestInningNumber - 1)
+                    ? "bg-green-600/80 hover:bg-green-700/80 text-white"
+                    : "bg-gray-600/80 text-gray-400 cursor-not-allowed"
+                    }`}
                   disabled={!canTeamTrade(data.teamb, latestInningNumber - 1)}
                 >
                   Trade Team
@@ -1207,6 +1206,19 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
               )}
             </TabsContent>
             <TabsContent value="bowling">
+              {/* Bowling Stocks Coming Soon Banner */}
+              <div className="mb-6 p-4 bg-gradient-to-r from-yellow-600/20 to-orange-600/20 border border-yellow-500/30 rounded-lg">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-8 h-8 bg-yellow-500/20 rounded-full flex items-center justify-center">
+                    <span className="text-yellow-400 text-lg">🎯</span>
+                  </div>
+                  <div className="text-center">
+                    <h3 className="text-yellow-400 font-bold text-lg">Bowling Stocks Coming Soon!</h3>
+                    <p className="text-yellow-300/80 text-sm">Trade bowlers and earn from their performance</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
                 {allUsedBowlers.length > 0 ? (
                   allUsedBowlers.map((bowler) => (
@@ -1905,7 +1917,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     defaultValue={[1]}
                     max={(() => {
                       let maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)));
-                      
+
                       // If we have team holdings data, use the remaining investment limit
                       if (teamHoldings) {
                         const remainingInvestment = Number(teamHoldings.remainingInvestment);
@@ -1913,7 +1925,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                         const maxFromHoldings = Math.floor(remainingInvestment / currentPrice);
                         maxQty = Math.min(maxQty, maxFromHoldings);
                       }
-                      
+
                       return maxQty;
                     })()}
                     step={1}
@@ -1932,7 +1944,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     <span>
                       {(() => {
                         let maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)));
-                        
+
                         // If we have team holdings data, use the remaining investment limit
                         if (teamHoldings) {
                           const remainingInvestment = Number(teamHoldings.remainingInvestment);
@@ -1940,7 +1952,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                           const maxFromHoldings = Math.floor(remainingInvestment / currentPrice);
                           maxQty = Math.min(maxQty, maxFromHoldings);
                         }
-                        
+
                         return maxQty;
                       })()}
                     </span>
@@ -1982,10 +1994,10 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                               return;
                             }
                             let numVal = Number(val);
-                            
+
                             // Calculate max quantity based on remaining investment limit
                             let maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)));
-                            
+
                             // If we have team holdings data, use the remaining investment limit
                             if (teamHoldings) {
                               const remainingInvestment = Number(teamHoldings.remainingInvestment);
@@ -1993,7 +2005,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                               const maxFromHoldings = Math.floor(remainingInvestment / currentPrice);
                               maxQty = Math.min(maxQty, maxFromHoldings);
                             }
-                            
+
                             if (numVal > maxQty) {
                               numVal = maxQty;
                               if (teamHoldings && Number(teamHoldings.remainingInvestment) < 25000) {
@@ -2116,7 +2128,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       const teamKey = selectedTeam?.team_id === data.teama?.team_id ? 'teama' : 'teamb'
                       const sellWindowKey = `team_${teamKey}`
                       const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
-                      
+
                       if (!canTradeTeam) {
                         return "bg-gray-600 text-gray-400 cursor-not-allowed"
                       } else if (sellWindowActive[sellWindowKey]) {
@@ -2176,7 +2188,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       const teamKey = selectedTeam?.team_id === data.teama?.team_id ? 'teama' : 'teamb'
                       const sellWindowKey = `team_${teamKey}`
                       const canTradeTeam = selectedTeam && selectedTeamInningIndex >= 0 && canTeamTrade(selectedTeam, selectedTeamInningIndex)
-                      
+
                       if (!canTradeTeam) {
                         return "Cannot Trade"
                       } else if (sellWindowActive[sellWindowKey]) {

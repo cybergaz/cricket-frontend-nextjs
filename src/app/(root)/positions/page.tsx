@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { sellPlayer, buyPlayer, sellTeam, buyTeam, initializeTeamStockPrices, checkPlayerHoldings } from "../betting-interface/services"
 import AnimatedNumber from "@/components/ui/animated-number"
 import { Input } from "@/components/ui/input"
+import Link from "next/link"
 
 function formatTimestamp(ts: Date | string | undefined): string {
   if (!ts) return "--"
@@ -1177,13 +1178,17 @@ export default function Portfolio() {
                                   (match?.status?.toLowerCase() === "live" || match?.status?.toLowerCase() === "inprogress")
 
                                 return (
-                                  <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-700/20 cursor-pointer"
-                                    onClick={() => openTradeModal(p)}>
+                                  <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-700/20 cursor-pointer">
                                     <td className="px-4 py-4">
                                       <div className="flex items-center gap-4">
                                         <div className="flex flex-col">
                                           <p className="font-bold text-white">{p.playerName}</p>
-                                          <p className="text-xs text-gray-400">{match?.short_title || "..."}</p>
+                                          <Link
+                                            href={`/betting-interface?id=${p.matchId}`}
+                                            className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors cursor-pointer"
+                                          >
+                                            {match?.short_title || "..."}
+                                          </Link>
                                         </div>
                                         <Button
                                           variant="secondary"

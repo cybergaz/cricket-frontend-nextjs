@@ -211,6 +211,21 @@ export default function YetToStart({ matchId }: { matchId: string }) {
                   </CardContent>
                 </Card>
               </TabsContent>
+              
+              <TabsContent value="bowling" forceMount className="space-y-6 mt-6 -mx-4">
+                {/* Bowling Stocks Coming Soon Banner */}
+                <Card className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 border border-yellow-500/30 rounded-lg">
+                  <CardContent className="p-6 text-center">
+                    <div className="flex items-center justify-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center">
+                        <span className="text-yellow-400 text-2xl">🎯</span>
+                      </div>
+                    </div>
+                    <h3 className="text-yellow-400 font-bold text-2xl mb-2">Bowling Stocks Coming Soon!</h3>
+                    <p className="text-yellow-300/80 text-lg">Trade bowlers and earn from their performance</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </div>
           </Tabs>
         </div>

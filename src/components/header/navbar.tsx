@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarImage } from "../ui/avatar";
 import { useUserStore } from "@/store/user-store";
 import { useOutsideClick } from "@/lib/hooks";
+import { formatINR } from "@/lib/helper";
 
 const Navbar = () => {
   const setUser = useUserStore((state) => state.setUser);
@@ -18,7 +19,7 @@ const Navbar = () => {
   const pathname = usePathname();
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-
+  const [availableBalance, setAvailableBalance] = useState(0);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -31,23 +32,71 @@ const Navbar = () => {
     checkAuth();
   }, []);
 
+  // Fetch available balance when user is authenticated
+  useEffect(() => {
+    if (!isUserAuthenticated) return;
+
+    const fetchBalance = async () => {
+      try {
+        const getTokenFromCookies = () => {
+          if (typeof document === "undefined") return null;
+          const cookies = document.cookie.split("; ");
+          const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="));
+          return tokenCookie ? tokenCookie.split("=")[1] : null;
+        };
+        const token = getTokenFromCookies();
+        if (!token) return;
+
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/all?page=1&limit=1`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include",
+        });
+
+        const apiData = await res.json();
+        if (apiData.success) {
+          setAvailableBalance(apiData.value);
+        }
+      } catch (error) {
+        console.error("Failed to fetch balance:", error);
+      }
+    };
+
+    fetchBalance();
+    // Refresh balance every 30 seconds
+    const interval = setInterval(fetchBalance, 30000);
+    return () => clearInterval(interval);
+  }, [isUserAuthenticated]);
+
   return (
     <>
       <div className="z-50 w-full bg-background/60 border-b border-white/20 backdrop-blur-sm px-5 max-sm:px-3 flex justify-between items-center transition-normal duration-500">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Link
-              href="/"
-              className="text-xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 text-transparent bg-clip-text"
-            >
-              <Image
-                src="/images/logo.png"
-                alt="Logo"
-                width={160}
-                height={100}
-                className="rounded-full object-cover"
-              />
-            </Link>
+            <div className="flex items-center justify-center gap-5 max-sm:gap-2">
+              <Link
+                href="/"
+                className="text-xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 text-transparent bg-clip-text"
+              >
+                <Image
+                  src="/images/logo.png"
+                  alt="Logo"
+                  width={160}
+                  height={100}
+                  className="rounded-full object-cover"
+                />
+              </Link>
+              {isUserAuthenticated && (
+                <div className="mt-3 px-2 py-0 bg-green-600/20 border border-green-500/30 rounded-full">
+                  <span className="text-xs font-bold text-green-400">
+                    {formatINR(availableBalance)}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Desktop Nav */}
