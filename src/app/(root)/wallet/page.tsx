@@ -469,6 +469,10 @@ export default function MoneyTransactionsPage() {
                   </p>
                 </div>
               </div>
+
+              <div className="max-sm:order-first mt-5">
+                <WithdrawModal />
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -482,10 +486,6 @@ export default function MoneyTransactionsPage() {
                 <div className="max-sm:order-2">
                   <CardTitle className="text-4xl text-white">Add Funds</CardTitle>
                   <CardDescription className="text-lg text-gray-400">Add funds to your wallet</CardDescription>
-                </div>
-
-                <div className="max-sm:order-first">
-                  <WithdrawModal />
                 </div>
 
               </div>
