@@ -269,3 +269,83 @@ export const initializeTeamStockPrices = async (matchId: string) => {
     return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
   }
 }
+
+// New function to calculate team stock price based on accumulated value
+export const calculateTeamStockPrice = (innings: any[], battingTeamId: string) => {
+  if (!innings || innings.length === 0) return 50; // Default launch price
+
+  // Find the current inning where the team is batting
+  const currentInning = innings.find(inning => inning.batting_team_id === battingTeamId);
+  if (!currentInning || !currentInning.batsmen) return 50;
+
+  let accumulatedPrice = 50; // Start with launch price
+  const batsmen = currentInning.batsmen;
+
+  // Sort batsmen by their batting order (assuming they come in order they played)
+  // We'll use the array order as batting order since that's how they appear in the data
+  batsmen.forEach((batsman: any, index: number) => {
+    const runs = Number(batsman.runs) || 0;
+    const isOut = batsman.how_out !== "Not out" && batsman.dismissal !== "";
+    const isCurrentlyBatting = batsman.batting === "true" && batsman.dismissal === "";
+
+    if (runs > 0) {
+      // Add 20% of runs to accumulated price
+      const runsContribution = runs * 0.2;
+      accumulatedPrice += runsContribution;
+    }
+
+    // If player is out, subtract 10% from accumulated price
+    if (isOut) {
+      const outPenalty = accumulatedPrice * 0.1;
+      accumulatedPrice -= outPenalty;
+    }
+
+    // For currently batting players, we still add their runs but don't apply out penalty yet
+    if (isCurrentlyBatting && runs > 0) {
+      // Runs are already added above, no additional penalty
+    }
+  });
+
+  // Ensure price doesn't go below 0
+  return Math.max(0, accumulatedPrice);
+}
+
+// Function to update team stock price using the new calculation method
+export const updateTeamStockPriceNew = async (matchId: string, teamId: string, innings: any[]) => {
+  try {
+    const calculatedPrice = calculateTeamStockPrice(innings, teamId);
+    
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/update-team-stocks-calculated/${matchId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        teamId,
+        calculatedPrice,
+      }),
+    })
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
+  }
+}
+
+// Function to auto-sell player portfolios when player gets out
+export const autoSellPlayerPortfolios = async (matchId: string, playerId: string) => {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/auto-sell-player-portfolios/${matchId}/${playerId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+};

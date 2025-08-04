@@ -82,6 +82,10 @@ export default function Portfolio() {
   // Use useRef to maintain previous team stock prices for detecting changes
   const previousTeamStockPrices = useRef<Record<string, number>>({})
 
+  // Use useRef to maintain last valid prices for auto-selling when innings/matches end
+  const lastValidPrices = useRef<Record<string, number>>({})
+  const lastValidTeamPrices = useRef<Record<string, number>>({})
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -217,7 +221,40 @@ export default function Portfolio() {
           if (currentInning && currentInning.batsmen) {
             const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
             const batsmanData = currentInning.batsmen[batsmanIndex]
-            currentPrice = calculatePlayerCurrentPrice(batsmanData, batsmanIndex)
+            
+            // If player is not in current inning, check if they were in a previous inning
+            if (batsmanIndex === -1 || !batsmanData) {
+              // Look for player in all innings
+              let foundBatsmanData = null
+              let foundBatsmanIndex = -1
+              
+              for (let i = 0; i < match.innings.length; i++) {
+                const inning = match.innings[i]
+                if (inning.batsmen) {
+                  const index = inning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
+                  if (index !== -1) {
+                    foundBatsmanData = inning.batsmen[index]
+                    foundBatsmanIndex = index
+                    break
+                  }
+                }
+              }
+              
+              // If we found the player in any inning, calculate their price
+              if (foundBatsmanData) {
+                currentPrice = calculatePlayerCurrentPrice(foundBatsmanData, foundBatsmanIndex)
+              } else {
+                // Player not found in any inning, price remains 0
+                currentPrice = 0
+              }
+            } else {
+              currentPrice = calculatePlayerCurrentPrice(batsmanData, batsmanIndex)
+            }
+
+            // Store last valid price (non-zero price)
+            if (currentPrice > 0) {
+              lastValidPrices.current[p.playerId] = currentPrice
+            }
 
             // Check if price has changed for this player
             const lastPrice = previousPrices.current[p.playerId] || 0
@@ -315,7 +352,40 @@ export default function Portfolio() {
           if (currentInning && currentInning.batsmen) {
             const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
             const batsmanData = currentInning.batsmen[batsmanIndex]
-            currentPrice = calculatePlayerCurrentPrice(batsmanData, batsmanIndex)
+            
+            // If player is not in current inning, check if they were in a previous inning
+            if (batsmanIndex === -1 || !batsmanData) {
+              // Look for player in all innings
+              let foundBatsmanData = null
+              let foundBatsmanIndex = -1
+              
+              for (let i = 0; i < match.innings.length; i++) {
+                const inning = match.innings[i]
+                if (inning.batsmen) {
+                  const index = inning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
+                  if (index !== -1) {
+                    foundBatsmanData = inning.batsmen[index]
+                    foundBatsmanIndex = index
+                    break
+                  }
+                }
+              }
+              
+              // If we found the player in any inning, calculate their price
+              if (foundBatsmanData) {
+                currentPrice = calculatePlayerCurrentPrice(foundBatsmanData, foundBatsmanIndex)
+              } else {
+                // Player not found in any inning, price remains 0
+                currentPrice = 0
+              }
+            } else {
+              currentPrice = calculatePlayerCurrentPrice(batsmanData, batsmanIndex)
+            }
+
+            // Store last valid price (non-zero price)
+            if (currentPrice > 0) {
+              lastValidPrices.current[p.playerId] = currentPrice
+            }
 
             // Check if price has changed for this player
             const lastPrice = previousPrices.current[p.playerId] || 0
@@ -412,6 +482,11 @@ export default function Portfolio() {
         const teamKey = isTeamA ? 'teama' : 'teamb'
         const currentTeamPrice = match.teamStockPrices?.[teamKey] !== undefined && match.teamStockPrices?.[teamKey] !== null ? match.teamStockPrices?.[teamKey] : 50
         const sellWindowKey = `team_${teamKey}`
+
+        // Store last valid team price (non-zero price)
+        if (currentTeamPrice > 0) {
+          lastValidTeamPrices.current[sellWindowKey] = currentTeamPrice
+        }
 
         // Check if team stock price has changed
         const lastTeamPrice = previousTeamStockPrices.current[sellWindowKey] || 0
@@ -514,9 +589,11 @@ export default function Portfolio() {
       const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
 
       if (isMatchOver) {
+        // Use last valid price if available, otherwise use current price
+        const lastValidPrice = lastValidPrices.current[p.playerId] || Number.parseFloat(p.currentPrice || "0")
         portfoliosToSell.push({
           portfolio: p,
-          price: p.currentPrice || "0",
+          price: String(lastValidPrice),
           reason: `Match is Over`,
         })
 
@@ -537,19 +614,26 @@ export default function Portfolio() {
           latestInning?.status?.toLowerCase().includes("completed") ||
           latestInning?.status?.toLowerCase().includes("finished")
 
-        // Check if this player belongs to the latest inning and the inning is over
-        if (isInningOver && latestInning?.batting_team_id) {
-          // Find which inning this player belongs to
-          const playerInning = match.innings.find((inn) => {
-            return inn.batsmen?.some((batsman) => batsman.batsman_id === p.playerId)
-          })
+        // Find which inning this player belongs to
+        const playerInning = match.innings.find((inn) => {
+          return inn.batsmen?.some((batsman) => batsman.batsman_id === p.playerId)
+        })
 
-          // If player belongs to the latest inning and it's over, auto-sell
-          if (playerInning && playerInning.number === match.latest_inning_number) {
+        // Check if this player belongs to the latest inning and the inning is over
+        if (isInningOver && playerInning && playerInning.number === match.latest_inning_number) {
+          // Get the batsman data to check if they're out
+          const batsman = latestInning?.batsmen?.find((b) => b.batsman_id === p.playerId)
+          const isPlayerOut = batsman && batsman.dismissal !== "" && batsman.dismissal.toLowerCase() !== "not out"
+          
+          // Auto-sell if inning is over and player is not out (or if price is 0)
+          const currentPrice = Number.parseFloat(p.currentPrice || "0")
+          if (!isPlayerOut || currentPrice === 0) {
+            // Use last valid price if available, otherwise use current price
+            const lastValidPrice = lastValidPrices.current[p.playerId] || currentPrice
             portfoliosToSell.push({
               portfolio: p,
-              price: p.currentPrice || "0",
-              reason: `Inning is Over`,
+              price: String(lastValidPrice),
+              reason: `Inning is Over${!isPlayerOut ? " - Player Not Out" : " - Price Zero"}`,
             })
 
             // Close trade modal if this player is currently being traded
@@ -580,6 +664,72 @@ export default function Portfolio() {
           }
         }
       }
+
+      // Additional check for when player price drops to 0 during their inning
+      if (match.innings && match.latest_inning_number) {
+        const latestInning = match.innings.find((inn) => inn.number === match.latest_inning_number)
+        const batsman = latestInning?.batsmen?.find((b) => b.batsman_id === p.playerId)
+        
+        // Check if this player belongs to the current inning
+        const playerInning = match.innings.find((inn) => {
+          return inn.batsmen?.some((batsman) => batsman.batsman_id === p.playerId)
+        })
+
+        if (playerInning && playerInning.number === match.latest_inning_number && batsman) {
+          const currentPrice = Number.parseFloat(p.currentPrice || "0")
+          const isPlayerOut = batsman.dismissal !== "" && batsman.dismissal.toLowerCase() !== "not out"
+          
+          // Auto-sell if price is 0 and player is not out (this indicates inning ended for this player)
+          if (currentPrice === 0 && !isPlayerOut) {
+            // Use last valid price if available, otherwise use 0
+            const lastValidPrice = lastValidPrices.current[p.playerId] || 0
+            portfoliosToSell.push({
+              portfolio: p,
+              price: String(lastValidPrice),
+              reason: `Player Inning Ended - Price Zero`,
+            })
+
+            // Close trade modal if this player is currently being traded
+            if (tradeModalPortfolio && tradeModalPortfolio.playerId === p.playerId) {
+              setTradeModalOpen(false)
+              setTradeModalPortfolio(null)
+            }
+          }
+        }
+      }
+
+      // Final safety check: if player price is 0 and they're not out, auto-sell regardless of inning status
+      const currentPrice = Number.parseFloat(p.currentPrice || "0")
+      if (currentPrice === 0) {
+        // Check if player is out in any inning
+        let isPlayerOut = false
+        if (match.innings) {
+          for (const inning of match.innings) {
+            const batsman = inning.batsmen?.find((b) => b.batsman_id === p.playerId)
+            if (batsman && batsman.dismissal !== "" && batsman.dismissal.toLowerCase() !== "not out") {
+              isPlayerOut = true
+              break
+            }
+          }
+        }
+        
+        // If player is not out and price is 0, auto-sell
+        if (!isPlayerOut) {
+          // Use last valid price if available, otherwise use 0
+          const lastValidPrice = lastValidPrices.current[p.playerId] || 0
+          portfoliosToSell.push({
+            portfolio: p,
+            price: String(lastValidPrice),
+            reason: `Player Price Zero - Auto Sell`,
+          })
+
+          // Close trade modal if this player is currently being traded
+          if (tradeModalPortfolio && tradeModalPortfolio.playerId === p.playerId) {
+            setTradeModalOpen(false)
+            setTradeModalPortfolio(null)
+          }
+        }
+      }
     })
 
     // Check team portfolios for auto-selling
@@ -594,10 +744,14 @@ export default function Portfolio() {
       if (isMatchOver) {
         // Get current team stock price for selling
         const isTeamA = p.team === match.teama?.team_id
+        const teamKey = isTeamA ? 'teama' : 'teamb'
+        const sellWindowKey = `team_${teamKey}`
         const currentPrice = isTeamA ? match.teamStockPrices?.teama : match.teamStockPrices?.teamb
+        // Use last valid price if available, otherwise use current price
+        const lastValidPrice = lastValidTeamPrices.current[sellWindowKey] || currentPrice || 0
         teamPortfoliosToSell.push({
           portfolio: p,
-          price: String(currentPrice || 0),
+          price: String(lastValidPrice),
           reason: `Match is Over`,
         })
         return
@@ -616,10 +770,14 @@ export default function Portfolio() {
         if (isInningOver && latestInning?.batting_team_id === p.team) {
           // Get current team stock price for selling
           const isTeamA = p.team === match.teama?.team_id
+          const teamKey = isTeamA ? 'teama' : 'teamb'
+          const sellWindowKey = `team_${teamKey}`
           const currentPrice = isTeamA ? match.teamStockPrices?.teama : match.teamStockPrices?.teamb
+          // Use last valid price if available, otherwise use current price
+          const lastValidPrice = lastValidTeamPrices.current[sellWindowKey] || currentPrice || 0
           teamPortfoliosToSell.push({
             portfolio: p,
-            price: String(currentPrice || 0),
+            price: String(lastValidPrice),
             reason: `Inning is Over`,
           })
         }
@@ -1466,7 +1624,8 @@ export default function Portfolio() {
 
                                 // Check if match/inning is over for this team
                                 const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "finished", "ended"]
-                                const statusNote = `${match?.status_note || ""} ${match?.live || ""}`.toLowerCase()
+                                const statusNote = match?.status_str.toLowerCase()
+                                console.log("statusNote -> ", match)
                                 const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
 
                                 // Check if inning is over for this team
@@ -1482,19 +1641,17 @@ export default function Portfolio() {
                                 const isTeamUnavailable = isMatchOver || (isInningOver && teamInning?.number === match?.latest_inning_number) || false
 
                                 return (
-                                  <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-700/20 cursor-pointer"
-                                    onClick={() => {
-                                      if (canTrade && !isTeamUnavailable) {
-                                        openTeamTradeModal(p)
-                                      } else {
-                                        toast.error(tradingCheck.reason || "Team trading is not available at this time")
-                                      }
-                                    }}>
+                                  <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-700/20 cursor-pointer">
                                     <td className="px-4 py-4">
                                       <div className="flex items-center gap-4">
                                         <div className="flex flex-col">
                                           <p className="font-bold text-white">{p.teamName}</p>
-                                          <p className="text-xs text-gray-400">{match?.short_title || "..."}</p>
+                                          <Link
+                                            href={`/betting-interface?id=${p.matchId}`}
+                                            className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors cursor-pointer"
+                                          >
+                                            {match?.short_title || "..."}
+                                          </Link>
                                         </div>
                                         <Button
                                           variant="secondary"

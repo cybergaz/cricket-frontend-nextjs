@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Target, TrendingUp, Users, Star, HardHat, Radio, Mic2, Twitter, Instagram } from "lucide-react"
 import type { CricketMatchData, Player, MatchScorecardProps, Innings } from "./types"
-import { getRoleColor, buyPlayer, sellPlayer, formatMatchNotes, updateTeamStockPrice, buyTeam, sellTeam, checkPlayerHoldings, checkTeamHoldings } from "./services"
+import { getRoleColor, buyPlayer, sellPlayer, formatMatchNotes, updateTeamStockPrice, buyTeam, sellTeam, checkPlayerHoldings, checkTeamHoldings, calculateTeamStockPrice, updateTeamStockPriceNew, autoSellPlayerPortfolios } from "./services"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -28,6 +28,46 @@ const calculatePlayerPrice = (batsman: any, batsmanIndex: number) => {
     Number(batsman.fours || 0) * 3 +
     Number(batsman.sixes || 0) * 4.5
   )
+}
+
+// Helper function to calculate team stock price based on accumulated value
+const calculateTeamStockPriceForDisplay = (innings: any[], battingTeamId: string, teamStockPrices: any) => {
+  if (!innings || innings.length === 0) return 50; // Default launch price
+
+  // Find the current inning where the team is batting
+  const currentInning = innings.find(inning => inning.batting_team_id === battingTeamId);
+  if (!currentInning || !currentInning.batsmen) return 50;
+
+  let accumulatedPrice = 50; // Start with launch price
+  const batsmen = currentInning.batsmen;
+
+  // Sort batsmen by their batting order (assuming they come in order they played)
+  // We'll use the array order as batting order since that's how they appear in the data
+  batsmen.forEach((batsman: any, index: number) => {
+    const runs = Number(batsman.runs) || 0;
+    const isOut = batsman.how_out !== "Not out" && batsman.dismissal !== "";
+    const isCurrentlyBatting = batsman.batting === "true" && batsman.dismissal === "";
+
+    if (runs > 0) {
+      // Add 20% of runs to accumulated price
+      const runsContribution = runs * 0.2;
+      accumulatedPrice += runsContribution;
+    }
+
+    // If player is out, subtract 10% from accumulated price
+    if (isOut) {
+      const outPenalty = accumulatedPrice * 0.1;
+      accumulatedPrice -= outPenalty;
+    }
+
+    // For currently batting players, we still add their runs but don't apply out penalty yet
+    if (isCurrentlyBatting && runs > 0) {
+      // Runs are already added above, no additional penalty
+    }
+  });
+
+  // Ensure price doesn't go below 0
+  return Math.max(0, accumulatedPrice);
 }
 
 // Sub-component for the "Trade Now" tab to reduce repetition
@@ -124,7 +164,12 @@ const TradeInningScorecard = ({
               <div>
                 <h3 className="text-lg font-bold text-white">{battingTeam.name}</h3>
                 <p className="text-sm text-gray-300 flex items-center gap-2">
-                  Current Price: ₹{data?.teamStockPrices?.[battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'].toFixed(2) || 50}
+                  Current Price: ₹{(() => {
+                    const storedPrice = data?.teamStockPrices?.[battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
+                    const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], battingTeam.team_id, data?.teamStockPrices)
+                    // Use calculated price if available, otherwise fall back to stored price or default
+                    return (calculatedPrice || storedPrice || 50).toFixed(2)
+                  })()}
                   {isUpdatingTeamStocks && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-yellow-400 bg-yellow-400/20 text-xs font-bold animate-pulse">
                       <span className="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></span>
@@ -190,14 +235,14 @@ const TradeInningScorecard = ({
                   if (canTrade) {
                     openBettingModal(batsman.batsman_id, inningIndex)
                   } else if (isOut) {
-                    toast.info("Player is out, cannot trade")
+                    toast.info("Player is out. All holdings have been auto-sold at 50% loss.")
                   } else if (!isBatting) {
                     toast.info("Player is not currently batting")
                   } else if (isInningOver(inningIndex)) {
                     toast.info("Inning is Over")
                   }
                 }}
-                className={`flex items-center justify-between p-2 px-4 rounded-md transition text-xs sm:text-base ${canTrade ? "bg-white/20 hover:bg-white/30 cursor-pointer" : "bg-white/5 opacity-60 cursor-not-allowed"
+                className={`flex items-center justify-between p-2 px-4 rounded-md transition text-xs sm:text-base ${canTrade ? "bg-white/20 hover:bg-white/30 cursor-pointer" : isOut ? "bg-red-500/20 opacity-80 cursor-not-allowed" : "bg-white/5 opacity-60 cursor-not-allowed"
                   }`}
               >
                 <div>
@@ -248,6 +293,15 @@ const TradeInningScorecard = ({
                           : "Trade"
                         }
                       </span>
+                    </button>
+                  )}
+                  {isOut && (
+                    <button
+                      type="button"
+                      disabled
+                      className="text-[13px] sm:text-sm font-extrabold px-4 py-2 rounded-lg shadow-md transition-all duration-200 flex items-center gap-2 cursor-not-allowed bg-red-600/80 text-white opacity-60"
+                    >
+                      <span>Auto Sold</span>
                     </button>
                   )}
                 </div>
@@ -339,6 +393,9 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
   // Use useRef to maintain previous player stats for detecting changes
   const previousPlayerStats = useRef<Record<string, any>>({})
 
+  // Add state to track previous dismissal status for auto-sell detection
+  const previousDismissalStatus = useRef<Record<string, boolean>>({})
+
   // --- Derived State ---
   // No more useState for data-derived properties. They are now derived on every render,
   // ensuring the UI is always in sync with the latest `matchData` prop.
@@ -415,14 +472,24 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     currentInning.batsmen.forEach((batsman) => {
       const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === batsman.batsman_id)
       const currentPrice = calculatePlayerPrice(batsman, batsmanIndex)
+      const isOut = batsman.how_out !== "Not out" && batsman.dismissal !== ""
 
       // Check if price has changed for this player
       const lastPrice = previousPrices.current[batsman.batsman_id] || 0
       if (currentPrice !== lastPrice && lastPrice !== 0) {
         console.log(`Price changed for ${batsman.name}: ${lastPrice} -> ${currentPrice}`)
-        // Activate sell window for this player
-        setSellWindowActive(prev => ({ ...prev, [batsman.batsman_id]: true }))
-        setSellWindowTimeLeft(prev => ({ ...prev, [batsman.batsman_id]: 5 }))
+        
+        // Only activate sell window if player is not out
+        if (!isOut) {
+          // Activate sell window for this player
+          setSellWindowActive(prev => ({ ...prev, [batsman.batsman_id]: true }))
+          setSellWindowTimeLeft(prev => ({ ...prev, [batsman.batsman_id]: 5 }))
+        } else {
+          // If player is out, close any existing sell window
+          setSellWindowActive(prev => ({ ...prev, [batsman.batsman_id]: false }))
+          setSellWindowTimeLeft(prev => ({ ...prev, [batsman.batsman_id]: 0 }))
+        }
+        
         // Update the previous price after processing the change
         previousPrices.current[batsman.batsman_id] = currentPrice
       } else if (lastPrice === 0) {
@@ -435,7 +502,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     })
   }, [data?.innings, data?.latest_inning_number])
 
-  // Team stock price update detection
+  // Team stock price update detection using new calculation method
   useEffect(() => {
     if (!data?.innings || !data.latest_inning_number || !data.match_id) return
 
@@ -448,91 +515,50 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     const battingTeam = currentInning.batting_team_id === data.teama?.team_id ? data.teama : data.teamb
     if (!battingTeam) return
 
+    // Check if any player stats have changed
+    let hasChanges = false
     currentInning.batsmen.forEach((batsman) => {
       const playerId = batsman.batsman_id
       const previousStats = previousPlayerStats.current[playerId]
+      const wasOut = previousDismissalStatus.current[playerId] || false
+      const isOut = batsman.how_out !== "Not out" && batsman.dismissal !== ""
 
       if (previousStats) {
-        // Check if runs have increased (runs scored)
         const currentRuns = Number(batsman.runs) || 0
         const previousRuns = Number(previousStats.runs) || 0
+        const wasOutBefore = previousStats.how_out !== "Not out" && previousStats.dismissal !== ""
 
-        if (currentRuns > previousRuns) {
-          const runsScored = currentRuns - previousRuns
-          console.log(`${batsman.name} scored ${runsScored} runs`)
+        if (currentRuns > previousRuns || (!wasOutBefore && isOut)) {
+          hasChanges = true
+        }
 
-          // Show loading state for team stock updates
-          setIsUpdatingTeamStocks(true)
-
-          // Update team stock price for runs scored
-          updateTeamStockPrice(data.match_id, battingTeam.team_id, "runs_scored", runsScored)
+        // Check if player just got out (was not out before, but is out now)
+        if (!wasOutBefore && isOut) {
+          console.log(`Player ${batsman.name} just got out! Triggering auto-sell...`)
+          
+          // Close any open modals
+          setIsBettingModalOpen(false)
+          setIsTeamBettingModalOpen(false)
+          setSelectedBettingPlayerIdentity(null)
+          setSelectedTeam(null)
+          
+          // Trigger auto-sell for this player
+          autoSellPlayerPortfolios(data.match_id, playerId)
             .then((result) => {
               if (result.success) {
-                console.log(`Team stock price updated: ${result.data.reason}`)
-                toast.success(`Team stock updated: ${result.data.reason}`)
-
-                // Activate sell window for team stocks
-                const teamKey = battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'
-                setSellWindowActive(prev => ({ ...prev, [`team_${teamKey}`]: true }))
-                setSellWindowTimeLeft(prev => ({ ...prev, [`team_${teamKey}`]: 5 }))
+                console.log(`Auto-sold ${result.data?.totalAutoSold || 0} portfolios for ${batsman.name}`)
+                toast.success(`Auto-sold ${result.data?.totalAutoSold || 0} portfolios for ${batsman.name} at 50% loss`)
               } else {
-                console.error("Failed to update team stock price:", result.message)
-                toast.error("Failed to update team stock price")
+                console.error("Failed to auto-sell player portfolios:", result.message)
               }
             })
             .catch((error) => {
-              console.error("Error updating team stock price:", error)
-              toast.error("Error updating team stock price")
-            })
-            .finally(() => {
-              setIsUpdatingTeamStocks(false)
-              // Force a small delay to ensure backend has updated the data
-              setTimeout(() => {
-                // The parent component will fetch fresh data on the next interval
-                // This just ensures we give the backend time to update
-              }, 500)
+              console.error("Error auto-selling player portfolios:", error)
             })
         }
-
-        // Check if player got out
-        const wasOut = previousStats.how_out !== "Not out" && previousStats.dismissal !== ""
-        const isOut = batsman.how_out !== "Not out" && batsman.dismissal !== ""
-
-        if (!wasOut && isOut) {
-          console.log(`${batsman.name} got out`)
-
-          // Show loading state for team stock updates
-          setIsUpdatingTeamStocks(true)
-
-          // Update team stock price for player getting out
-          updateTeamStockPrice(data.match_id, battingTeam.team_id, "player_out")
-            .then((result) => {
-              if (result.success) {
-                console.log(`Team stock price updated: ${result.data.reason}`)
-                toast.success(`Team stock updated: ${result.data.reason}`)
-
-                // Activate sell window for team stocks
-                const teamKey = battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'
-                setSellWindowActive(prev => ({ ...prev, [`team_${teamKey}`]: true }))
-                setSellWindowTimeLeft(prev => ({ ...prev, [`team_${teamKey}`]: 5 }))
-              } else {
-                console.error("Failed to update team stock price:", result.message)
-                toast.error("Failed to update team stock price")
-              }
-            })
-            .catch((error) => {
-              console.error("Error updating team stock price:", error)
-              toast.error("Error updating team stock price")
-            })
-            .finally(() => {
-              setIsUpdatingTeamStocks(false)
-              // Force a small delay to ensure backend has updated the data
-              setTimeout(() => {
-                // The parent component will fetch fresh data on the next interval
-                // This just ensures we give the backend time to update
-              }, 500)
-            })
-        }
+      } else {
+        // First time seeing this player, consider it a change
+        hasChanges = true
       }
 
       // Update previous stats for this player
@@ -541,7 +567,51 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
         how_out: batsman.how_out,
         dismissal: batsman.dismissal,
       }
+      
+      // Update dismissal status
+      previousDismissalStatus.current[playerId] = isOut
     })
+
+    // If there are changes, recalculate team stock price
+    if (hasChanges) {
+      console.log(`Recalculating team stock price for ${battingTeam.name}`)
+      
+      // Show loading state for team stock updates
+      setIsUpdatingTeamStocks(true)
+
+      // Calculate new team stock price using accumulated method
+      const calculatedPrice = calculateTeamStockPrice(data.innings, battingTeam.team_id)
+      console.log(`Calculated team stock price: ${calculatedPrice}`)
+
+      // Update team stock price using new calculation method
+      updateTeamStockPriceNew(data.match_id, battingTeam.team_id, data.innings)
+        .then((result) => {
+          if (result.success) {
+            console.log(`Team stock price updated: ${result.data.reason}`)
+            toast.success(`Team stock updated: ${result.data.reason}`)
+
+            // Activate sell window for team stocks
+            const teamKey = battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'
+            setSellWindowActive(prev => ({ ...prev, [`team_${teamKey}`]: true }))
+            setSellWindowTimeLeft(prev => ({ ...prev, [`team_${teamKey}`]: 5 }))
+          } else {
+            console.error("Failed to update team stock price:", result.message)
+            toast.error("Failed to update team stock price")
+          }
+        })
+        .catch((error) => {
+          console.error("Error updating team stock price:", error)
+          toast.error("Error updating team stock price")
+        })
+        .finally(() => {
+          setIsUpdatingTeamStocks(false)
+          // Force a small delay to ensure backend has updated the data
+          setTimeout(() => {
+            // The parent component will fetch fresh data on the next interval
+            // This just ensures we give the backend time to update
+          }, 500)
+        })
+    }
   }, [data?.innings, data?.latest_inning_number, data?.match_id, data?.teama, data?.teamb])
 
   // --- Helper Functions ---
@@ -1478,7 +1548,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     return (
                       <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
                         <p className="text-red-400 text-sm font-bold text-center">
-                          ⚠️ This player is out and cannot be traded
+                          ⚠️ This player is out and cannot be traded. All holdings have been auto-sold at 50% loss.
                         </p>
                       </div>
                     )
@@ -1748,11 +1818,26 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     Buy Player
                   </button>
                   <button
-                    className={`flex-1 rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${sellWindowActive[bettingPlayer.batsman_id]
-                      ? "bg-red-600 hover:bg-red-700 text-white animate-pulse"
-                      : "bg-gray-600 text-gray-400 cursor-not-allowed"
-                      }`}
+                    className={`flex-1 rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${(() => {
+                      const isCurrentlyBatting = isPlayerCurrentlyBatting(bettingPlayer)
+                      const isOut = isPlayerOut(bettingPlayer)
+                      
+                      if (isOut) {
+                        return "bg-gray-600 text-gray-400 cursor-not-allowed"
+                      } else if (sellWindowActive[bettingPlayer.batsman_id]) {
+                        return "bg-red-600 hover:bg-red-700 text-white animate-pulse"
+                      } else {
+                        return "bg-gray-600 text-gray-400 cursor-not-allowed"
+                      }
+                    })()}`}
                     onClick={async () => {
+                      const isOut = isPlayerOut(bettingPlayer)
+                      
+                      if (isOut) {
+                        toast.info("Player is out. All holdings have been auto-sold at 50% loss.")
+                        return
+                      }
+                      
                       if (!sellWindowActive[bettingPlayer.batsman_id]) {
                         toast.info("Sell window is not active. Wait for price changes to enable selling.")
                         return
@@ -1785,16 +1870,25 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       )
                       toast.success(sellingResponse.message)
                     }}
-                    disabled={!sellWindowActive[bettingPlayer.batsman_id]}
+                    disabled={(() => {
+                      const isOut = isPlayerOut(bettingPlayer)
+                      return isOut || !sellWindowActive[bettingPlayer.batsman_id]
+                    })()}
                   >
-                    {sellWindowActive[bettingPlayer.batsman_id]
-                      ? `Sell Player (${sellWindowTimeLeft[bettingPlayer.batsman_id]}s)`
-                      : "Sell Player"
-                    }
+                    {(() => {
+                      const isOut = isPlayerOut(bettingPlayer)
+                      if (isOut) {
+                        return "Player Out - Auto Sold"
+                      } else if (sellWindowActive[bettingPlayer.batsman_id]) {
+                        return `Sell Player (${sellWindowTimeLeft[bettingPlayer.batsman_id]}s)`
+                      } else {
+                        return "Sell Player"
+                      }
+                    })()}
                   </button>
                 </div>
 
-                {!sellWindowActive[bettingPlayer.batsman_id] && (
+                {!sellWindowActive[bettingPlayer.batsman_id] && !isPlayerOut(bettingPlayer) && (
                   <div className="mt-3 text-center">
                     <p className="text-sm text-gray-400">
                       ⏰ Sell button will be enabled for 5 seconds after price updates
@@ -1867,7 +1961,12 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                 <div className="mb-6 text-center">
                   <p className="text-gray-300 text-sm mb-2">Current Team Stock Price</p>
                   <p className="text-3xl font-bold text-white flex items-center justify-center gap-2">
-                    ₹{data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'].toFixed(2) || 50}
+                    ₹{(() => {
+                      const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
+                      const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
+                      // Use calculated price if available, otherwise fall back to stored price or default
+                      return (calculatedPrice || storedPrice || 50).toFixed(2)
+                    })()}
                     {isUpdatingTeamStocks && (
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-yellow-400 bg-yellow-400/20 text-xs font-bold animate-pulse">
                         <span className="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></span>
@@ -1916,12 +2015,14 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     }}
                     defaultValue={[1]}
                     max={(() => {
-                      let maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)));
+                      const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
+                      const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
+                      const currentPrice = calculatedPrice || storedPrice || 50;
+                      let maxQty = Math.max(0, Math.floor(25000 / currentPrice));
 
                       // If we have team holdings data, use the remaining investment limit
                       if (teamHoldings) {
                         const remainingInvestment = Number(teamHoldings.remainingInvestment);
-                        const currentPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50;
                         const maxFromHoldings = Math.floor(remainingInvestment / currentPrice);
                         maxQty = Math.min(maxQty, maxFromHoldings);
                       }
@@ -1943,12 +2044,14 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     <span>{teamQuantity[0]}</span>
                     <span>
                       {(() => {
-                        let maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)));
+                        const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
+                        const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
+                        const currentPrice = calculatedPrice || storedPrice || 50;
+                        let maxQty = Math.max(0, Math.floor(25000 / currentPrice));
 
                         // If we have team holdings data, use the remaining investment limit
                         if (teamHoldings) {
                           const remainingInvestment = Number(teamHoldings.remainingInvestment);
-                          const currentPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50;
                           const maxFromHoldings = Math.floor(remainingInvestment / currentPrice);
                           maxQty = Math.min(maxQty, maxFromHoldings);
                         }
@@ -1996,12 +2099,14 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                             let numVal = Number(val);
 
                             // Calculate max quantity based on remaining investment limit
-                            let maxQty = Math.max(0, Math.floor(25000 / (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50)));
+                            const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
+                            const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
+                            const currentPrice = calculatedPrice || storedPrice || 50;
+                            let maxQty = Math.max(0, Math.floor(25000 / currentPrice));
 
                             // If we have team holdings data, use the remaining investment limit
                             if (teamHoldings) {
                               const remainingInvestment = Number(teamHoldings.remainingInvestment);
-                              const currentPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50;
                               const maxFromHoldings = Math.floor(remainingInvestment / currentPrice);
                               maxQty = Math.min(maxQty, maxFromHoldings);
                             }
@@ -2029,7 +2134,10 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                           Price
                           <span className={`ml-2 text-xs mt-1 font-bold ${(() => {
                             if (teamHoldings) {
-                              const requestedInvestment = (data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50) * teamQuantity[0];
+                              const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
+                              const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
+                              const currentPrice = calculatedPrice || storedPrice || 50;
+                              const requestedInvestment = currentPrice * teamQuantity[0];
                               return requestedInvestment > Number(teamHoldings.remainingInvestment) ? "text-red-500" : "text-gray-400";
                             }
                             return "text-gray-400";
@@ -2047,8 +2155,18 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                               return "text-gray-300"
                             }
                           })()}`}
-                          placeholder={`₹${((data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50) * teamQuantity[0]).toFixed(2)}`}
-                          value={`₹${((data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50) * teamQuantity[0]).toFixed(2)}`}
+                          placeholder={`₹${(() => {
+                            const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
+                            const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
+                            const currentPrice = calculatedPrice || storedPrice || 50;
+                            return (currentPrice * teamQuantity[0]).toFixed(2)
+                          })()}`}
+                          value={`₹${(() => {
+                            const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
+                            const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
+                            const currentPrice = calculatedPrice || storedPrice || 50;
+                            return (currentPrice * teamQuantity[0]).toFixed(2)
+                          })()}`}
                           disabled={selectedTeam && selectedTeamInningIndex >= 0 && !canTeamTrade(selectedTeam, selectedTeamInningIndex)}
                         />
                       </div>
@@ -2093,9 +2211,13 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                         return;
                       }
 
+                      const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
+                      const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
+                      const currentPrice = calculatedPrice || storedPrice || 50;
+                      
                       const result = await buyTeam(
                         selectedTeam,
-                        String((data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50).toFixed(2)),
+                        String(currentPrice.toFixed(2)),
                         String(teamQuantity[0]),
                         matchId || "",
                       )
@@ -2164,9 +2286,13 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                         return;
                       }
 
+                      const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
+                      const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
+                      const currentPrice = calculatedPrice || storedPrice || 50;
+                      
                       const result = await sellTeam(
                         selectedTeam,
-                        String((data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== undefined && data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] !== null ? data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb'] : 50).toFixed(2)),
+                        String(currentPrice.toFixed(2)),
                         String(teamQuantity[0]),
                         matchId || "",
                       )
