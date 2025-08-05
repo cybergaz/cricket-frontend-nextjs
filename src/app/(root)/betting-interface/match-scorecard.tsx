@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 import { Slider } from "@/components/ui/slider"
 import { MatchInfoTicker } from "./components/match-info-ticker"
 import { redirect } from "next/navigation"
+import Image from "next/image"
 
 // Helper function to calculate player price dynamically
 const calculatePlayerPrice = (batsman: any, batsmanIndex: number) => {
@@ -88,6 +89,7 @@ const TradeInningScorecard = ({
   openTeamBettingModal,
   isUpdatingTeamStocks,
   canTeamTrade,
+  wicketsIncreased,
 }: {
   inning: Innings
   inningIndex: number
@@ -105,6 +107,7 @@ const TradeInningScorecard = ({
   openTeamBettingModal: (team: any, inningIndex: number) => void
   isUpdatingTeamStocks: boolean
   canTeamTrade: (team: any, inningIndex: number) => boolean
+  wicketsIncreased: boolean
 }) => {
   const [subTab, setSubTab] = useState("batsmen")
 
@@ -202,6 +205,18 @@ const TradeInningScorecard = ({
         </div>
       )}
 
+      {/* Wicket Increase Warning */}
+      {wicketsIncreased && (
+        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-red-400 text-lg">⚠️</span>
+            <p className="text-red-400 text-sm font-bold text-center">
+              Wicket fell! Sell windows are temporarily disabled for current batsmen until API updates.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Tabs value={subTab} onValueChange={setSubTab} className="w-full mt-2">
         <TabsList className="flex w-full overflow-x-auto scrollbar-hide h-auto gap-1 md:gap-2 p-1 bg-white/5 rounded-xl">
           <TabsTrigger
@@ -280,18 +295,32 @@ const TradeInningScorecard = ({
                     <button
                       type="button"
                       onClick={() => {
+                        if (wicketsIncreased && isPlayerCurrentlyBatting(batsman)) {
+                          toast.info("Sell windows are disabled due to recent wicket fall. Please wait for API updates.")
+                          return
+                        }
                         openBettingModal(batsman.batsman_id, inningIndex)
                       }}
-                      className={`text-[13px] sm:text-sm font-extrabold px-4 py-2 rounded-lg shadow-md hover:scale-105 transition-all duration-200 flex items-center gap-2 cursor-pointer ${sellWindowActive[batsman.batsman_id]
-                        ? "bg-green-600/80 text-white animate-pulse"
-                        : "bg-green-600/80 sm:bg-green-500/20 text-white"
-                        }`}
+                      className={`text-[13px] sm:text-sm font-extrabold px-4 py-2 rounded-lg shadow-md hover:scale-105 transition-all duration-200 flex items-center gap-2 cursor-pointer ${(() => {
+                        if (wicketsIncreased && isPlayerCurrentlyBatting(batsman)) {
+                          return "bg-yellow-600/80 text-white"
+                        } else if (sellWindowActive[batsman.batsman_id]) {
+                          return "bg-green-600/80 text-white animate-pulse"
+                        } else {
+                          return "bg-green-600/80 sm:bg-green-500/20 text-white"
+                        }
+                      })()}`}
                     >
                       <span>
-                        {sellWindowActive[batsman.batsman_id]
-                          ? `Trade (${sellWindowTimeLeft[batsman.batsman_id]}s)`
-                          : "Trade"
-                        }
+                        {(() => {
+                          if (wicketsIncreased && isPlayerCurrentlyBatting(batsman)) {
+                            return "⚠️ Wicket Fell"
+                          } else if (sellWindowActive[batsman.batsman_id]) {
+                            return `Trade (${sellWindowTimeLeft[batsman.batsman_id]}s)`
+                          } else {
+                            return "Trade"
+                          }
+                        })()}
                       </span>
                     </button>
                   )}
@@ -301,7 +330,7 @@ const TradeInningScorecard = ({
                       disabled
                       className="text-[13px] sm:text-sm font-extrabold px-4 py-2 rounded-lg shadow-md transition-all duration-200 flex items-center gap-2 cursor-not-allowed bg-red-600/80 text-white opacity-60"
                     >
-                      <span>Auto Sold</span>
+                      <span> Out </span>
                     </button>
                   )}
                 </div>
@@ -355,6 +384,7 @@ const TradeInningScorecard = ({
 
 export default function MatchScorecard({ matchData, matchId }: MatchScorecardProps) {
   // Component state
+
   const [isCommentaryOpen, setIsCommentaryOpen] = useState(false)
   const [isMatchInfoOpen, setIsMatchInfoOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<string>("live")
@@ -387,6 +417,9 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
   const [sellWindowActive, setSellWindowActive] = useState<Record<string, boolean>>({})
   const [sellWindowTimeLeft, setSellWindowTimeLeft] = useState<Record<string, number>>({})
 
+  // State to track if wickets have increased (to show warning in UI)
+  const [wicketsIncreased, setWicketsIncreased] = useState<Record<string, boolean>>({})
+
   // Use useRef to maintain previous prices across renders
   const previousPrices = useRef<Record<string, number>>({})
 
@@ -395,6 +428,16 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
 
   // Add state to track previous dismissal status for auto-sell detection
   const previousDismissalStatus = useRef<Record<string, boolean>>({})
+
+  // Add ref to track previous wicket counts to prevent sell window when wickets increase
+  const previousWicketCounts = useRef<Record<string, number>>({})
+
+  // Helper function to extract wicket count from score string (e.g., "47/6" -> 6)
+  const extractWicketCount = (scoreString: string): number => {
+    if (!scoreString) return 0
+    const match = scoreString.match(/\/(\d+)$/)
+    return match ? parseInt(match[1], 10) : 0
+  }
 
   // --- Derived State ---
   // No more useState for data-derived properties. They are now derived on every render,
@@ -469,27 +512,58 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     const currentInning = data.innings[Number(data.latest_inning_number) - 1]
     if (!currentInning?.batsmen) return
 
+    // Check if wickets have increased
+    const currentWicketCount = extractWicketCount(currentInning.scores)
+    const previousWicketCount = previousWicketCounts.current[`inning_${data.latest_inning_number}`] || 0
+    const wicketsIncreased = currentWicketCount > previousWicketCount
+
+    // Log wicket changes for debugging
+    if (currentWicketCount !== previousWicketCount) {
+      console.log(`Wicket count changed for inning ${data.latest_inning_number}: ${previousWicketCount} -> ${currentWicketCount} (increased: ${wicketsIncreased})`)
+    }
+
+    // Update wicket increase state for UI
+    setWicketsIncreased(prev => ({ ...prev, [`inning_${data.latest_inning_number}`]: wicketsIncreased }))
+
+    // Clear wicket increase state after 10 seconds
+    if (wicketsIncreased) {
+      setTimeout(() => {
+        setWicketsIncreased(prev => ({ ...prev, [`inning_${data.latest_inning_number}`]: false }))
+      }, 10000)
+    }
+
+    // Update previous wicket count
+    previousWicketCounts.current[`inning_${data.latest_inning_number}`] = currentWicketCount
+
     currentInning.batsmen.forEach((batsman) => {
       const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === batsman.batsman_id)
       const currentPrice = calculatePlayerPrice(batsman, batsmanIndex)
       const isOut = batsman.how_out !== "Not out" && batsman.dismissal !== ""
+      const isCurrentlyBatting = batsman.batting === "true" && batsman.dismissal === ""
 
       // Check if price has changed for this player
       const lastPrice = previousPrices.current[batsman.batsman_id] || 0
       if (currentPrice !== lastPrice && lastPrice !== 0) {
         console.log(`Price changed for ${batsman.name}: ${lastPrice} -> ${currentPrice}`)
-        
-        // Only activate sell window if player is not out
-        if (!isOut) {
+
+        // Only activate sell window if player is not out AND wickets haven't increased
+        if (!isOut && !wicketsIncreased) {
           // Activate sell window for this player
           setSellWindowActive(prev => ({ ...prev, [batsman.batsman_id]: true }))
           setSellWindowTimeLeft(prev => ({ ...prev, [batsman.batsman_id]: 5 }))
         } else {
-          // If player is out, close any existing sell window
+          // If player is out or wickets increased, close any existing sell window
           setSellWindowActive(prev => ({ ...prev, [batsman.batsman_id]: false }))
           setSellWindowTimeLeft(prev => ({ ...prev, [batsman.batsman_id]: 0 }))
+          
+          // If wickets increased and player is currently batting, log it
+          if (wicketsIncreased && isCurrentlyBatting) {
+            console.log(`Prevented sell window for ${batsman.name} due to wicket increase`)
+            // Show a toast to inform users about the wicket increase preventing sell windows
+            toast.info(`Wicket fell! Sell windows disabled for current batsmen until API updates.`)
+          }
         }
-        
+
         // Update the previous price after processing the change
         previousPrices.current[batsman.batsman_id] = currentPrice
       } else if (lastPrice === 0) {
@@ -535,16 +609,16 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
         // Check if player just got out (was not out before, but is out now)
         if (!wasOutBefore && isOut) {
           console.log(`Player ${batsman.name} just got out! Triggering auto-sell...`)
-          
+
           // Close any open modals
           setIsBettingModalOpen(false)
           setIsTeamBettingModalOpen(false)
           setSelectedBettingPlayerIdentity(null)
           setSelectedTeam(null)
-          
+
           // Trigger auto-sell for this player
           autoSellPlayerPortfolios(data.match_id, playerId)
-            .then((result) => {
+            .then((result: any) => {
               if (result.success) {
                 console.log(`Auto-sold ${result.data?.totalAutoSold || 0} portfolios for ${batsman.name}`)
                 toast.success(`Auto-sold ${result.data?.totalAutoSold || 0} portfolios for ${batsman.name} at 50% loss`)
@@ -552,7 +626,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                 console.error("Failed to auto-sell player portfolios:", result.message)
               }
             })
-            .catch((error) => {
+            .catch((error: any) => {
               console.error("Error auto-selling player portfolios:", error)
             })
         }
@@ -567,7 +641,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
         how_out: batsman.how_out,
         dismissal: batsman.dismissal,
       }
-      
+
       // Update dismissal status
       previousDismissalStatus.current[playerId] = isOut
     })
@@ -575,7 +649,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
     // If there are changes, recalculate team stock price
     if (hasChanges) {
       console.log(`Recalculating team stock price for ${battingTeam.name}`)
-      
+
       // Show loading state for team stock updates
       setIsUpdatingTeamStocks(true)
 
@@ -585,7 +659,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
 
       // Update team stock price using new calculation method
       updateTeamStockPriceNew(data.match_id, battingTeam.team_id, data.innings)
-        .then((result) => {
+        .then((result: any) => {
           if (result.success) {
             console.log(`Team stock price updated: ${result.data.reason}`)
             toast.success(`Team stock updated: ${result.data.reason}`)
@@ -599,7 +673,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
             toast.error("Failed to update team stock price")
           }
         })
-        .catch((error) => {
+        .catch((error: any) => {
           console.error("Error updating team stock price:", error)
           toast.error("Error updating team stock price")
         })
@@ -947,6 +1021,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                           >
                             <span className="font-bold text-white">
                               {batsman.name}
+                              {batsman.position == "striker" && <Image src="/images/bat.png" alt="Batting" width={16} height={16} className="inline-block ml-1 size-5" />}
                               <button className="bg-green-700 text-white text-[12px] sm:text-xs font-bold px-2 py-1 rounded-md hover:bg-emerald-700 transition ml-3 cursor-pointer">
                                 Trade Now
                               </button>
@@ -1021,19 +1096,20 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       style={{ overflow: "hidden" }}
                     >
                       <ul className="flex flex-col gap-2 mt-2 justify-start">
-                        {currentInnings.batsmen
-                          .filter((batsman: any) => batsman.batting !== "true" && batsman.dismissal === "")
-                          .map((batsman: any, idx: number) => (
-                            <motion.li
-                              key={batsman.player_id}
-                              initial={{ y: 10, opacity: 0 }}
-                              animate={{ y: 0, opacity: 1 }}
-                              transition={{ delay: 0.05 * idx, duration: 0.25, type: "spring", stiffness: 200 }}
-                              className="text-xs md:text-base text-gray-200 px-3 py-1"
-                            >
-                              {batsman.name}
-                            </motion.li>
-                          ))}
+                        {
+                          currentInnings.did_not_bat
+                            .map((batsman: any, idx: number) => (
+                              <motion.li
+                                key={batsman.player_id}
+                                initial={{ y: 10, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                transition={{ delay: 0.05 * idx, duration: 0.25, type: "spring", stiffness: 200 }}
+                                className="text-xs md:text-base text-gray-200 px-3 py-1"
+                              >
+                                {batsman.name}
+                              </motion.li>
+                            ))
+                        }
                       </ul>
                     </motion.div>
                   </AnimatePresence>
@@ -1248,6 +1324,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                   openTeamBettingModal={openTeamBettingModal}
                   isUpdatingTeamStocks={isUpdatingTeamStocks}
                   canTeamTrade={canTeamTrade}
+                  wicketsIncreased={wicketsIncreased[`inning_${latestInningNumber}`] || false}
                 />
               )}
               {previousInnings && (
@@ -1272,6 +1349,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                   openTeamBettingModal={openTeamBettingModal}
                   isUpdatingTeamStocks={isUpdatingTeamStocks}
                   canTeamTrade={canTeamTrade}
+                  wicketsIncreased={wicketsIncreased[`inning_${latestInningNumber - 1}`] || false}
                 />
               )}
             </TabsContent>
@@ -1782,10 +1860,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       }
 
                       closeBettingModal()
-                      if (
-                        typeof data.status_note === "string" &&
-                        /(won|loss|draw|tie|abandon|no result|match over|match ended|match finished)/i.test(data.status_note)
-                      ) {
+                      if (data.status_str == "match_over" || data.status_str == "match ended" || data.status_str == "match finished" || data.status_str == "Completed" || data.status_str == "Cancelled") {
                         toast.info("Match is over, Redirecting...");
                         setTimeout(() => {
                           redirect("/live-matches")
@@ -1821,7 +1896,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     className={`flex-1 rounded-lg sm:rounded-xl font-bold py-3 text-sm sm:text-base shadow-md transition ${(() => {
                       const isCurrentlyBatting = isPlayerCurrentlyBatting(bettingPlayer)
                       const isOut = isPlayerOut(bettingPlayer)
-                      
+
                       if (isOut) {
                         return "bg-gray-600 text-gray-400 cursor-not-allowed"
                       } else if (sellWindowActive[bettingPlayer.batsman_id]) {
@@ -1832,21 +1907,18 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     })()}`}
                     onClick={async () => {
                       const isOut = isPlayerOut(bettingPlayer)
-                      
+
                       if (isOut) {
                         toast.info("Player is out. All holdings have been auto-sold at 50% loss.")
                         return
                       }
-                      
+
                       if (!sellWindowActive[bettingPlayer.batsman_id]) {
                         toast.info("Sell window is not active. Wait for price changes to enable selling.")
                         return
                       }
                       closeBettingModal()
-                      if (
-                        typeof data.status_note === "string" &&
-                        /(won|loss|draw|tie|abandon|no result|match over|match ended|match finished)/i.test(data.status_note)
-                      ) {
+                      if (data.status_str == "match_over" || data.status_str == "match ended" || data.status_str == "match finished" || data.status_str == "Completed" || data.status_str == "Cancelled") {
                         toast.info("Match is over, Redirecting...");
                         setTimeout(() => {
                           redirect("/live-matches")
@@ -2200,10 +2272,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       }
 
                       closeTeamBettingModal()
-                      if (
-                        typeof data.status_note === "string" &&
-                        /(won|loss|draw|tie|abandon|no result|match over|match ended|match finished)/i.test(data.status_note)
-                      ) {
+                      if (data.status_str == "match_over" || data.status_str == "match ended" || data.status_str == "match finished" || data.status_str == "Completed" || data.status_str == "Cancelled") {
                         toast.info("Match is over, Redirecting...");
                         setTimeout(() => {
                           redirect("/live-matches")
@@ -2214,7 +2283,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
                       const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
                       const currentPrice = calculatedPrice || storedPrice || 50;
-                      
+
                       const result = await buyTeam(
                         selectedTeam,
                         String(currentPrice.toFixed(2)),
@@ -2275,10 +2344,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       }
 
                       closeTeamBettingModal()
-                      if (
-                        typeof data.status_note === "string" &&
-                        /(won|loss|draw|tie|abandon|no result|match over|match ended|match finished)/i.test(data.status_note)
-                      ) {
+                      if (data.status_str == "match_over" || data.status_str == "match ended" || data.status_str == "match finished" || data.status_str == "Completed" || data.status_str == "Cancelled") {
                         toast.info("Match is over, Redirecting...");
                         setTimeout(() => {
                           redirect("/live-matches")
@@ -2289,7 +2355,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
                       const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
                       const currentPrice = calculatedPrice || storedPrice || 50;
-                      
+
                       const result = await sellTeam(
                         selectedTeam,
                         String(currentPrice.toFixed(2)),

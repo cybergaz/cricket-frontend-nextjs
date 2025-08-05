@@ -86,6 +86,9 @@ export default function Portfolio() {
   const lastValidPrices = useRef<Record<string, number>>({})
   const lastValidTeamPrices = useRef<Record<string, number>>({})
 
+  // Use useRef to track if sell window was just activated to prevent resetting timer
+  const justActivatedSellWindow = useRef<Record<string, boolean>>({})
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -221,13 +224,13 @@ export default function Portfolio() {
           if (currentInning && currentInning.batsmen) {
             const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
             const batsmanData = currentInning.batsmen[batsmanIndex]
-            
+
             // If player is not in current inning, check if they were in a previous inning
             if (batsmanIndex === -1 || !batsmanData) {
               // Look for player in all innings
               let foundBatsmanData = null
               let foundBatsmanIndex = -1
-              
+
               for (let i = 0; i < match.innings.length; i++) {
                 const inning = match.innings[i]
                 if (inning.batsmen) {
@@ -239,7 +242,7 @@ export default function Portfolio() {
                   }
                 }
               }
-              
+
               // If we found the player in any inning, calculate their price
               if (foundBatsmanData) {
                 currentPrice = calculatePlayerCurrentPrice(foundBatsmanData, foundBatsmanIndex)
@@ -261,18 +264,28 @@ export default function Portfolio() {
             if (currentPrice !== lastPrice && lastPrice !== 0) {
               // console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
               // console.log(`Activating sell window for ${p.playerName}`)
-              // Activate sell window for this player
-              setSellWindowActive(prev => ({ ...prev, [p.playerId]: true }))
-              setSellWindowTimeLeft(prev => ({ ...prev, [p.playerId]: 5 }))
+              // Only activate sell window if it's not already active and wasn't just activated
+              if (!justActivatedSellWindow.current[p.playerId]) {
+                setSellWindowActive(prev => {
+                  if (!prev[p.playerId]) {
+                    setSellWindowTimeLeft(prevTime => ({ ...prevTime, [p.playerId]: 5 }))
+                    justActivatedSellWindow.current[p.playerId] = true
+                    // Reset the flag after a short delay
+                    setTimeout(() => {
+                      justActivatedSellWindow.current[p.playerId] = false
+                    }, 1000)
+                    return { ...prev, [p.playerId]: true }
+                  }
+                  return prev
+                })
+              }
               // Update the previous price after processing the change
               previousPrices.current[p.playerId] = currentPrice
             } else if (lastPrice === 0) {
               // First time setting price
               previousPrices.current[p.playerId] = currentPrice
-            } else {
-              // Update previous price even when no change detected (for tracking)
-              previousPrices.current[p.playerId] = currentPrice
             }
+            // Remove the else clause that was updating previous price every second
           }
         }
         return { ...p, currentPrice: String(currentPrice) }
@@ -352,13 +365,13 @@ export default function Portfolio() {
           if (currentInning && currentInning.batsmen) {
             const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
             const batsmanData = currentInning.batsmen[batsmanIndex]
-            
+
             // If player is not in current inning, check if they were in a previous inning
             if (batsmanIndex === -1 || !batsmanData) {
               // Look for player in all innings
               let foundBatsmanData = null
               let foundBatsmanIndex = -1
-              
+
               for (let i = 0; i < match.innings.length; i++) {
                 const inning = match.innings[i]
                 if (inning.batsmen) {
@@ -370,7 +383,7 @@ export default function Portfolio() {
                   }
                 }
               }
-              
+
               // If we found the player in any inning, calculate their price
               if (foundBatsmanData) {
                 currentPrice = calculatePlayerCurrentPrice(foundBatsmanData, foundBatsmanIndex)
@@ -393,18 +406,28 @@ export default function Portfolio() {
             // console.log("currentPrice -> ", currentPrice)
             if (currentPrice !== lastPrice && lastPrice !== 0) {
               console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
-              // Activate sell window for this player
-              setSellWindowActive(prev => ({ ...prev, [p.playerId]: true }))
-              setSellWindowTimeLeft(prev => ({ ...prev, [p.playerId]: 5 }))
+              // Only activate sell window if it's not already active and wasn't just activated
+              if (!justActivatedSellWindow.current[p.playerId]) {
+                setSellWindowActive(prev => {
+                  if (!prev[p.playerId]) {
+                    setSellWindowTimeLeft(prevTime => ({ ...prevTime, [p.playerId]: 5 }))
+                    justActivatedSellWindow.current[p.playerId] = true
+                    // Reset the flag after a short delay
+                    setTimeout(() => {
+                      justActivatedSellWindow.current[p.playerId] = false
+                    }, 1000)
+                    return { ...prev, [p.playerId]: true }
+                  }
+                  return prev
+                })
+              }
               // Update the previous price after processing the change
               previousPrices.current[p.playerId] = currentPrice
             } else if (lastPrice === 0) {
               // First time setting price
               previousPrices.current[p.playerId] = currentPrice
-            } else {
-              // Update previous price even when no change detected (for tracking)
-              previousPrices.current[p.playerId] = currentPrice
             }
+            // Remove the else clause that was updating previous price every second
           }
         }
         return { ...p, currentPrice: String(currentPrice) }
@@ -481,7 +504,7 @@ export default function Portfolio() {
         const isTeamA = p.team === match.teama?.team_id
         const teamKey = isTeamA ? 'teama' : 'teamb'
         const currentTeamPrice = match.teamStockPrices?.[teamKey] !== undefined && match.teamStockPrices?.[teamKey] !== null ? match.teamStockPrices?.[teamKey] : 50
-        const sellWindowKey = `team_${teamKey}`
+        const sellWindowKey = `team_${p.matchId}_${teamKey}`
 
         // Store last valid team price (non-zero price)
         if (currentTeamPrice > 0) {
@@ -492,18 +515,28 @@ export default function Portfolio() {
         const lastTeamPrice = previousTeamStockPrices.current[sellWindowKey] || 0
         if (currentTeamPrice !== lastTeamPrice && lastTeamPrice !== 0) {
           console.log(`Team stock price changed for ${p.teamName}: ${lastTeamPrice} -> ${currentTeamPrice}`)
-          // Activate sell window for this team
-          setSellWindowActive(prev => ({ ...prev, [sellWindowKey]: true }))
-          setSellWindowTimeLeft(prev => ({ ...prev, [sellWindowKey]: 5 }))
+          // Only activate sell window if it's not already active and wasn't just activated
+          if (!justActivatedSellWindow.current[sellWindowKey]) {
+            setSellWindowActive(prev => {
+              if (!prev[sellWindowKey]) {
+                setSellWindowTimeLeft(prevTime => ({ ...prevTime, [sellWindowKey]: 5 }))
+                justActivatedSellWindow.current[sellWindowKey] = true
+                // Reset the flag after a short delay
+                setTimeout(() => {
+                  justActivatedSellWindow.current[sellWindowKey] = false
+                }, 1000)
+                return { ...prev, [sellWindowKey]: true }
+              }
+              return prev
+            })
+          }
           // Update the previous price after processing the change
           previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
         } else if (lastTeamPrice === 0) {
           // First time setting price
           previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
-        } else {
-          // Update previous price even when no change detected (for tracking)
-          previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
         }
+        // Remove the else clause that was updating previous price every second
       })
 
     } catch (e: any) {
@@ -517,7 +550,7 @@ export default function Portfolio() {
       setLoading(true)
     }
     fetchAllData(currentPage)
-  }, [currentPage])
+  }, [])
 
   // Real-time updates for active portfolios only
   useEffect(() => {
@@ -584,7 +617,7 @@ export default function Portfolio() {
         third_fielder_id: "",
       }
 
-      const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "finished", "ended"]
+      const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "cancelled", "finished", "ended"]
       const statusNote = `${match.status_note || ""} ${match.live || ""}`.toLowerCase()
       const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
 
@@ -624,7 +657,7 @@ export default function Portfolio() {
           // Get the batsman data to check if they're out
           const batsman = latestInning?.batsmen?.find((b) => b.batsman_id === p.playerId)
           const isPlayerOut = batsman && batsman.dismissal !== "" && batsman.dismissal.toLowerCase() !== "not out"
-          
+
           // Auto-sell if inning is over and player is not out (or if price is 0)
           const currentPrice = Number.parseFloat(p.currentPrice || "0")
           if (!isPlayerOut || currentPrice === 0) {
@@ -669,7 +702,7 @@ export default function Portfolio() {
       if (match.innings && match.latest_inning_number) {
         const latestInning = match.innings.find((inn) => inn.number === match.latest_inning_number)
         const batsman = latestInning?.batsmen?.find((b) => b.batsman_id === p.playerId)
-        
+
         // Check if this player belongs to the current inning
         const playerInning = match.innings.find((inn) => {
           return inn.batsmen?.some((batsman) => batsman.batsman_id === p.playerId)
@@ -678,7 +711,7 @@ export default function Portfolio() {
         if (playerInning && playerInning.number === match.latest_inning_number && batsman) {
           const currentPrice = Number.parseFloat(p.currentPrice || "0")
           const isPlayerOut = batsman.dismissal !== "" && batsman.dismissal.toLowerCase() !== "not out"
-          
+
           // Auto-sell if price is 0 and player is not out (this indicates inning ended for this player)
           if (currentPrice === 0 && !isPlayerOut) {
             // Use last valid price if available, otherwise use 0
@@ -712,7 +745,7 @@ export default function Portfolio() {
             }
           }
         }
-        
+
         // If player is not out and price is 0, auto-sell
         if (!isPlayerOut) {
           // Use last valid price if available, otherwise use 0
@@ -737,7 +770,7 @@ export default function Portfolio() {
       const match = matchDataById[p.matchId]
       if (!match) return
 
-      const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "finished", "ended"]
+      const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "cancelled", "finished", "ended"]
       const statusNote = `${match.status_note || ""} ${match.live || ""}`.toLowerCase()
       const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
 
@@ -901,7 +934,7 @@ export default function Portfolio() {
     }
 
     // Check if match is over
-    const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "finished", "ended"]
+    const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "cancelled", "finished", "ended"]
     const statusNote = `${match.status_note || ""} ${match.live || ""}`.toLowerCase()
     const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
 
@@ -1623,9 +1656,8 @@ export default function Portfolio() {
                                 const canTrade = tradingCheck.allowed
 
                                 // Check if match/inning is over for this team
-                                const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "finished", "ended"]
+                                const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "cancelled", "finished", "ended"]
                                 const statusNote = match?.status_str.toLowerCase()
-                                console.log("statusNote -> ", match)
                                 const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
 
                                 // Check if inning is over for this team
@@ -1658,7 +1690,7 @@ export default function Portfolio() {
                                           size="sm"
                                           className={`font-bold text-xs ${(() => {
                                             const teamKey = p.team === match?.teama?.team_id ? 'teama' : 'teamb'
-                                            const sellWindowKey = `team_${teamKey}`
+                                            const sellWindowKey = `team_${p.matchId}_${teamKey}`
                                             if (canTrade && !isTeamUnavailable) {
                                               if (sellWindowActive[sellWindowKey]) {
                                                 return "bg-red-600/50 hover:bg-red-600 text-white animate-pulse"
@@ -1681,7 +1713,7 @@ export default function Portfolio() {
                                         >
                                           {(() => {
                                             const teamKey = p.team === match?.teama?.team_id ? 'teama' : 'teamb'
-                                            const sellWindowKey = `team_${teamKey}`
+                                            const sellWindowKey = `team_${p.matchId}_${teamKey}`
                                             if (canTrade && !isTeamUnavailable) {
                                               if (sellWindowActive[sellWindowKey]) {
                                                 return `Sell (${sellWindowTimeLeft[sellWindowKey]}s)`
@@ -2259,7 +2291,7 @@ export default function Portfolio() {
                     size="lg"
                     className={`font-bold text-base ${(() => {
                       const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
-                      const sellWindowKey = `team_${teamKey}`
+                      const sellWindowKey = `team_${portfolio.matchId}_${teamKey}`
                       if (canTrade) {
                         if (sellWindowActive[sellWindowKey]) {
                           return "bg-red-600 hover:bg-red-700 text-white animate-pulse"
@@ -2272,7 +2304,7 @@ export default function Portfolio() {
                     })()}`}
                     onClick={() => {
                       const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
-                      const sellWindowKey = `team_${teamKey}`
+                      const sellWindowKey = `team_${portfolio.matchId}_${teamKey}`
 
                       if (!sellWindowActive[sellWindowKey]) {
                         toast.info("Sell window is not active. Wait for price changes to enable selling.")
@@ -2283,13 +2315,13 @@ export default function Portfolio() {
                     }}
                     disabled={(() => {
                       const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
-                      const sellWindowKey = `team_${teamKey}`
+                      const sellWindowKey = `team_${portfolio.matchId}_${teamKey}`
                       return !canTrade || !sellWindowActive[sellWindowKey]
                     })()}
                   >
                     {(() => {
                       const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
-                      const sellWindowKey = `team_${teamKey}`
+                      const sellWindowKey = `team_${portfolio.matchId}_${teamKey}`
                       if (canTrade) {
                         if (sellWindowActive[sellWindowKey]) {
                           return `Sell (${sellWindowTimeLeft[sellWindowKey]}s)`
@@ -2306,7 +2338,7 @@ export default function Portfolio() {
                 {/* Sell window message */}
                 {(() => {
                   const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
-                  const sellWindowKey = `team_${teamKey}`
+                  const sellWindowKey = `team_${portfolio.matchId}_${teamKey}`
                   return !sellWindowActive[sellWindowKey] && canTrade && (
                     <div className="mt-3 text-center">
                       <p className="text-sm text-gray-400">

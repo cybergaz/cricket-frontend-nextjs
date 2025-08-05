@@ -138,6 +138,11 @@ export interface Innings {
   bowlers: Bowler[]
   fows: FallOfWicket[]
   current_partnership: Partnership
+  did_not_bat: {
+    _id: string,
+    name: string,
+    player_id: string
+  }[]
   last_wicket: {
     name: string
     batsman_id: string

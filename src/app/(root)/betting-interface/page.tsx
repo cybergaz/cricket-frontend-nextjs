@@ -10,6 +10,7 @@ import YetToStart from "./components/yet-to-start";
 
 export default function BettingPage() {
   const [matchData, setMatchData] = useState<CricketMatchData | null>(null);
+  console.log("matchData -> ", matchData)
   const [matchFound, setMatchFound] = useState(false);
   const [loading, setLoading] = useState(true);
   const searchParams = useSearchParams();
@@ -26,6 +27,7 @@ export default function BettingPage() {
         );
         const resJson = await res.json();
         const apiData = resJson.data
+
         if (!isMounted) return;
         if (apiData) {
           setMatchData(apiData);

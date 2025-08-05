@@ -127,7 +127,7 @@ const GameRules = () => {
               <div>
                 <h3 className="text-xl font-medium mb-3 text-purple-300">Stock Goes Down</h3>
                 <ul className="space-y-2 list-disc list-inside">
-                  <li>-₹0.50 for each dot ball (no run scored)</li>
+                  <li>-₹1 for each dot ball (no run scored)</li>
                   <li>-50% of the stock's buying price if the player gets out</li>
                 </ul>
               </div>
@@ -136,8 +136,8 @@ const GameRules = () => {
               <div>
                 <h3 className="text-xl font-medium mb-3 text-purple-300">Team Stock Mechanism</h3>
                 <ul className="space-y-2 list-disc list-inside">
-                  <li>Each player contributes between 10%–50% of their real-world performance to team stock value</li>
-                  <li>If a player gets out, the team stock drops by 10% of the total stock value</li>
+                  <li>Each Batsman will contribute 20% of their runs to team stock</li>
+                  <li>If a Batsman gets out the team stock goes down by 10% of it's current price</li>
                 </ul>
               </div>
 

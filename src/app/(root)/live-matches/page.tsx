@@ -31,7 +31,7 @@ export default function LiveMatches() {
       if (!res.ok) throw new Error("API Error");
 
       const data = await res.json();
-      const unwantedWords = ["won", "loss", "draw", "abandoned", "no result", "cancelled", "tie", "postponed", "completed", "finished"];
+      const unwantedWords = ["won", "loss", "draw", "abandoned", "no result", "cancelled", "tie", "postponed", "completed", "cancelled", "finished"];
       const matches = data.data.filter(
         (match: any) =>
           typeof match.live === "string" &&
