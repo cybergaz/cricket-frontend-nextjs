@@ -89,6 +89,27 @@ export default function Portfolio() {
   // Use useRef to track if sell window was just activated to prevent resetting timer
   const justActivatedSellWindow = useRef<Record<string, boolean>>({})
 
+  // Add ref to track previous wicket counts to prevent sell window when wickets increase
+  const previousWicketCounts = useRef<Record<string, number>>({})
+
+  // State to track players whose sell windows are disabled due to wicket falls
+  const [sellWindowDisabledDueToWicket, setSellWindowDisabledDueToWicket] = useState<Record<string, boolean>>({})
+
+  // Helper function to extract wicket count from score string (e.g., "47/6" -> 6)
+  const extractWicketCount = (scoreString: string): number => {
+    if (!scoreString) return 0
+    const match = scoreString.match(/\/(\d+)$/)
+    return match ? parseInt(match[1], 10) : 0
+  }
+
+  // Helper function to set disabled state with timeout
+  const setDisabledStateWithTimeout = (playerId: string) => {
+    setSellWindowDisabledDueToWicket(prev => ({ ...prev, [playerId]: true }))
+    setTimeout(() => {
+      setSellWindowDisabledDueToWicket(prev => ({ ...prev, [playerId]: false }))
+    }, 10000)
+  }
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -262,22 +283,55 @@ export default function Portfolio() {
             // Check if price has changed for this player
             const lastPrice = previousPrices.current[p.playerId] || 0
             if (currentPrice !== lastPrice && lastPrice !== 0) {
-              // console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
-              // console.log(`Activating sell window for ${p.playerName}`)
-              // Only activate sell window if it's not already active and wasn't just activated
-              if (!justActivatedSellWindow.current[p.playerId]) {
-                setSellWindowActive(prev => {
-                  if (!prev[p.playerId]) {
-                    setSellWindowTimeLeft(prevTime => ({ ...prevTime, [p.playerId]: 5 }))
-                    justActivatedSellWindow.current[p.playerId] = true
-                    // Reset the flag after a short delay
-                    setTimeout(() => {
-                      justActivatedSellWindow.current[p.playerId] = false
-                    }, 1000)
-                    return { ...prev, [p.playerId]: true }
+              // Check if wickets have increased for this match
+              let wicketsIncreased = false
+              if (match && match.innings && match.latest_inning_number) {
+                const currentInning = match.innings[Number(match.latest_inning_number) - 1]
+                if (currentInning && currentInning.scores) {
+                  const currentWicketCount = extractWicketCount(currentInning.scores)
+                  const previousWicketCount = previousWicketCounts.current[`${p.matchId}_${match.latest_inning_number}`] || 0
+                  wicketsIncreased = currentWicketCount > previousWicketCount
+                  
+                  // Update previous wicket count
+                  previousWicketCounts.current[`${p.matchId}_${match.latest_inning_number}`] = currentWicketCount
+                  
+                  // Log wicket changes for debugging
+                  if (currentWicketCount !== previousWicketCount) {
+                    console.log(`Wicket count changed for ${p.matchId} inning ${match.latest_inning_number}: ${previousWicketCount} -> ${currentWicketCount} (increased: ${wicketsIncreased})`)
                   }
-                  return prev
-                })
+                }
+              }
+
+              // Check if this player is currently batting (to prevent sell window when wickets increase)
+              const isCurrentlyBatting = match && match.innings && match.latest_inning_number ? 
+                match.innings[Number(match.latest_inning_number) - 1]?.batsmen?.some(b => b.batsman_id === p.playerId) : false
+
+              // Only activate sell window if wickets haven't increased OR if player is not currently batting
+              if (!wicketsIncreased || !isCurrentlyBatting) {
+                // Clear the disabled state if it was set
+                setSellWindowDisabledDueToWicket(prev => ({ ...prev, [p.playerId]: false }))
+                
+                // console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
+                // console.log(`Activating sell window for ${p.playerName}`)
+                // Only activate sell window if it's not already active and wasn't just activated
+                if (!justActivatedSellWindow.current[p.playerId]) {
+                  setSellWindowActive(prev => {
+                    if (!prev[p.playerId]) {
+                      setSellWindowTimeLeft(prevTime => ({ ...prevTime, [p.playerId]: 5 }))
+                      justActivatedSellWindow.current[p.playerId] = true
+                      // Reset the flag after a short delay
+                      setTimeout(() => {
+                        justActivatedSellWindow.current[p.playerId] = false
+                      }, 1000)
+                      return { ...prev, [p.playerId]: true }
+                    }
+                    return prev
+                  })
+                }
+              } else {
+                console.log(`Sell window disabled for ${p.playerName} due to recent wicket fall`)
+                // Set the disabled state for this player with timeout
+                setDisabledStateWithTimeout(p.playerId)
               }
               // Update the previous price after processing the change
               previousPrices.current[p.playerId] = currentPrice
@@ -405,21 +459,54 @@ export default function Portfolio() {
             // console.log("lastPrice -> ", lastPrice)
             // console.log("currentPrice -> ", currentPrice)
             if (currentPrice !== lastPrice && lastPrice !== 0) {
-              console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
-              // Only activate sell window if it's not already active and wasn't just activated
-              if (!justActivatedSellWindow.current[p.playerId]) {
-                setSellWindowActive(prev => {
-                  if (!prev[p.playerId]) {
-                    setSellWindowTimeLeft(prevTime => ({ ...prevTime, [p.playerId]: 5 }))
-                    justActivatedSellWindow.current[p.playerId] = true
-                    // Reset the flag after a short delay
-                    setTimeout(() => {
-                      justActivatedSellWindow.current[p.playerId] = false
-                    }, 1000)
-                    return { ...prev, [p.playerId]: true }
+              // Check if wickets have increased for this match
+              let wicketsIncreased = false
+              if (match && match.innings && match.latest_inning_number) {
+                const currentInning = match.innings[Number(match.latest_inning_number) - 1]
+                if (currentInning && currentInning.scores) {
+                  const currentWicketCount = extractWicketCount(currentInning.scores)
+                  const previousWicketCount = previousWicketCounts.current[`${p.matchId}_${match.latest_inning_number}`] || 0
+                  wicketsIncreased = currentWicketCount > previousWicketCount
+                  
+                  // Update previous wicket count
+                  previousWicketCounts.current[`${p.matchId}_${match.latest_inning_number}`] = currentWicketCount
+                  
+                  // Log wicket changes for debugging
+                  if (currentWicketCount !== previousWicketCount) {
+                    console.log(`Wicket count changed for ${p.matchId} inning ${match.latest_inning_number}: ${previousWicketCount} -> ${currentWicketCount} (increased: ${wicketsIncreased})`)
                   }
-                  return prev
-                })
+                }
+              }
+
+              // Check if this player is currently batting (to prevent sell window when wickets increase)
+              const isCurrentlyBatting = match && match.innings && match.latest_inning_number ? 
+                match.innings[Number(match.latest_inning_number) - 1]?.batsmen?.some(b => b.batsman_id === p.playerId) : false
+
+              // Only activate sell window if wickets haven't increased OR if player is not currently batting
+              if (!wicketsIncreased || !isCurrentlyBatting) {
+                // Clear the disabled state if it was set
+                setSellWindowDisabledDueToWicket(prev => ({ ...prev, [p.playerId]: false }))
+                
+                console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
+                // Only activate sell window if it's not already active and wasn't just activated
+                if (!justActivatedSellWindow.current[p.playerId]) {
+                  setSellWindowActive(prev => {
+                    if (!prev[p.playerId]) {
+                      setSellWindowTimeLeft(prevTime => ({ ...prevTime, [p.playerId]: 5 }))
+                      justActivatedSellWindow.current[p.playerId] = true
+                      // Reset the flag after a short delay
+                      setTimeout(() => {
+                        justActivatedSellWindow.current[p.playerId] = false
+                      }, 1000)
+                      return { ...prev, [p.playerId]: true }
+                    }
+                    return prev
+                  })
+                }
+              } else {
+                console.log(`Sell window disabled for ${p.playerName} due to recent wicket fall`)
+                // Set the disabled state for this player with timeout
+                setDisabledStateWithTimeout(p.playerId)
               }
               // Update the previous price after processing the change
               previousPrices.current[p.playerId] = currentPrice
@@ -1384,17 +1471,33 @@ export default function Portfolio() {
                                         <Button
                                           variant="secondary"
                                           size="sm"
-                                          className={`font-bold text-xs ${sellWindowActive[p.playerId]
-                                            ? "bg-red-600 hover:bg-red-700 text-white animate-pulse"
-                                            : "bg-green-600/50 hover:bg-green-600 text-white"
-                                            }`}
-                                          disabled={isPriceLoading}
-                                          onClick={() => openTradeModal(p)}
+                                          className={`font-bold text-xs ${(() => {
+                                            if (sellWindowDisabledDueToWicket[p.playerId]) {
+                                              return "bg-yellow-600/80 text-white"
+                                            } else if (sellWindowActive[p.playerId]) {
+                                              return "bg-red-600 hover:bg-red-700 text-white animate-pulse"
+                                            } else {
+                                              return "bg-green-600/50 hover:bg-green-600 text-white"
+                                            }
+                                          })()}`}
+                                          disabled={isPriceLoading || sellWindowDisabledDueToWicket[p.playerId]}
+                                          onClick={() => {
+                                            if (sellWindowDisabledDueToWicket[p.playerId]) {
+                                              toast.info("Sell windows are disabled due to recent wicket fall. Please wait for API updates.")
+                                              return
+                                            }
+                                            openTradeModal(p)
+                                          }}
                                         >
-                                          {sellWindowActive[p.playerId]
-                                            ? `Sell (${sellWindowTimeLeft[p.playerId]}s)`
-                                            : "Trade"
-                                          }
+                                          {(() => {
+                                            if (sellWindowDisabledDueToWicket[p.playerId]) {
+                                              return "⚠️ Wicket Fell"
+                                            } else if (sellWindowActive[p.playerId]) {
+                                              return `Sell (${sellWindowTimeLeft[p.playerId]}s)`
+                                            } else {
+                                              return "Trade"
+                                            }
+                                          })()}
                                         </Button>
                                       </div>
                                     </td>
@@ -1484,7 +1587,7 @@ export default function Portfolio() {
                             if (
                               status &&
                               status.toLowerCase() === "sold" &&
-                              Math.abs(pnlPercent + 50) < 0.01 // allow for floating point error
+                              Math.abs(pnlPercent + 50) < 0.03 // allow for floating point error
                             ) {
                               status = "Auto Sold"
                               badgeClass = "border-0 bg-red-600/40 text-red-200 font-bold text-xs"
