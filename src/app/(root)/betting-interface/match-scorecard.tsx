@@ -1735,22 +1735,22 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                     onValueChange={setQuantity}
                     defaultValue={[1]}
                     max={(() => {
-                      if (playerHoldings) {
-                        // Use the remaining investment limit from holdings
-                        const maxFromHoldings = Math.floor(Number(playerHoldings.remainingInvestment) / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex))
-                        const maxFromBalance = Math.max(0, Math.floor(25000 / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)))
-                        return Math.min(maxFromHoldings, maxFromBalance)
-                      } else {
-                        // Fallback to original calculation
-                        return Math.max(0, Math.floor(25000 / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)))
-                      }
+                      // if (playerHoldings) {
+                      //   // Use the remaining investment limit from holdings
+                      //   const maxFromHoldings = Math.floor(Number(playerHoldings.remainingInvestment) / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex))
+                      //   const maxFromBalance = Math.max(0, Math.floor(25000 / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)))
+                      //   return Math.min(maxFromHoldings, maxFromBalance)
+                      // } else {
+                      // Fallback to original calculation
+                      return Math.max(0, Math.floor(25000 / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)))
+                      // }
                     })()}
                     step={1}
                     className="my-4"
                   />
                   <div className="flex justify-between w-full text-xs font-semibold mb-4">
                     <span>{quantity[0]}</span>
-                    <span>
+                    <span><span className="pr-1">buying limit :</span>
                       {(() => {
                         if (playerHoldings) {
                           const maxFromHoldings = Math.floor(Number(playerHoldings.remainingInvestment) / calculatePlayerPrice(bettingPlayer, bettingPlayerIndex))
@@ -1804,7 +1804,15 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                             }
 
                             let numVal = Number(val);
-                            const maxQty = 25000;
+                            const maxQty = (() => {
+                              // if (playerHoldings) {
+                              //   const maxFromHoldings = Math.floor(Number(playerHoldings.remainingInvestment) / (calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) || 1))
+                              //   const maxFromBalance = Math.max(0, Math.floor(25000 / (calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) || 1)))
+                              //   return Math.min(maxFromHoldings, maxFromBalance)
+                              // } else {
+                              return Math.max(0, Math.floor(25000 / (calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) || 1)))
+                              // }
+                            })()
                             if (numVal > maxQty) numVal = maxQty;
 
                             setQuantity([numVal]);
@@ -2096,11 +2104,11 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       let maxQty = Math.max(0, Math.floor(25000 / currentPrice));
 
                       // If we have team holdings data, use the remaining investment limit
-                      if (teamHoldings) {
-                        const remainingInvestment = Number(teamHoldings.remainingInvestment);
-                        const maxFromHoldings = Math.floor(remainingInvestment / currentPrice);
-                        maxQty = Math.min(maxQty, maxFromHoldings);
-                      }
+                      // if (teamHoldings) {
+                      //   const remainingInvestment = Number(teamHoldings.remainingInvestment);
+                      //   const maxFromHoldings = Math.floor(remainingInvestment / currentPrice);
+                      //   maxQty = Math.min(maxQty, maxFromHoldings);
+                      // }
 
                       return maxQty;
                     })()}
@@ -2117,7 +2125,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                   />
                   <div className="flex justify-between w-full text-xs font-semibold mb-4">
                     <span>{teamQuantity[0]}</span>
-                    <span>
+                    <span><span className="pr-1">buying limit :</span>
                       {(() => {
                         const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
                         const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
@@ -2184,7 +2192,10 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                             }
 
                             let numVal = Number(val);
-                            const maxQty = 25000;
+                            const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
+                            const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
+                            const currentPrice = calculatedPrice || storedPrice || 50;
+                            let maxQty = Math.max(0, Math.floor(25000 / currentPrice));
                             if (numVal > maxQty) numVal = maxQty;
 
                             setTeamQuantity([numVal]);
