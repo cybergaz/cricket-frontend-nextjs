@@ -555,7 +555,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
           // If player is out or wickets increased, close any existing sell window
           setSellWindowActive(prev => ({ ...prev, [batsman.batsman_id]: false }))
           setSellWindowTimeLeft(prev => ({ ...prev, [batsman.batsman_id]: 0 }))
-          
+
           // If wickets increased and player is currently batting, log it
           if (wicketsIncreased && isCurrentlyBatting) {
             console.log(`Prevented sell window for ${batsman.name} due to wicket increase`)
@@ -1767,12 +1767,23 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                   <div className="mt-6 sm:mt-8">
                     <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                       <div className="flex-1 flex flex-col">
-                        <label
-                          className="text-xs sm:text-sm font-bold text-gray-300 mb-1"
-                          htmlFor="quantity-input"
-                        >
-                          Quantity
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label
+                            className="text-xs sm:text-sm font-bold text-gray-300"
+                            htmlFor="quantity-input"
+                          >
+                            Quantity
+                          </label>
+                          {playerHoldings && playerHoldings.totalQuantity > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setQuantity([playerHoldings.totalQuantity])}
+                              className="text-xs text-blue-400 hover:text-blue-300 font-medium underline"
+                            >
+                              Select All Holdings ({playerHoldings.totalQuantity})
+                            </button>
+                          )}
+                        </div>
                         <Input
                           id="quantity-input"
                           type="text"
@@ -1793,15 +1804,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                             }
 
                             let numVal = Number(val);
-                            const maxQty = (() => {
-                              if (playerHoldings) {
-                                const maxFromHoldings = Math.floor(Number(playerHoldings.remainingInvestment) / (calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) || 1))
-                                const maxFromBalance = Math.max(0, Math.floor(25000 / (calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) || 1)))
-                                return Math.min(maxFromHoldings, maxFromBalance)
-                              } else {
-                                return Math.max(0, Math.floor(25000 / (calculatePlayerPrice(bettingPlayer, bettingPlayerIndex) || 1)))
-                              }
-                            })()
+                            const maxQty = 25000;
                             if (numVal > maxQty) numVal = maxQty;
 
                             setQuantity([numVal]);
@@ -2137,12 +2140,23 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                   <div className="mt-6 sm:mt-8">
                     <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                       <div className="flex-1 flex flex-col">
-                        <label
-                          className="text-xs sm:text-sm font-bold text-gray-300 mb-1"
-                          htmlFor="team-quantity-input"
-                        >
-                          Quantity
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label
+                            className="text-xs sm:text-sm font-bold text-gray-300"
+                            htmlFor="team-quantity-input"
+                          >
+                            Quantity
+                          </label>
+                          {teamHoldings && teamHoldings.totalQuantity > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setTeamQuantity([teamHoldings.totalQuantity])}
+                              className="text-xs text-blue-400 hover:text-blue-300 font-medium underline"
+                            >
+                              Select All Holdings ({teamHoldings.totalQuantity})
+                            </button>
+                          )}
+                        </div>
                         <Input
                           id="team-quantity-input"
                           type="text"
@@ -2159,36 +2173,20 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                             }
                           })()}`}
                           onChange={(e) => {
-                            const isInningOverForTeam = selectedTeamInningIndex >= 0 && isInningOver(selectedTeamInningIndex)
-                            if (isInningOverForTeam) return;
-
                             const val = e.target.value;
+
+                            // Only allow digits
                             if (!/^\d*$/.test(val)) return;
+
                             if (val === "") {
                               setTeamQuantity([0]);
                               return;
                             }
+
                             let numVal = Number(val);
+                            const maxQty = 25000;
+                            if (numVal > maxQty) numVal = maxQty;
 
-                            // Calculate max quantity based on remaining investment limit
-                            const storedPrice = data?.teamStockPrices?.[selectedTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
-                            const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], selectedTeam.team_id, data?.teamStockPrices)
-                            const currentPrice = calculatedPrice || storedPrice || 50;
-                            let maxQty = Math.max(0, Math.floor(25000 / currentPrice));
-
-                            // If we have team holdings data, use the remaining investment limit
-                            if (teamHoldings) {
-                              const remainingInvestment = Number(teamHoldings.remainingInvestment);
-                              const maxFromHoldings = Math.floor(remainingInvestment / currentPrice);
-                              maxQty = Math.min(maxQty, maxFromHoldings);
-                            }
-
-                            if (numVal > maxQty) {
-                              numVal = maxQty;
-                              if (teamHoldings && Number(teamHoldings.remainingInvestment) < 25000) {
-                                toast.error(`Investment limit exceeded. You can only invest ₹${teamHoldings.remainingInvestment} more in this team.`);
-                              }
-                            }
                             setTeamQuantity([numVal]);
                           }}
                           onWheel={(e) => e.currentTarget.blur()}

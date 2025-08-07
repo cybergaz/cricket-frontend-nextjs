@@ -291,10 +291,11 @@ export default function Portfolio() {
                   const currentWicketCount = extractWicketCount(currentInning.scores)
                   const previousWicketCount = previousWicketCounts.current[`${p.matchId}_${match.latest_inning_number}`] || 0
                   wicketsIncreased = currentWicketCount > previousWicketCount
-                  
+                  if (currentWicketCount == 0 || previousWicketCount == 0) wicketsIncreased = false
+
                   // Update previous wicket count
                   previousWicketCounts.current[`${p.matchId}_${match.latest_inning_number}`] = currentWicketCount
-                  
+
                   // Log wicket changes for debugging
                   if (currentWicketCount !== previousWicketCount) {
                     console.log(`Wicket count changed for ${p.matchId} inning ${match.latest_inning_number}: ${previousWicketCount} -> ${currentWicketCount} (increased: ${wicketsIncreased})`)
@@ -303,14 +304,14 @@ export default function Portfolio() {
               }
 
               // Check if this player is currently batting (to prevent sell window when wickets increase)
-              const isCurrentlyBatting = match && match.innings && match.latest_inning_number ? 
+              const isCurrentlyBatting = match && match.innings && match.latest_inning_number ?
                 match.innings[Number(match.latest_inning_number) - 1]?.batsmen?.some(b => b.batsman_id === p.playerId) : false
 
               // Only activate sell window if wickets haven't increased OR if player is not currently batting
               if (!wicketsIncreased || !isCurrentlyBatting) {
                 // Clear the disabled state if it was set
                 setSellWindowDisabledDueToWicket(prev => ({ ...prev, [p.playerId]: false }))
-                
+
                 // console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
                 // console.log(`Activating sell window for ${p.playerName}`)
                 // Only activate sell window if it's not already active and wasn't just activated
@@ -467,10 +468,11 @@ export default function Portfolio() {
                   const currentWicketCount = extractWicketCount(currentInning.scores)
                   const previousWicketCount = previousWicketCounts.current[`${p.matchId}_${match.latest_inning_number}`] || 0
                   wicketsIncreased = currentWicketCount > previousWicketCount
-                  
+                  if (currentWicketCount == 0 || previousWicketCount == 0) wicketsIncreased = false
+
                   // Update previous wicket count
                   previousWicketCounts.current[`${p.matchId}_${match.latest_inning_number}`] = currentWicketCount
-                  
+
                   // Log wicket changes for debugging
                   if (currentWicketCount !== previousWicketCount) {
                     console.log(`Wicket count changed for ${p.matchId} inning ${match.latest_inning_number}: ${previousWicketCount} -> ${currentWicketCount} (increased: ${wicketsIncreased})`)
@@ -479,14 +481,14 @@ export default function Portfolio() {
               }
 
               // Check if this player is currently batting (to prevent sell window when wickets increase)
-              const isCurrentlyBatting = match && match.innings && match.latest_inning_number ? 
+              const isCurrentlyBatting = match && match.innings && match.latest_inning_number ?
                 match.innings[Number(match.latest_inning_number) - 1]?.batsmen?.some(b => b.batsman_id === p.playerId) : false
 
               // Only activate sell window if wickets haven't increased OR if player is not currently batting
               if (!wicketsIncreased || !isCurrentlyBatting) {
                 // Clear the disabled state if it was set
                 setSellWindowDisabledDueToWicket(prev => ({ ...prev, [p.playerId]: false }))
-                
+
                 console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
                 // Only activate sell window if it's not already active and wasn't just activated
                 if (!justActivatedSellWindow.current[p.playerId]) {
