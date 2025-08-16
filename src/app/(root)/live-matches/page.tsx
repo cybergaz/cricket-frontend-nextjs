@@ -31,13 +31,13 @@ export default function LiveMatches() {
       if (!res.ok) throw new Error("API Error");
 
       const data = await res.json();
-      const unwantedWords = ["won", "loss", "draw", "abandoned", "no result", "cancelled", "tie", "postponed", "completed", "cancelled", "finished"];
-      const matches = data.data.filter(
-        (match: any) =>
-          typeof match.live === "string" &&
-          !unwantedWords.some(word => match.live.toLowerCase().includes(word))
-      );
-      setMatches(matches);
+      // const unwantedWords = ["won", "loss", "draw", "abandoned", "no result", "cancelled", "tie", "postponed", "completed", "cancelled", "finished"];
+      // const matches = data.data.filter(
+      //   (match: any) =>
+      //     typeof match.live === "string" &&
+      //     !unwantedWords.some(word => match.live.toLowerCase().includes(word))
+      // );
+      setMatches(data.data);
       // Reset retry count when we successfully get matches
       setRetryCount(0);
     } catch (e) {
@@ -83,27 +83,6 @@ export default function LiveMatches() {
   useEffect(() => {
     fetchData();
   }, []);
-
-  // Re-fetch data when the page becomes visible (user navigates back)
-  // useEffect(() => {
-  //   const handleVisibilityChange = () => {
-  //     if (!document.hidden) {
-  //       fetchData();
-  //     }
-  //   };
-  //
-  //   const handleFocus = () => {
-  //     fetchData();
-  //   };
-  //
-  //   document.addEventListener('visibilitychange', handleVisibilityChange);
-  //   window.addEventListener('focus', handleFocus);
-  //
-  //   return () => {
-  //     document.removeEventListener('visibilitychange', handleVisibilityChange);
-  //     window.removeEventListener('focus', handleFocus);
-  //   };
-  // }, []);
 
   useEffect(() => {
     const today = new Date();
@@ -180,7 +159,7 @@ export default function LiveMatches() {
 
         <div>
           {matches.length > 0 ? (
-            <div className="relative">
+            <div className="relative flex flex-col items-center justify-center gap-5">
               {/* Floating Refresh Button */}
               <div className="fixed bottom-6 right-6 z-50">
                 <button

@@ -6,8 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Target, TrendingUp, Users, Star, HardHat, Radio, Mic2, Twitter, Instagram } from "lucide-react"
-import type { CricketMatchData, Player, MatchScorecardProps, Innings } from "./types"
-import { getRoleColor, buyPlayer, sellPlayer, formatMatchNotes, updateTeamStockPrice, buyTeam, sellTeam, checkPlayerHoldings, checkTeamHoldings, calculateTeamStockPrice, updateTeamStockPriceNew, autoSellPlayerPortfolios } from "./services"
+import { getRoleColor, buyPlayer, sellPlayer, formatMatchNotes, buyTeam, sellTeam, checkPlayerHoldings, checkTeamHoldings, calculateTeamStockPrice, updateTeamStockPriceNew, autoSellPlayerPortfolios } from "./services"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -15,375 +14,15 @@ import { Slider } from "@/components/ui/slider"
 import { MatchInfoTicker } from "./components/match-info-ticker"
 import { redirect } from "next/navigation"
 import Image from "next/image"
+import { MatchInfoApiResponse, convertApiResponseToLegacyFormat, CricketMatchData, Innings, Player } from "./types-updated"
 
-// Helper function to calculate player price dynamically
-const calculatePlayerPrice = (batsman: any, batsmanIndex: number) => {
-  if (!batsman) return 0
-  const basePrice = batsmanIndex <= 2 ? 35 : batsmanIndex < 5 ? 30 : 25
-  return (
-    basePrice -
-    Number(batsman.run0 || 0) * 1.0 +
-    Number(batsman.run1 || 0) * 0.75 +
-    Number(batsman.run2 || 0) * 1.5 +
-    Number(batsman.run3 || 0) * 2.25 +
-    Number(batsman.fours || 0) * 3 +
-    Number(batsman.sixes || 0) * 4.5
-  )
+export interface MatchScorecardProps {
+  matchData: MatchInfoApiResponse
 }
 
-// Helper function to calculate team stock price based on accumulated value
-const calculateTeamStockPriceForDisplay = (innings: any[], battingTeamId: string, teamStockPrices: any) => {
-  if (!innings || innings.length === 0) return 50; // Default launch price
+export default function MatchDashboard({ matchData }: MatchScorecardProps) {
 
-  // Find the current inning where the team is batting
-  const currentInning = innings.find(inning => inning.batting_team_id === battingTeamId);
-  if (!currentInning || !currentInning.batsmen) return 50;
-
-  let accumulatedPrice = 50; // Start with launch price
-  const batsmen = currentInning.batsmen;
-
-  // Sort batsmen by their batting order (assuming they come in order they played)
-  // We'll use the array order as batting order since that's how they appear in the data
-  batsmen.forEach((batsman: any, index: number) => {
-    const runs = Number(batsman.runs) || 0;
-    const isOut = batsman.how_out !== "Not out" && batsman.dismissal !== "";
-    const isCurrentlyBatting = batsman.batting === "true" && batsman.dismissal === "";
-
-    if (runs > 0) {
-      // Add 20% of runs to accumulated price
-      const runsContribution = runs * 0.2;
-      accumulatedPrice += runsContribution;
-    }
-
-    // If player is out, subtract 10% from accumulated price
-    if (isOut) {
-      const outPenalty = accumulatedPrice * 0.1;
-      accumulatedPrice -= outPenalty;
-    }
-
-    // For currently batting players, we still add their runs but don't apply out penalty yet
-    if (isCurrentlyBatting && runs > 0) {
-      // Runs are already added above, no additional penalty
-    }
-  });
-
-  // Ensure price doesn't go below 0
-  return Math.max(0, accumulatedPrice);
-}
-
-// Sub-component for the "Trade Now" tab to reduce repetition
-const TradeInningScorecard = ({
-  inning,
-  inningIndex,
-  inningTitle,
-  openBettingModal,
-  teamLogos,
-  sellWindowActive,
-  sellWindowTimeLeft,
-  isPlayerCurrentlyBatting,
-  isPlayerOut,
-  canPlayerTrade,
-  isInningOver,
-  data,
-  latestInningNumber,
-  openTeamBettingModal,
-  isUpdatingTeamStocks,
-  canTeamTrade,
-  wicketsIncreased,
-}: {
-  inning: Innings
-  inningIndex: number
-  inningTitle: string
-  openBettingModal: (batsmanId: string, inningIndex: number) => void
-  teamLogos: { teama: string; teamb: string }
-  sellWindowActive: Record<string, boolean>
-  sellWindowTimeLeft: Record<string, number>
-  isPlayerCurrentlyBatting: (player: any) => boolean
-  isPlayerOut: (player: any) => boolean
-  canPlayerTrade: (player: any, inningIndex: number) => boolean
-  isInningOver: (inningIndex: number) => boolean
-  data: any
-  latestInningNumber: number
-  openTeamBettingModal: (team: any, inningIndex: number) => void
-  isUpdatingTeamStocks: boolean
-  canTeamTrade: (team: any, inningIndex: number) => boolean
-  wicketsIncreased: boolean
-}) => {
-  const [subTab, setSubTab] = useState("batsmen")
-
-  if (!inning) return null
-
-  const sortedBatsmen = [...(inning.batsmen || [])].sort((a: any, b: any) => {
-    const aNotOut = a.how_out === "Not out" || a.dismissal === ""
-    const bNotOut = b.how_out === "Not out" || b.dismissal === ""
-    if (aNotOut === bNotOut) return 0
-    return aNotOut ? -1 : 1
-  })
-
-  // Determine which team is currently batting
-  const battingTeam = inning.batting_team_id === data?.teama?.team_id ? data.teama : data?.teamb
-
-  return (
-    <div className="mb-8">
-      <Card className="relative bg-transparent overflow-hidden rounded-none shadow-none -mx-3">
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          <img
-            src={teamLogos.teama || "/placeholder.svg"}
-            alt="Team A"
-            className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay scale-125 blur-sm"
-          />
-          <img
-            src={teamLogos.teamb || "/placeholder.svg"}
-            alt="Team B"
-            className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay scale-125 blur-sm"
-          />
-        </div>
-        <CardContent className="p-0 text-center space-y-4 relative z-10">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-wide bg-white/60 bg-clip-text text-transparent">
-            {inningTitle}
-          </h2>
-        </CardContent>
-      </Card>
-
-      {/* Team Stocks Section - Only show for the current active inning when team is batting */}
-      {battingTeam && canTeamTrade(battingTeam, inningIndex) && (
-        <div className="mb-6">
-          <div className="text-center mb-4">
-            <p className="text-gray-400 text-xs mt-5">
-              💡 Team stocks : +20% of runs scored, -10% when players get out
-            </p>
-          </div>
-
-          <div className={`flex items-center justify-between p-4 rounded-lg transition ${!isInningOver(inningIndex)
-            ? "bg-white/20 hover:bg-white/30"
-            : "bg-white/5 opacity-60"
-            }`}>
-            <div className="flex items-center gap-4">
-              <img
-                src={battingTeam.logo_url || "/placeholder.svg"}
-                alt={battingTeam.name}
-                className="w-12 h-12 rounded-full"
-              />
-              <div>
-                <h3 className="text-lg font-bold text-white">{battingTeam.name}</h3>
-                <p className="text-sm text-gray-300 flex items-center gap-2">
-                  Current Price: ₹{(() => {
-                    const storedPrice = data?.teamStockPrices?.[battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
-                    const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], battingTeam.team_id, data?.teamStockPrices)
-                    // Use calculated price if available, otherwise fall back to stored price or default
-                    return (calculatedPrice || storedPrice || 50).toFixed(2)
-                  })()}
-                  {isUpdatingTeamStocks && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-yellow-400 bg-yellow-400/20 text-xs font-bold animate-pulse">
-                      <span className="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></span>
-                      Updating...
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isInningOver(inningIndex)) {
-                    openTeamBettingModal(battingTeam, inningIndex)
-                  } else {
-                    toast.info("Inning is over, cannot trade")
-                  }
-                }}
-                className={`text-sm font-bold px-4 py-2 rounded-lg shadow-md transition-all duration-200 ${!isInningOver(inningIndex)
-                  ? "bg-green-600/80 hover:bg-green-700/80 text-white cursor-pointer"
-                  : "bg-gray-600/80 text-gray-400 cursor-not-allowed"
-                  }`}
-                disabled={isInningOver(inningIndex)}
-              >
-                Buy Team Stocks
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Wicket Increase Warning */}
-      {wicketsIncreased && (
-        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-red-400 text-lg">⚠️</span>
-            <p className="text-red-400 text-sm font-bold text-center">
-              Wicket fell! Sell windows are temporarily disabled for current batsmen until API updates.
-            </p>
-          </div>
-        </div>
-      )}
-
-      <Tabs value={subTab} onValueChange={setSubTab} className="w-full mt-2">
-        <TabsList className="flex w-full overflow-x-auto scrollbar-hide h-auto gap-1 md:gap-2 p-1 bg-white/5 rounded-xl">
-          <TabsTrigger
-            value="batsmen"
-            className="flex-1 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 p-2 sm:py-1 text-md"
-          >
-            Batsmen
-          </TabsTrigger>
-          <TabsTrigger
-            value="bowlers"
-            className="flex-1 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 p-2 sm:py-1 text-md"
-          >
-            Bowlers
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="batsmen" className="mt-4 space-y-2">
-          {
-            inning.batsmen.length === 0 && (
-              <div className="text-center text-gray-400">No batsmen data available</div>
-            )
-          }
-          {sortedBatsmen.map((batsman: any) => {
-            const isBatting = isPlayerCurrentlyBatting(batsman)
-            const isOut = isPlayerOut(batsman)
-            const canTrade = canPlayerTrade(batsman, inningIndex)
-
-            return (
-              <div
-                key={batsman.batsman_id}
-                onClick={() => {
-                  if (canTrade) {
-                    openBettingModal(batsman.batsman_id, inningIndex)
-                  } else if (isOut) {
-                    toast.info("Player is out. All holdings have been auto-sold at 50% loss.")
-                  } else if (!isBatting) {
-                    toast.info("Player is not currently batting")
-                  } else if (isInningOver(inningIndex)) {
-                    toast.info("Inning is Over")
-                  }
-                }}
-                className={`flex items-center justify-between p-2 px-4 rounded-md transition text-xs sm:text-base ${canTrade ? "bg-white/20 hover:bg-white/30 cursor-pointer" : isOut ? "bg-red-500/20 opacity-80 cursor-not-allowed" : "bg-white/5 opacity-60 cursor-not-allowed"
-                  }`}
-              >
-                <div>
-                  <h3 className="flex items-center gap-2 text-sm sm:text-lg font-bold text-white">
-                    {batsman.name}
-                    {batsman.position == "striker" && <Badge className="text-xs p-1 px-2 text-white bg-white/30">Batting</Badge>}
-                  </h3>
-                  <p className="text-xs sm:text-sm font-bold text-white/70">
-                    {batsman.runs} ({batsman.balls_faced})
-                  </p>
-                  {isOut && <p className="text-xs sm:text-sm font-bold text-red-400">{batsman.how_out}</p>}
-                </div>
-                <div className="text-right flex items-center gap-3 sm:gap-5">
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-white bg-white/10 text-xs sm:text-sm font-bold shadow-sm">
-                      <span className="font-bold">SR:</span>
-                      <span>{batsman.strike_rate}</span>
-                    </span>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="flex items-center gap-1">
-                        <span className="w-4 h-4 rounded bg-blue-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-blue-400">
-                          4
-                        </span>
-                        <span className="text-xs sm:text-sm font-bold text-blue-200">{batsman.fours}</span>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-4 h-4 rounded bg-yellow-400 text-black text-xs font-bold flex items-center justify-center shadow-sm border border-yellow-300">
-                          6
-                        </span>
-                        <span className="text-xs sm:text-sm font-bold text-yellow-200">{batsman.sixes}</span>
-                      </span>
-                    </div>
-                  </div>
-                  {canTrade && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (wicketsIncreased && isPlayerCurrentlyBatting(batsman)) {
-                          toast.info("Sell windows are disabled due to recent wicket fall. Please wait for API updates.")
-                          return
-                        }
-                        openBettingModal(batsman.batsman_id, inningIndex)
-                      }}
-                      className={`text-[13px] sm:text-sm font-extrabold px-4 py-2 rounded-lg shadow-md hover:scale-105 transition-all duration-200 flex items-center gap-2 cursor-pointer ${(() => {
-                        if (wicketsIncreased && isPlayerCurrentlyBatting(batsman)) {
-                          return "bg-yellow-600/80 text-white"
-                        } else if (sellWindowActive[batsman.batsman_id]) {
-                          return "bg-green-600/80 text-white animate-pulse"
-                        } else {
-                          return "bg-green-600/80 sm:bg-green-500/20 text-white"
-                        }
-                      })()}`}
-                    >
-                      <span>
-                        {(() => {
-                          if (wicketsIncreased && isPlayerCurrentlyBatting(batsman)) {
-                            return "⚠️ Wicket Fell"
-                          } else if (sellWindowActive[batsman.batsman_id]) {
-                            return `Trade (${sellWindowTimeLeft[batsman.batsman_id]}s)`
-                          } else {
-                            return "Trade"
-                          }
-                        })()}
-                      </span>
-                    </button>
-                  )}
-                  {isOut && (
-                    <button
-                      type="button"
-                      disabled
-                      className="text-[13px] sm:text-sm font-extrabold px-4 py-2 rounded-lg shadow-md transition-all duration-200 flex items-center gap-2 cursor-not-allowed bg-red-600/80 text-white opacity-60"
-                    >
-                      <span> Out </span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </TabsContent>
-        <TabsContent value="bowlers" className="mt-4 space-y-2">
-          {
-            (inning.bowlers || []).length === 0 && (
-              <div className="text-center text-gray-400">No bowlers data available</div>
-            )
-          }
-
-          {(inning.bowlers || []).map((bowler) => {
-            const isCurrentBowler = bowler.bowling === "true"
-            return (
-              <div
-                key={bowler.bowler_id}
-                onClick={() => toast("Bowler's Stocks Coming Soon..")}
-                className={`flex items-center justify-between p-2 rounded-md transition ${isCurrentBowler
-                  ? "bg-white/20 hover:bg-white/30 cursor-pointer"
-                  : "bg-transparent opacity-60 pointer-events-none select-none"
-                  }`}
-              >
-                <div>
-                  <h3
-                    className={`flex items-center gap-2 text-sm sm:text-lg font-bold ${isCurrentBowler ? "text-white" : "text-gray-400"
-                      }`}
-                  >
-                    {bowler.name}
-                    {isCurrentBowler && <Badge className="text-xs p-1 text-red-400">*</Badge>}
-                  </h3>
-                  <p className={`text-xs sm:text-sm ${isCurrentBowler ? "text-white" : "text-gray-500"}`}>
-                    {bowler.overs} ov, {bowler.maidens} m, {bowler.runs_conceded} r, {bowler.wickets} w
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className={`text-xs sm:text-base font-bold ${isCurrentBowler ? "text-white" : "text-gray-400"}`}>
-                    Econ: {bowler.econ}
-                  </p>
-                </div>
-              </div>
-            )
-          })}
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
-}
-
-export default function MatchScorecard({ matchData, matchId }: MatchScorecardProps) {
-  // Component state
+  console.log(matchData)
 
   const [isCommentaryOpen, setIsCommentaryOpen] = useState(false)
   const [isMatchInfoOpen, setIsMatchInfoOpen] = useState(false)
@@ -443,9 +82,10 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
   // No more useState for data-derived properties. They are now derived on every render,
   // ensuring the UI is always in sync with the latest `matchData` prop.
   const hasData = matchData && Object.keys(matchData).length > 0
-  const data: CricketMatchData | null = hasData ? matchData : null
+  const data: CricketMatchData | null = hasData ? convertApiResponseToLegacyFormat(matchData) : null
 
   const match_id = data?.match_id || ""
+  const matchId = match_id
   const latestInningNumber = data?.latest_inning_number ? Number(data.latest_inning_number) : 0
   const currentInnings = data?.innings && latestInningNumber > 0 ? data.innings[latestInningNumber - 1] : null
   const previousInnings = data?.innings && latestInningNumber > 1 ? data.innings[latestInningNumber - 2] : null
@@ -654,11 +294,11 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
       setIsUpdatingTeamStocks(true)
 
       // Calculate new team stock price using accumulated method
-      const calculatedPrice = calculateTeamStockPrice(data.innings, battingTeam.team_id)
+      const calculatedPrice = calculateTeamStockPrice(data.innings, Number(battingTeam.team_id))
       console.log(`Calculated team stock price: ${calculatedPrice}`)
 
       // Update team stock price using new calculation method
-      updateTeamStockPriceNew(data.match_id, battingTeam.team_id, data.innings)
+      updateTeamStockPriceNew(data.match_id, String(battingTeam.team_id), data.innings)
         .then((result: any) => {
           if (result.success) {
             console.log(`Team stock price updated: ${result.data.reason}`)
@@ -704,9 +344,10 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
   const isInningOver = (inningIndex: number) => {
     if (!data?.innings || inningIndex < 0 || inningIndex >= data.innings.length) return false
     const inning = data.innings[inningIndex]
-    return inning?.status?.toLowerCase().includes("over") ||
-      inning?.status?.toLowerCase().includes("completed") ||
-      inning?.status?.toLowerCase().includes("finished")
+    const status = String(inning?.status || "").toLowerCase()
+    return status.includes("over") ||
+      status.includes("completed") ||
+      status.includes("finished")
   }
 
   const canTeamTrade = (team: any, inningIndex: number) => {
@@ -1449,7 +1090,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                                   <div className="flex items-center gap-1">
                                     <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
                                     <span className="text-yellow-400 text-xs sm:text-sm font-bold">
-                                      {player.fantasy_player_rating}/10
+                                      {(player as any).fantasy_player_rating || "N/A"}/10
                                     </span>
                                   </div>
                                 </div>
@@ -1499,15 +1140,16 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                       teamLogoUrl = data.teamb.logo_url;
                     }
 
-                    if (selectedPlayer.profile_image || selectedPlayer.thumb_url) {
-                      return (
-                        <img
-                          src={selectedPlayer.profile_image || selectedPlayer.thumb_url}
-                          alt={selectedPlayer.title}
-                          className="w-16 h-16 sm:w-24 sm:h-24 rounded-full object-cover shadow-md flex-shrink-0"
-                        />
-                      );
-                    } else if (teamLogoUrl) {
+                    {/* if (selectedPlayer.profile || selectedPlayer.thumb_url) { */ }
+                    {/*   return ( */ }
+                    {/*     <img */ }
+                    {/*       src={selectedPlayer.profile_image || selectedPlayer.thumb_url} */ }
+                    {/*       alt={selectedPlayer.title} */ }
+                    {/*       className="w-16 h-16 sm:w-24 sm:h-24 rounded-full object-cover shadow-md flex-shrink-0" */ }
+                    {/*     /> */ }
+                    {/*   ); */ }
+                    {/* } else  */ }
+                    if (teamLogoUrl) {
                       return (
                         <img
                           src={teamLogoUrl}
@@ -1569,14 +1211,13 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                 <div className="w-full divide-y divide-gray-700 border border-gray-700 rounded-md overflow-hidden text-sm sm:text-base">
                   {[
                     ['Full Name', selectedPlayer.first_name || 'N/A'],
-                    ['Role', selectedPlayer.playing_role || selectedPlayer.role || 'N/A'],
+                    ['Role', selectedPlayer.playing_role || selectedPlayer.playing_role || 'N/A'],
                     ['Batting Style', selectedPlayer.batting_style || 'N/A'],
                     ['Bowling Style', selectedPlayer.bowling_style || 'N/A'],
-                    ['Bowling Type', selectedPlayer.bowling_type || 'N/A'],
+                    ['Bowling Type', selectedPlayer.bowling_style || 'N/A'],
                     ['Nationality', selectedPlayer.nationality || selectedPlayer.country || 'N/A'],
                     ['Birthdate', selectedPlayer.birthdate || 'N/A'],
                     ['Birthplace', selectedPlayer.birthplace || 'N/A'],
-                    ['Fantasy Rating', selectedPlayer.fantasy_player_rating || 'N/A'],
                   ].map(([label, value]) => (
                     value !== 'N/A' && (
                       <div key={label} className="grid grid-cols-1 sm:grid-cols-2 p-2 sm:p-3 bg-gray-900/40">
@@ -1888,7 +1529,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                         return;
                       }
                       const buyingResponse = await buyPlayer(
-                        bettingPlayer,
+                        bettingPlayer as any,
                         String(calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)),
                         String(quantity[0]),
                         match_id,
@@ -1946,7 +1587,7 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
                         return;
                       }
                       const sellingResponse = await sellPlayer(
-                        bettingPlayer,
+                        bettingPlayer as any,
                         String(calculatePlayerPrice(bettingPlayer, bettingPlayerIndex)),
                         String(quantity[0]),
                         match_id,
@@ -2417,6 +2058,381 @@ export default function MatchScorecard({ matchData, matchId }: MatchScorecardPro
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// Helper function to calculate player price dynamically
+const calculatePlayerPrice = (batsman: any, batsmanIndex: number) => {
+  if (!batsman) return 0
+  const basePrice = batsmanIndex <= 2 ? 35 : batsmanIndex < 5 ? 30 : 25
+  return (
+    basePrice -
+    Number(batsman.run0 || 0) * 1.0 +
+    Number(batsman.run1 || 0) * 0.75 +
+    Number(batsman.run2 || 0) * 1.5 +
+    Number(batsman.run3 || 0) * 2.25 +
+    Number(batsman.fours || 0) * 3 +
+    Number(batsman.sixes || 0) * 4.5
+  )
+}
+
+// Helper function to calculate team stock price based on accumulated value
+const calculateTeamStockPriceForDisplay = (innings: any[], battingTeamId: string, teamStockPrices: any) => {
+  if (!innings || innings.length === 0) return 50; // Default launch price
+
+  // Check if we have a cached price in localStorage
+  const matchId = innings[0]?.match_id || '';
+  const storageKey = `team_stock_${matchId}_${battingTeamId}`;
+  const cachedPrice = localStorage.getItem(storageKey);
+
+  if (cachedPrice) {
+    return parseFloat(cachedPrice);
+  }
+
+  // Find the current inning where the team is batting
+  const currentInning = innings.find(inning => inning.batting_team_id === battingTeamId);
+  if (!currentInning || !currentInning.batsmen) return 50;
+
+  let accumulatedPrice = 50; // Start with launch price
+  const batsmen = currentInning.batsmen;
+
+  // Sort batsmen by their batting order (assuming they come in order they played)
+  // We'll use the array order as batting order since that's how they appear in the data
+  batsmen.forEach((batsman: any, index: number) => {
+    const runs = Number(batsman.runs) || 0;
+    const isOut = batsman.how_out !== "Not out" && batsman.dismissal !== "";
+    const isCurrentlyBatting = batsman.batting === "true" && batsman.dismissal === "";
+
+    if (runs > 0) {
+      // Add 20% of runs to accumulated price
+      const runsContribution = runs * 0.2;
+      accumulatedPrice += runsContribution;
+    }
+
+    // If player is out, subtract 10% from accumulated price
+    if (isOut) {
+      const outPenalty = accumulatedPrice * 0.1;
+      accumulatedPrice -= outPenalty;
+    }
+
+    // For currently batting players, we still add their runs but don't apply out penalty yet
+    if (isCurrentlyBatting && runs > 0) {
+      // Runs are already added above, no additional penalty
+    }
+  });
+
+  // Ensure price doesn't go below 0
+  return Math.max(0, accumulatedPrice);
+}
+
+// Sub-component for the "Trade Now" tab to reduce repetition
+const TradeInningScorecard = ({
+  inning,
+  inningIndex,
+  inningTitle,
+  openBettingModal,
+  teamLogos,
+  sellWindowActive,
+  sellWindowTimeLeft,
+  isPlayerCurrentlyBatting,
+  isPlayerOut,
+  canPlayerTrade,
+  isInningOver,
+  data,
+  latestInningNumber,
+  openTeamBettingModal,
+  isUpdatingTeamStocks,
+  canTeamTrade,
+  wicketsIncreased,
+}: {
+  inning: Innings
+  inningIndex: number
+  inningTitle: string
+  openBettingModal: (batsmanId: string, inningIndex: number) => void
+  teamLogos: { teama: string; teamb: string }
+  sellWindowActive: Record<string, boolean>
+  sellWindowTimeLeft: Record<string, number>
+  isPlayerCurrentlyBatting: (player: any) => boolean
+  isPlayerOut: (player: any) => boolean
+  canPlayerTrade: (player: any, inningIndex: number) => boolean
+  isInningOver: (inningIndex: number) => boolean
+  data: any
+  latestInningNumber: number
+  openTeamBettingModal: (team: any, inningIndex: number) => void
+  isUpdatingTeamStocks: boolean
+  canTeamTrade: (team: any, inningIndex: number) => boolean
+  wicketsIncreased: boolean
+}) => {
+  const [subTab, setSubTab] = useState("batsmen")
+
+  if (!inning) return null
+
+  const sortedBatsmen = [...(inning.batsmen || [])].sort((a: any, b: any) => {
+    const aNotOut = a.how_out === "Not out" || a.dismissal === ""
+    const bNotOut = b.how_out === "Not out" || b.dismissal === ""
+    if (aNotOut === bNotOut) return 0
+    return aNotOut ? -1 : 1
+  })
+
+  // Determine which team is currently batting
+  const battingTeam = inning.batting_team_id === data?.teama?.team_id ? data.teama : data?.teamb
+
+  return (
+    <div className="mb-8">
+      <Card className="relative bg-transparent overflow-hidden rounded-none shadow-none -mx-3">
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <img
+            src={teamLogos.teama || "/placeholder.svg"}
+            alt="Team A"
+            className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay scale-125 blur-sm"
+          />
+          <img
+            src={teamLogos.teamb || "/placeholder.svg"}
+            alt="Team B"
+            className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay scale-125 blur-sm"
+          />
+        </div>
+        <CardContent className="p-0 text-center space-y-4 relative z-10">
+          <h2 className="text-4xl md:text-5xl font-bold tracking-wide bg-white/60 bg-clip-text text-transparent">
+            {inningTitle}
+          </h2>
+        </CardContent>
+      </Card>
+
+      {/* Team Stocks Section - Only show for the current active inning when team is batting */}
+      {battingTeam && canTeamTrade(battingTeam, inningIndex) && (
+        <div className="mb-6">
+          <div className="text-center mb-4">
+            <p className="text-gray-400 text-xs mt-5">
+              💡 Team stocks : +20% of runs scored, -10% when players get out
+            </p>
+          </div>
+
+          <div className={`flex items-center justify-between p-4 rounded-lg transition ${!isInningOver(inningIndex)
+            ? "bg-white/20 hover:bg-white/30"
+            : "bg-white/5 opacity-60"
+            }`}>
+            <div className="flex items-center gap-4">
+              <img
+                src={battingTeam.logo_url || "/placeholder.svg"}
+                alt={battingTeam.name}
+                className="w-12 h-12 rounded-full"
+              />
+              <div>
+                <h3 className="text-lg font-bold text-white">{battingTeam.name}</h3>
+                <p className="text-sm text-gray-300 flex items-center gap-2">
+                  Current Price: ₹{(() => {
+                    const storedPrice = data?.teamStockPrices?.[battingTeam.team_id === data.teama?.team_id ? 'teama' : 'teamb']
+                    const calculatedPrice = calculateTeamStockPriceForDisplay(data?.innings || [], battingTeam.team_id, data?.teamStockPrices)
+                    // Use calculated price if available, otherwise fall back to stored price or default
+                    return (calculatedPrice || storedPrice || 50).toFixed(2)
+                  })()}
+                  {isUpdatingTeamStocks && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-yellow-400 bg-yellow-400/20 text-xs font-bold animate-pulse">
+                      <span className="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></span>
+                      Updating...
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isInningOver(inningIndex)) {
+                    openTeamBettingModal(battingTeam, inningIndex)
+                  } else {
+                    toast.info("Inning is over, cannot trade")
+                  }
+                }}
+                className={`text-sm font-bold px-4 py-2 rounded-lg shadow-md transition-all duration-200 ${!isInningOver(inningIndex)
+                  ? "bg-green-600/80 hover:bg-green-700/80 text-white cursor-pointer"
+                  : "bg-gray-600/80 text-gray-400 cursor-not-allowed"
+                  }`}
+                disabled={isInningOver(inningIndex)}
+              >
+                Buy Team Stocks
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wicket Increase Warning */}
+      {wicketsIncreased && (
+        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-red-400 text-lg">⚠️</span>
+            <p className="text-red-400 text-sm font-bold text-center">
+              Wicket fell! Sell windows are temporarily disabled for current batsmen until API updates.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <Tabs value={subTab} onValueChange={setSubTab} className="w-full mt-2">
+        <TabsList className="flex w-full overflow-x-auto scrollbar-hide h-auto gap-1 md:gap-2 p-1 bg-white/5 rounded-xl">
+          <TabsTrigger
+            value="batsmen"
+            className="flex-1 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 p-2 sm:py-1 text-md"
+          >
+            Batsmen
+          </TabsTrigger>
+          <TabsTrigger
+            value="bowlers"
+            className="flex-1 data-[state=active]:bg-white/80 data-[state=active]:text-sky-600 p-2 sm:py-1 text-md"
+          >
+            Bowlers
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="batsmen" className="mt-4 space-y-2">
+          {
+            inning.batsmen.length === 0 && (
+              <div className="text-center text-gray-400">No batsmen data available</div>
+            )
+          }
+          {sortedBatsmen.map((batsman: any) => {
+            const isBatting = isPlayerCurrentlyBatting(batsman)
+            const isOut = isPlayerOut(batsman)
+            const canTrade = canPlayerTrade(batsman, inningIndex)
+
+            return (
+              <div
+                key={batsman.batsman_id}
+                onClick={() => {
+                  if (canTrade) {
+                    openBettingModal(batsman.batsman_id, inningIndex)
+                  } else if (isOut) {
+                    toast.info("Player is out. All holdings have been auto-sold at 50% loss.")
+                  } else if (!isBatting) {
+                    toast.info("Player is not currently batting")
+                  } else if (isInningOver(inningIndex)) {
+                    toast.info("Inning is Over")
+                  }
+                }}
+                className={`flex items-center justify-between p-2 px-4 rounded-md transition text-xs sm:text-base ${canTrade ? "bg-white/20 hover:bg-white/30 cursor-pointer" : isOut ? "bg-red-500/20 opacity-80 cursor-not-allowed" : "bg-white/5 opacity-60 cursor-not-allowed"
+                  }`}
+              >
+                <div>
+                  <h3 className="flex items-center gap-2 text-sm sm:text-lg font-bold text-white">
+                    {batsman.name}
+                    {batsman.position == "striker" && <Badge className="text-xs p-1 px-2 text-white bg-white/30">Batting</Badge>}
+                  </h3>
+                  <p className="text-xs sm:text-sm font-bold text-white/70">
+                    {batsman.runs} ({batsman.balls_faced})
+                  </p>
+                  {isOut && <p className="text-xs sm:text-sm font-bold text-red-400">{batsman.how_out}</p>}
+                </div>
+                <div className="text-right flex items-center gap-3 sm:gap-5">
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-white bg-white/10 text-xs sm:text-sm font-bold shadow-sm">
+                      <span className="font-bold">SR:</span>
+                      <span>{batsman.strike_rate}</span>
+                    </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="flex items-center gap-1">
+                        <span className="w-4 h-4 rounded bg-blue-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-blue-400">
+                          4
+                        </span>
+                        <span className="text-xs sm:text-sm font-bold text-blue-200">{batsman.fours}</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-4 h-4 rounded bg-yellow-400 text-black text-xs font-bold flex items-center justify-center shadow-sm border border-yellow-300">
+                          6
+                        </span>
+                        <span className="text-xs sm:text-sm font-bold text-yellow-200">{batsman.sixes}</span>
+                      </span>
+                    </div>
+                  </div>
+                  {canTrade && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (wicketsIncreased && isPlayerCurrentlyBatting(batsman)) {
+                          toast.info("Sell windows are disabled due to recent wicket fall. Please wait for API updates.")
+                          return
+                        }
+                        openBettingModal(batsman.batsman_id, inningIndex)
+                      }}
+                      className={`text-[13px] sm:text-sm font-extrabold px-4 py-2 rounded-lg shadow-md hover:scale-105 transition-all duration-200 flex items-center gap-2 cursor-pointer ${(() => {
+                        if (wicketsIncreased && isPlayerCurrentlyBatting(batsman)) {
+                          return "bg-yellow-600/80 text-white"
+                        } else if (sellWindowActive[batsman.batsman_id]) {
+                          return "bg-green-600/80 text-white animate-pulse"
+                        } else {
+                          return "bg-green-600/80 sm:bg-green-500/20 text-white"
+                        }
+                      })()}`}
+                    >
+                      <span>
+                        {(() => {
+                          if (wicketsIncreased && isPlayerCurrentlyBatting(batsman)) {
+                            return "⚠️ Wicket Fell"
+                          } else if (sellWindowActive[batsman.batsman_id]) {
+                            return `Trade (${sellWindowTimeLeft[batsman.batsman_id]}s)`
+                          } else {
+                            return "Trade"
+                          }
+                        })()}
+                      </span>
+                    </button>
+                  )}
+                  {isOut && (
+                    <button
+                      type="button"
+                      disabled
+                      className="text-[13px] sm:text-sm font-extrabold px-4 py-2 rounded-lg shadow-md transition-all duration-200 flex items-center gap-2 cursor-not-allowed bg-red-600/80 text-white opacity-60"
+                    >
+                      <span> Out </span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </TabsContent>
+        <TabsContent value="bowlers" className="mt-4 space-y-2">
+          {
+            (inning.bowlers || []).length === 0 && (
+              <div className="text-center text-gray-400">No bowlers data available</div>
+            )
+          }
+
+          {(inning.bowlers || []).map((bowler) => {
+            const isCurrentBowler = bowler.bowling === "true"
+            return (
+              <div
+                key={bowler.bowler_id}
+                onClick={() => toast("Bowler's Stocks Coming Soon..")}
+                className={`flex items-center justify-between p-2 rounded-md transition ${isCurrentBowler
+                  ? "bg-white/20 hover:bg-white/30 cursor-pointer"
+                  : "bg-transparent opacity-60 pointer-events-none select-none"
+                  }`}
+              >
+                <div>
+                  <h3
+                    className={`flex items-center gap-2 text-sm sm:text-lg font-bold ${isCurrentBowler ? "text-white" : "text-gray-400"
+                      }`}
+                  >
+                    {bowler.name}
+                    {isCurrentBowler && <Badge className="text-xs p-1 text-red-400">*</Badge>}
+                  </h3>
+                  <p className={`text-xs sm:text-sm ${isCurrentBowler ? "text-white" : "text-gray-500"}`}>
+                    {bowler.overs} ov, {bowler.maidens} m, {bowler.runs_conceded} r, {bowler.wickets} w
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-xs sm:text-base font-bold ${isCurrentBowler ? "text-white" : "text-gray-400"}`}>
+                    Econ: {bowler.econ}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

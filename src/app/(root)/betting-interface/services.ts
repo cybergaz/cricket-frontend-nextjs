@@ -76,14 +76,14 @@ export const buyPlayer = async (player: BettingPlayer, price: string, quantity: 
   try {
     // First check current holdings to enforce ₹25,000 limit
     const holdingsResponse = await checkPlayerHoldings(match_id, player.batsman_id);
-    
+
     if (!holdingsResponse.success) {
       return { success: false, message: "Failed to check current holdings" };
     }
 
     const { remainingInvestment, maxQuantity } = holdingsResponse.data;
     const requestedInvestment = Number(quantity) * Number(price);
-    
+
     if (requestedInvestment > Number(remainingInvestment)) {
       return {
         success: false,
@@ -145,14 +145,14 @@ export const buyTeam = async (team: any, price: string, quantity: string, matchI
   try {
     // First check current holdings to enforce ₹25,000 limit
     const holdingsResponse = await checkTeamHoldings(matchId, team.team_id);
-    
+
     if (!holdingsResponse.success) {
       return { success: false, message: "Failed to check current holdings" };
     }
 
     const { remainingInvestment } = holdingsResponse.data;
     const requestedInvestment = Number(quantity) * Number(price);
-    
+
     if (requestedInvestment > Number(remainingInvestment)) {
       return {
         success: false,
@@ -233,45 +233,8 @@ export const sellTeam = async (team: any, price: string, quantity: string, match
   }
 }
 
-export const updateTeamStockPrice = async (matchId: string, teamId: string, eventType: "runs_scored" | "player_out", runs?: number) => {
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/update-team-stocks/${matchId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        teamId,
-        eventType,
-        runs: runs || 0,
-      }),
-    })
-
-    const data = await response.json()
-    return data
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
-  }
-}
-
-export const initializeTeamStockPrices = async (matchId: string) => {
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/initialize-team-stocks/${matchId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-
-    const data = await response.json()
-    return data
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
-  }
-}
-
-// New function to calculate team stock price based on accumulated value
-export const calculateTeamStockPrice = (innings: any[], battingTeamId: string) => {
+// Calculate team stock price based on accumulated value
+export const calculateTeamStockPrice = (innings: any[], battingTeamId: number) => {
   if (!innings || innings.length === 0) return 50; // Default launch price
 
   // Find the current inning where the team is batting
@@ -308,30 +271,34 @@ export const calculateTeamStockPrice = (innings: any[], battingTeamId: string) =
 
   // Ensure price doesn't go below 0
   return Math.max(0, accumulatedPrice);
-}
+};
 
-// Function to update team stock price using the new calculation method
+// Modify the updateTeamStockPrice function to calculate prices on the frontend
 export const updateTeamStockPriceNew = async (matchId: string, teamId: string, innings: any[]) => {
   try {
-    const calculatedPrice = calculateTeamStockPrice(innings, teamId);
+    // Calculate the price on the frontend
+    const calculatedPrice = calculateTeamStockPrice(innings, Number(teamId));
     
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/update-team-stocks-calculated/${matchId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        teamId,
-        calculatedPrice,
-      }),
-    })
-
-    const data = await response.json()
-    return data
+    // Store the calculated price in localStorage to persist between page refreshes
+    const storageKey = `team_stock_${matchId}_${teamId}`;
+    localStorage.setItem(storageKey, calculatedPrice.toString());
+    
+    // Return a success response with the calculated price
+    return {
+      success: true,
+      data: {
+        price: calculatedPrice,
+        reason: `Team stock price updated to ₹${calculatedPrice.toFixed(2)}`
+      }
+    };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
+    console.error("Error updating team stock price:", error);
+    return {
+      success: false,
+      message: "Failed to update team stock price"
+    };
   }
-}
+};
 
 // Function to auto-sell player portfolios when player gets out
 export const autoSellPlayerPortfolios = async (matchId: string, playerId: string) => {

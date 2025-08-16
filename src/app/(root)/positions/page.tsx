@@ -8,12 +8,14 @@ import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import type { PlayerPortfolio, TeamPortfolio } from "./types"
 import { formatINR } from "@/lib/helper"
-import type { Batsman, BettingPlayer, CricketMatchData } from "../betting-interface/types"
+import type { Batsman, CricketMatchData } from "../betting-interface/types-updated"
 import { Button } from "@/components/ui/button"
-import { sellPlayer, buyPlayer, sellTeam, buyTeam, initializeTeamStockPrices, checkPlayerHoldings } from "../betting-interface/services"
+import { sellPlayer, buyPlayer, sellTeam, buyTeam, checkPlayerHoldings } from "../betting-interface/services"
 import AnimatedNumber from "@/components/ui/animated-number"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
+import { usePortfolioSocketStore } from "@/store/portfolio-store"
+import { BettingPlayer } from "../betting-interface/types"
 
 function formatTimestamp(ts: Date | string | undefined): string {
   if (!ts) return "--"
@@ -95,6 +97,18 @@ export default function Portfolio() {
   // State to track players whose sell windows are disabled due to wicket falls
   const [sellWindowDisabledDueToWicket, setSellWindowDisabledDueToWicket] = useState<Record<string, boolean>>({})
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [hasNextPage, setHasNextPage] = useState(false)
+  const [hasPrevPage, setHasPrevPage] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+
+  // Portfolio socket store
+  const portfolioSocket = usePortfolioSocketStore()
+
   // Helper function to extract wicket count from score string (e.g., "47/6" -> 6)
   const extractWicketCount = (scoreString: string): number => {
     if (!scoreString) return 0
@@ -110,542 +124,185 @@ export default function Portfolio() {
     }, 10000)
   }
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalItems, setTotalItems] = useState(0)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [hasNextPage, setHasNextPage] = useState(false)
-  const [hasPrevPage, setHasPrevPage] = useState(false)
-  const [historyLoading, setHistoryLoading] = useState(false)
-
-  const fetchAllData = async (page = 1) => {
-    setPlayerPortfoliosLoading(true)
-    setTeamPortfoliosLoading(true)
-    // console.log("called ")
-    // setFiveSecondWindow(true)
-    setHistoryLoading(true)
-    try {
-      const getTokenFromCookies = () => {
-        if (typeof document === "undefined") return null
-        const cookies = document.cookie.split("; ")
-        const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="))
-        return tokenCookie ? tokenCookie.split("=")[1] : null
-      }
-      const token = getTokenFromCookies()
-      if (!token) {
-        console.error("Authentication token not found. Please log in.")
-        setLoading(false)
-        return
-      }
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/all?page=${page}&limit=${itemsPerPage}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
-      })
-
-      const apiData = await res.json()
-      if (!apiData.success) {
-        // console.log(apiData.message)
-        setLoading(false)
-        return
-      }
-
-      setAvailableBalance(apiData.value)
-      setTotalProfit(apiData.totalPortfolioProfit)
-
-      // Update pagination state
-      if (apiData.playerHistoryPagination) {
-        setCurrentPage(apiData.playerHistoryPagination.currentPage)
-        setTotalPages(apiData.playerHistoryPagination.totalPages)
-        setTotalItems(apiData.playerHistoryPagination.totalItems)
-        setItemsPerPage(apiData.playerHistoryPagination.itemsPerPage)
-        setHasNextPage(apiData.playerHistoryPagination.hasNextPage)
-        setHasPrevPage(apiData.playerHistoryPagination.hasPrevPage)
-      }
-
-      setPlayerPortfoliosHistory(apiData.playerHistory || [])
-      setTeamPortfoliosHistory(apiData.teamHistory || [])
-
-      const uniqueMatchIds = Array.from(new Set([
-        ...(apiData.playerPortfolios as PlayerPortfolio[]).map((p) => p.matchId),
-        ...(apiData.teamPortfolios as TeamPortfolio[]).map((p) => p.matchId)
-      ]))
-
-      const newMatchData: Record<string, CricketMatchData> = {}
-      if (uniqueMatchIds.length > 0) {
-        await Promise.all(
-          uniqueMatchIds.map(async (matchId) => {
-            try {
-              const matchRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`)
-              const matchResJson = await matchRes.json()
-              if (matchResJson.success) {
-                newMatchData[matchId] = matchResJson.data
-              }
-            } catch (e) {
-              console.error(`Failed to fetch match data for ${matchId}`, e)
-            }
-          }),
-        )
-      }
-
-      setMatchDataById((prev) => ({ ...prev, ...newMatchData }))
-
-      // Update team portfolios with current prices AFTER fetching fresh match data
-      const updatedTeamPortfolios = (apiData.teamPortfolios || []).map(async (p: TeamPortfolio) => {
-        let match = newMatchData[p.matchId] || matchDataById[p.matchId]
-        let currentPrice = 50 // Default fallback price
-
-        if (match) {
-          // Initialize team stock prices if they are missing or 0
-          if (!match.teamStockPrices ||
-            !match.teamStockPrices.teama ||
-            !match.teamStockPrices.teamb ||
-            match.teamStockPrices.teama === 0 ||
-            match.teamStockPrices.teamb === 0) {
-            try {
-              await initializeTeamStockPrices(p.matchId)
-              // Fetch updated match data after initialization
-              const matchRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${p.matchId}`)
-              const matchResJson = await matchRes.json()
-              if (matchResJson.success) {
-                newMatchData[p.matchId] = matchResJson.data
-                match = matchResJson.data
-              }
-            } catch (e) {
-              console.error(`Failed to initialize team stock prices for ${p.matchId}`, e)
-            }
-          }
-
-          if (match.teamStockPrices) {
-            // Determine which team this portfolio belongs to
-            const isTeamA = p.team === match.teama?.team_id
-            const teamPrice = isTeamA ? match.teamStockPrices.teama : match.teamStockPrices.teamb
-            currentPrice = teamPrice !== undefined && teamPrice !== null ? teamPrice : 50 // Use fallback only if price is undefined or null
-          }
-        }
-
-        return { ...p, currentPrice: String(currentPrice) }
-      })
-
-      // Wait for all team portfolio updates to complete
-      const resolvedTeamPortfolios = await Promise.all(updatedTeamPortfolios)
-      setTeamPortfolios(resolvedTeamPortfolios)
-      setTeamPortfoliosLoading(false)
-
-      const updatedPlayerPortfolios = apiData.playerPortfolios.map((p: PlayerPortfolio) => {
-        const match = newMatchData[p.matchId] || matchDataById[p.matchId]
-        let currentPrice = 0
-        if (match && match.innings && match.latest_inning_number) {
-          const currentInning = match.innings[Number(match.latest_inning_number) - 1]
-          if (currentInning && currentInning.batsmen) {
-            const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
-            const batsmanData = currentInning.batsmen[batsmanIndex]
-
-            // If player is not in current inning, check if they were in a previous inning
-            if (batsmanIndex === -1 || !batsmanData) {
-              // Look for player in all innings
-              let foundBatsmanData = null
-              let foundBatsmanIndex = -1
-
-              for (let i = 0; i < match.innings.length; i++) {
-                const inning = match.innings[i]
-                if (inning.batsmen) {
-                  const index = inning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
-                  if (index !== -1) {
-                    foundBatsmanData = inning.batsmen[index]
-                    foundBatsmanIndex = index
-                    break
-                  }
-                }
-              }
-
-              // If we found the player in any inning, calculate their price
-              if (foundBatsmanData) {
-                currentPrice = calculatePlayerCurrentPrice(foundBatsmanData, foundBatsmanIndex)
-              } else {
-                // Player not found in any inning, price remains 0
-                currentPrice = 0
-              }
-            } else {
-              currentPrice = calculatePlayerCurrentPrice(batsmanData, batsmanIndex)
-            }
-
-            // Store last valid price (non-zero price)
-            if (currentPrice > 0) {
-              lastValidPrices.current[p.playerId] = currentPrice
-            }
-
-            // Check if price has changed for this player
-            const lastPrice = previousPrices.current[p.playerId] || 0
-            if (currentPrice !== lastPrice && lastPrice !== 0) {
-              // Check if wickets have increased for this match
-              let wicketsIncreased = false
-              if (match && match.innings && match.latest_inning_number) {
-                const currentInning = match.innings[Number(match.latest_inning_number) - 1]
-                if (currentInning && currentInning.scores) {
-                  const currentWicketCount = extractWicketCount(currentInning.scores)
-                  const previousWicketCount = previousWicketCounts.current[`${p.matchId}_${match.latest_inning_number}`] || 0
-                  wicketsIncreased = currentWicketCount > previousWicketCount
-                  if (currentWicketCount == 0 || previousWicketCount == 0) wicketsIncreased = false
-
-                  // Update previous wicket count
-                  previousWicketCounts.current[`${p.matchId}_${match.latest_inning_number}`] = currentWicketCount
-
-                  // Log wicket changes for debugging
-                  if (currentWicketCount !== previousWicketCount) {
-                    console.log(`Wicket count changed for ${p.matchId} inning ${match.latest_inning_number}: ${previousWicketCount} -> ${currentWicketCount} (increased: ${wicketsIncreased})`)
-                  }
-                }
-              }
-
-              // Check if this player is currently batting (to prevent sell window when wickets increase)
-              const isCurrentlyBatting = match && match.innings && match.latest_inning_number ?
-                match.innings[Number(match.latest_inning_number) - 1]?.batsmen?.some(b => b.batsman_id === p.playerId) : false
-
-              // Only activate sell window if wickets haven't increased OR if player is not currently batting
-              if (!wicketsIncreased || !isCurrentlyBatting) {
-                // Clear the disabled state if it was set
-                setSellWindowDisabledDueToWicket(prev => ({ ...prev, [p.playerId]: false }))
-
-                // console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
-                // console.log(`Activating sell window for ${p.playerName}`)
-                // Only activate sell window if it's not already active and wasn't just activated
-                if (!justActivatedSellWindow.current[p.playerId]) {
-                  setSellWindowActive(prev => {
-                    if (!prev[p.playerId]) {
-                      setSellWindowTimeLeft(prevTime => ({ ...prevTime, [p.playerId]: 5 }))
-                      justActivatedSellWindow.current[p.playerId] = true
-                      // Reset the flag after a short delay
-                      setTimeout(() => {
-                        justActivatedSellWindow.current[p.playerId] = false
-                      }, 1000)
-                      return { ...prev, [p.playerId]: true }
-                    }
-                    return prev
-                  })
-                }
-              } else {
-                console.log(`Sell window disabled for ${p.playerName} due to recent wicket fall`)
-                // Set the disabled state for this player with timeout
-                setDisabledStateWithTimeout(p.playerId)
-              }
-              // Update the previous price after processing the change
-              previousPrices.current[p.playerId] = currentPrice
-            } else if (lastPrice === 0) {
-              // First time setting price
-              previousPrices.current[p.playerId] = currentPrice
-            }
-            // Remove the else clause that was updating previous price every second
-          }
-        }
-        return { ...p, currentPrice: String(currentPrice) }
-      })
-
-      setPlayerPortfolios(updatedPlayerPortfolios)
-      setPlayerPortfoliosLoading(false)
-
-    } catch (e: any) {
-      console.error("Fetch error: " + (e?.message || "Unknown error"))
-    } finally {
-      setLoading(false)
-      setHistoryLoading(false)
-      setTimeout(() => {
-        setPlayerPortfoliosLoading(false)
-        setTeamPortfoliosLoading(false)
-      }, 10000) // Reset the loading state after 10 seconds
-      // setPlayerPortfoliosLoading(false)
-      // setTeamPortfoliosLoading(false)
-    }
-  }
-
-  // Separate function for real-time updates (active portfolios only)
-  const fetchRealTimeData = async () => {
-    try {
-      const getTokenFromCookies = () => {
-        if (typeof document === "undefined") return null
-        const cookies = document.cookie.split("; ")
-        const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="))
-        return tokenCookie ? tokenCookie.split("=")[1] : null
-      }
-      const token = getTokenFromCookies()
-      if (!token) return
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/portfolio/all?page=1&limit=1`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
-      })
-
-      const apiData = await res.json()
-      if (!apiData.success) return
-
-      // Only update active portfolios and balance, not history
-      setAvailableBalance(apiData.value)
-      setTotalProfit(apiData.totalPortfolioProfit)
-
-      const uniqueMatchIds = Array.from(new Set((apiData.playerPortfolios as PlayerPortfolio[]).map((p) => p.matchId)))
-
-      const newMatchData: Record<string, CricketMatchData> = {}
-      if (uniqueMatchIds.length > 0) {
-        await Promise.all(
-          uniqueMatchIds.map(async (matchId) => {
-            try {
-              const matchRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`)
-              const matchResJson = await matchRes.json()
-              if (matchResJson.success) {
-                newMatchData[matchId] = matchResJson.data
-              }
-            } catch (e) {
-              console.error(`Failed to fetch match data for ${matchId}`, e)
-            }
-          }),
-        )
-      }
-
-      setMatchDataById((prev) => ({ ...prev, ...newMatchData }))
-
-      const updatedPlayerPortfolios = apiData.playerPortfolios.map((p: PlayerPortfolio) => {
-        const match = newMatchData[p.matchId] || matchDataById[p.matchId]
-        let currentPrice = 0
-        if (match && match.innings && match.latest_inning_number) {
-          const currentInning = match.innings[Number(match.latest_inning_number) - 1]
-          if (currentInning && currentInning.batsmen) {
-            const batsmanIndex = currentInning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
-            const batsmanData = currentInning.batsmen[batsmanIndex]
-
-            // If player is not in current inning, check if they were in a previous inning
-            if (batsmanIndex === -1 || !batsmanData) {
-              // Look for player in all innings
-              let foundBatsmanData = null
-              let foundBatsmanIndex = -1
-
-              for (let i = 0; i < match.innings.length; i++) {
-                const inning = match.innings[i]
-                if (inning.batsmen) {
-                  const index = inning.batsmen.findIndex((b) => b.batsman_id === p.playerId)
-                  if (index !== -1) {
-                    foundBatsmanData = inning.batsmen[index]
-                    foundBatsmanIndex = index
-                    break
-                  }
-                }
-              }
-
-              // If we found the player in any inning, calculate their price
-              if (foundBatsmanData) {
-                currentPrice = calculatePlayerCurrentPrice(foundBatsmanData, foundBatsmanIndex)
-              } else {
-                // Player not found in any inning, price remains 0
-                currentPrice = 0
-              }
-            } else {
-              currentPrice = calculatePlayerCurrentPrice(batsmanData, batsmanIndex)
-            }
-
-            // Store last valid price (non-zero price)
-            if (currentPrice > 0) {
-              lastValidPrices.current[p.playerId] = currentPrice
-            }
-
-            // Check if price has changed for this player
-            const lastPrice = previousPrices.current[p.playerId] || 0
-            // console.log("lastPrice -> ", lastPrice)
-            // console.log("currentPrice -> ", currentPrice)
-            if (currentPrice !== lastPrice && lastPrice !== 0) {
-              // Check if wickets have increased for this match
-              let wicketsIncreased = false
-              if (match && match.innings && match.latest_inning_number) {
-                const currentInning = match.innings[Number(match.latest_inning_number) - 1]
-                if (currentInning && currentInning.scores) {
-                  const currentWicketCount = extractWicketCount(currentInning.scores)
-                  const previousWicketCount = previousWicketCounts.current[`${p.matchId}_${match.latest_inning_number}`] || 0
-                  wicketsIncreased = currentWicketCount > previousWicketCount
-                  if (currentWicketCount == 0 || previousWicketCount == 0) wicketsIncreased = false
-
-                  // Update previous wicket count
-                  previousWicketCounts.current[`${p.matchId}_${match.latest_inning_number}`] = currentWicketCount
-
-                  // Log wicket changes for debugging
-                  if (currentWicketCount !== previousWicketCount) {
-                    console.log(`Wicket count changed for ${p.matchId} inning ${match.latest_inning_number}: ${previousWicketCount} -> ${currentWicketCount} (increased: ${wicketsIncreased})`)
-                  }
-                }
-              }
-
-              // Check if this player is currently batting (to prevent sell window when wickets increase)
-              const isCurrentlyBatting = match && match.innings && match.latest_inning_number ?
-                match.innings[Number(match.latest_inning_number) - 1]?.batsmen?.some(b => b.batsman_id === p.playerId) : false
-
-              // Only activate sell window if wickets haven't increased OR if player is not currently batting
-              if (!wicketsIncreased || !isCurrentlyBatting) {
-                // Clear the disabled state if it was set
-                setSellWindowDisabledDueToWicket(prev => ({ ...prev, [p.playerId]: false }))
-
-                console.log(`Price changed for ${p.playerName}: ${lastPrice} -> ${currentPrice}`)
-                // Only activate sell window if it's not already active and wasn't just activated
-                if (!justActivatedSellWindow.current[p.playerId]) {
-                  setSellWindowActive(prev => {
-                    if (!prev[p.playerId]) {
-                      setSellWindowTimeLeft(prevTime => ({ ...prevTime, [p.playerId]: 5 }))
-                      justActivatedSellWindow.current[p.playerId] = true
-                      // Reset the flag after a short delay
-                      setTimeout(() => {
-                        justActivatedSellWindow.current[p.playerId] = false
-                      }, 1000)
-                      return { ...prev, [p.playerId]: true }
-                    }
-                    return prev
-                  })
-                }
-              } else {
-                console.log(`Sell window disabled for ${p.playerName} due to recent wicket fall`)
-                // Set the disabled state for this player with timeout
-                setDisabledStateWithTimeout(p.playerId)
-              }
-              // Update the previous price after processing the change
-              previousPrices.current[p.playerId] = currentPrice
-            } else if (lastPrice === 0) {
-              // First time setting price
-              previousPrices.current[p.playerId] = currentPrice
-            }
-            // Remove the else clause that was updating previous price every second
-          }
-        }
-        return { ...p, currentPrice: String(currentPrice) }
-      })
-
-      setPlayerPortfolios(updatedPlayerPortfolios)
-
-      // Also fetch match data for team portfolios in real-time updates
-      const teamMatchIds = Array.from(new Set((apiData.teamPortfolios as TeamPortfolio[]).map((p) => p.matchId)))
-      if (teamMatchIds.length > 0) {
-        await Promise.all(
-          teamMatchIds.map(async (matchId) => {
-            try {
-              const matchRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${matchId}`)
-              const matchResJson = await matchRes.json()
-              if (matchResJson.success) {
-                newMatchData[matchId] = matchResJson.data
-              }
-            } catch (e) {
-              console.error(`Failed to fetch match data for ${matchId}`, e)
-            }
-          }),
-        )
-      }
-
-      setMatchDataById((prev) => ({ ...prev, ...newMatchData }))
-
-      // Update team portfolios with current prices AFTER fetching fresh match data
-      const updatedTeamPortfolios = (apiData.teamPortfolios || []).map(async (p: TeamPortfolio) => {
-        let match = newMatchData[p.matchId] || matchDataById[p.matchId]
-        let currentPrice = 50 // Default fallback price
-
-        if (match) {
-          // Initialize team stock prices if they are missing or 0
-          if (!match.teamStockPrices ||
-            !match.teamStockPrices.teama ||
-            !match.teamStockPrices.teamb ||
-            match.teamStockPrices.teama === 0 ||
-            match.teamStockPrices.teamb === 0) {
-            try {
-              await initializeTeamStockPrices(p.matchId)
-              // Fetch updated match data after initialization
-              const matchRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/scorecard/${p.matchId}`)
-              const matchResJson = await matchRes.json()
-              if (matchResJson.success) {
-                newMatchData[p.matchId] = matchResJson.data
-                match = matchResJson.data
-              }
-            } catch (e) {
-              console.error(`Failed to initialize team stock prices for ${p.matchId}`, e)
-            }
-          }
-
-          if (match.teamStockPrices) {
-            // Determine which team this portfolio belongs to
-            const isTeamA = p.team === match.teama?.team_id
-            const teamPrice = isTeamA ? match.teamStockPrices.teama : match.teamStockPrices.teamb
-            currentPrice = teamPrice !== undefined && teamPrice !== null ? teamPrice : 50 // Use fallback only if price is undefined or null
-          }
-        }
-
-        return { ...p, currentPrice: String(currentPrice) }
-      })
-
-      // Wait for all team portfolio updates to complete
-      const resolvedTeamPortfolios = await Promise.all(updatedTeamPortfolios)
-      setTeamPortfolios(resolvedTeamPortfolios)
-
-      // Check team stock price changes
-      resolvedTeamPortfolios.forEach((p) => {
-        const match = newMatchData[p.matchId] || matchDataById[p.matchId]
-        if (!match) return
-
-        const isTeamA = p.team === match.teama?.team_id
-        const teamKey = isTeamA ? 'teama' : 'teamb'
-        const currentTeamPrice = match.teamStockPrices?.[teamKey] !== undefined && match.teamStockPrices?.[teamKey] !== null ? match.teamStockPrices?.[teamKey] : 50
-        const sellWindowKey = `team_${p.matchId}_${teamKey}`
-
-        // Store last valid team price (non-zero price)
-        if (currentTeamPrice > 0) {
-          lastValidTeamPrices.current[sellWindowKey] = currentTeamPrice
-        }
-
-        // Check if team stock price has changed
-        const lastTeamPrice = previousTeamStockPrices.current[sellWindowKey] || 0
-        if (currentTeamPrice !== lastTeamPrice && lastTeamPrice !== 0) {
-          console.log(`Team stock price changed for ${p.teamName}: ${lastTeamPrice} -> ${currentTeamPrice}`)
-          // Only activate sell window if it's not already active and wasn't just activated
-          if (!justActivatedSellWindow.current[sellWindowKey]) {
-            setSellWindowActive(prev => {
-              if (!prev[sellWindowKey]) {
-                setSellWindowTimeLeft(prevTime => ({ ...prevTime, [sellWindowKey]: 5 }))
-                justActivatedSellWindow.current[sellWindowKey] = true
-                // Reset the flag after a short delay
-                setTimeout(() => {
-                  justActivatedSellWindow.current[sellWindowKey] = false
-                }, 1000)
-                return { ...prev, [sellWindowKey]: true }
-              }
-              return prev
-            })
-          }
-          // Update the previous price after processing the change
-          previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
-        } else if (lastTeamPrice === 0) {
-          // First time setting price
-          previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
-        }
-        // Remove the else clause that was updating previous price every second
-      })
-
-    } catch (e: any) {
-      console.error("Real-time fetch error: " + (e?.message || "Unknown error"))
-    }
-  }
-
   // Initial load and pagination changes
   useEffect(() => {
     if (currentPage === 1) {
       setLoading(true)
     }
-    fetchAllData(currentPage)
-  }, [])
 
-  // Real-time updates for active portfolios only
+    // Connect to WebSocket and fetch initial data
+    portfolioSocket.connectSocket()
+    portfolioSocket.fetchInitialData(currentPage, itemsPerPage)
+      .then(() => {
+        setLoading(false)
+      })
+      .catch((error) => {
+        console.error("Error fetching initial data:", error)
+        setLoading(false)
+      })
+
+    // Clean up socket connection when component unmounts
+    return () => {
+      portfolioSocket.disconnectSocket()
+    }
+  }, [currentPage, itemsPerPage])
+
+  // Update local state from socket store
   useEffect(() => {
-    const intervalId = setInterval(fetchRealTimeData, 1000)
-    return () => clearInterval(intervalId)
-  }, [])
+    setPlayerPortfolios(portfolioSocket.playerPortfolios)
+    setTeamPortfolios(portfolioSocket.teamPortfolios)
+    setPlayerPortfoliosHistory(portfolioSocket.playerPortfoliosHistory)
+    setTeamPortfoliosHistory(portfolioSocket.teamPortfoliosHistory)
+    setAvailableBalance(portfolioSocket.availableBalance)
+    setTotalProfit(portfolioSocket.totalProfit)
+    setMatchDataById(portfolioSocket.matchDataById)
+    setPlayerPortfoliosLoading(portfolioSocket.isLoading)
+    setTeamPortfoliosLoading(portfolioSocket.isLoading)
+    setHistoryLoading(portfolioSocket.isLoading)
+  }, [
+    portfolioSocket.playerPortfolios,
+    portfolioSocket.teamPortfolios,
+    portfolioSocket.playerPortfoliosHistory,
+    portfolioSocket.teamPortfoliosHistory,
+    portfolioSocket.availableBalance,
+    portfolioSocket.totalProfit,
+    portfolioSocket.matchDataById,
+    portfolioSocket.isLoading
+  ])
+
+  // Price change detection and sell window activation
+  useEffect(() => {
+    if (playerPortfolios.length === 0) return
+
+    playerPortfolios.forEach((portfolio) => {
+      const match = matchDataById[portfolio.matchId]
+      if (!match || !match.innings || !match.latest_inning_number) return
+
+      const currentInning = match.innings[Number(match.latest_inning_number) - 1]
+      if (!currentInning?.batsmen) return
+
+      const batsmanIndex = currentInning.batsmen.findIndex((b: Batsman) => b.batsman_id === portfolio.playerId)
+      const batsmanData = currentInning.batsmen[batsmanIndex]
+
+      let currentPrice = 0
+      if (batsmanIndex !== -1 && batsmanData) {
+        currentPrice = calculatePlayerCurrentPrice(batsmanData, batsmanIndex)
+      } else {
+        // Look for player in all innings
+        for (let i = 0; i < match.innings.length; i++) {
+          const inning = match.innings[i]
+          if (inning.batsmen) {
+            const index = inning.batsmen.findIndex((b: Batsman) => b.batsman_id === portfolio.playerId)
+            if (index !== -1) {
+              currentPrice = calculatePlayerCurrentPrice(inning.batsmen[index], index)
+              break
+            }
+          }
+        }
+      }
+
+      // Store last valid price (non-zero price)
+      if (currentPrice > 0) {
+        lastValidPrices.current[portfolio.playerId] = currentPrice
+      }
+
+      // Check if price has changed for this player
+      const lastPrice = previousPrices.current[portfolio.playerId] || 0
+      if (currentPrice !== lastPrice && lastPrice !== 0) {
+        // Check if wickets have increased for this match
+        let wicketsIncreased = false
+        if (match && match.innings && match.latest_inning_number) {
+          const currentInning = match.innings[Number(match.latest_inning_number) - 1]
+          if (currentInning && currentInning.scores) {
+            const currentWicketCount = extractWicketCount(currentInning.scores)
+            const previousWicketCount = previousWicketCounts.current[`${portfolio.matchId}_${match.latest_inning_number}`] || 0
+            wicketsIncreased = currentWicketCount > previousWicketCount
+            if (currentWicketCount == 0 || previousWicketCount == 0) wicketsIncreased = false
+
+            // Update previous wicket count
+            previousWicketCounts.current[`${portfolio.matchId}_${match.latest_inning_number}`] = currentWicketCount
+          }
+        }
+
+        // Check if this player is currently batting (to prevent sell window when wickets increase)
+        const isCurrentlyBatting = match && match.innings && match.latest_inning_number ?
+          match.innings[Number(match.latest_inning_number) - 1]?.batsmen?.some(b => b.batsman_id === portfolio.playerId) : false
+
+        // Only activate sell window if wickets haven't increased OR if player is not currently batting
+        if (!wicketsIncreased || !isCurrentlyBatting) {
+          // Clear the disabled state if it was set
+          setSellWindowDisabledDueToWicket(prev => ({ ...prev, [portfolio.playerId]: false }))
+
+          // Only activate sell window if it's not already active and wasn't just activated
+          if (!justActivatedSellWindow.current[portfolio.playerId]) {
+            setSellWindowActive(prev => {
+              if (!prev[portfolio.playerId]) {
+                setSellWindowTimeLeft(prevTime => ({ ...prevTime, [portfolio.playerId]: 5 }))
+                justActivatedSellWindow.current[portfolio.playerId] = true
+                // Reset the flag after a short delay
+                setTimeout(() => {
+                  justActivatedSellWindow.current[portfolio.playerId] = false
+                }, 1000)
+                return { ...prev, [portfolio.playerId]: true }
+              }
+              return prev
+            })
+          }
+        } else {
+          console.log(`Sell window disabled for ${portfolio.playerName} due to recent wicket fall`)
+          // Set the disabled state for this player with timeout
+          setDisabledStateWithTimeout(portfolio.playerId)
+        }
+        // Update the previous price after processing the change
+        previousPrices.current[portfolio.playerId] = currentPrice
+      } else if (lastPrice === 0) {
+        // First time setting price
+        previousPrices.current[portfolio.playerId] = currentPrice
+      }
+    })
+
+    // Check team stock price changes
+    teamPortfolios.forEach((portfolio) => {
+      const match = matchDataById[portfolio.matchId]
+      if (!match) return
+
+      const isTeamA = Number(portfolio.team) === match.teama?.team_id
+      const teamKey = isTeamA ? 'teama' : 'teamb'
+      const currentTeamPrice = match.teamStockPrices?.[teamKey] !== undefined && match.teamStockPrices?.[teamKey] !== null ? match.teamStockPrices?.[teamKey] : 50
+      const sellWindowKey = `team_${portfolio.matchId}_${teamKey}`
+
+      // Store last valid team price (non-zero price)
+      if (currentTeamPrice > 0) {
+        lastValidTeamPrices.current[sellWindowKey] = currentTeamPrice
+      }
+
+      // Check if team stock price has changed
+      const lastTeamPrice = previousTeamStockPrices.current[sellWindowKey] || 0
+      if (currentTeamPrice !== lastTeamPrice && lastTeamPrice !== 0) {
+        console.log(`Team stock price changed for ${portfolio.teamName}: ${lastTeamPrice} -> ${currentTeamPrice}`)
+        // Only activate sell window if it's not already active and wasn't just activated
+        if (!justActivatedSellWindow.current[sellWindowKey]) {
+          setSellWindowActive(prev => {
+            if (!prev[sellWindowKey]) {
+              setSellWindowTimeLeft(prevTime => ({ ...prevTime, [sellWindowKey]: 5 }))
+              justActivatedSellWindow.current[sellWindowKey] = true
+              // Reset the flag after a short delay
+              setTimeout(() => {
+                justActivatedSellWindow.current[sellWindowKey] = false
+              }, 1000)
+              return { ...prev, [sellWindowKey]: true }
+            }
+            return prev
+          })
+        }
+        // Update the previous price after processing the change
+        previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
+      } else if (lastTeamPrice === 0) {
+        // First time setting price
+        previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
+      }
+    })
+  }, [playerPortfolios, teamPortfolios, matchDataById])
 
   // Timer effect for sell window
   useEffect(() => {
@@ -669,6 +326,7 @@ export default function Portfolio() {
     return () => timerEffects.forEach(clearTimeout)
   }, [sellWindowTimeLeft])
 
+  // Auto-selling logic
   useEffect(() => {
     if (loading || (playerPortfolios.length === 0 && teamPortfolios.length === 0)) return
 
@@ -706,9 +364,9 @@ export default function Portfolio() {
         third_fielder_id: "",
       }
 
-      const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "cancelled", "finished", "ended"]
-      const statusNote = `${match.status_note || ""} ${match.live || ""}`.toLowerCase()
-      const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
+      // const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "cancelled", "finished", "ended"]
+      // const statusNote = `${match.status_note || ""} ${match.live || ""}`.toLowerCase()
+      const isMatchOver = match.status === "2" || Number(match.status) === 2
 
       if (isMatchOver) {
         // Use last valid price if available, otherwise use current price
@@ -729,12 +387,13 @@ export default function Portfolio() {
 
       // Check if inning is over for this player
       if (match.innings && match.latest_inning_number) {
-        const latestInning = match.innings.find((inn) => inn.number === match.latest_inning_number)
+        const latestInning = match.innings.find((inn) => inn.number === Number(match.latest_inning_number))
 
         // Check if the latest inning is over (status indicates inning completion)
-        const isInningOver = latestInning?.status?.toLowerCase().includes("over") ||
-          latestInning?.status?.toLowerCase().includes("completed") ||
-          latestInning?.status?.toLowerCase().includes("finished")
+        const inningStatus = typeof latestInning?.status === 'number'
+          ? String(latestInning?.status)
+          : latestInning?.status || ""
+        const isInningOver = inningStatus === "2" || inningStatus === "3" || inningStatus === "4"
 
         // Find which inning this player belongs to
         const playerInning = match.innings.find((inn) => {
@@ -742,7 +401,7 @@ export default function Portfolio() {
         })
 
         // Check if this player belongs to the latest inning and the inning is over
-        if (isInningOver && playerInning && playerInning.number === match.latest_inning_number) {
+        if (isInningOver && playerInning && playerInning.number === Number(match.latest_inning_number)) {
           // Get the batsman data to check if they're out
           const batsman = latestInning?.batsmen?.find((b) => b.batsman_id === p.playerId)
           const isPlayerOut = batsman && batsman.dismissal !== "" && batsman.dismissal.toLowerCase() !== "not out"
@@ -769,7 +428,7 @@ export default function Portfolio() {
       }
 
       if (match.innings && match.latest_inning_number) {
-        const latestInning = match.innings.find((inn) => inn.number === match.latest_inning_number)
+        const latestInning = match.innings.find((inn) => inn.number === Number(match.latest_inning_number))
         const batsman = latestInning?.batsmen?.find((b) => b.batsman_id === p.playerId)
 
         if (batsman && batsman.dismissal != "" && batsman.dismissal.toLowerCase() !== "not out") {
@@ -789,7 +448,7 @@ export default function Portfolio() {
 
       // Additional check for when player price drops to 0 during their inning
       if (match.innings && match.latest_inning_number) {
-        const latestInning = match.innings.find((inn) => inn.number === match.latest_inning_number)
+        const latestInning = match.innings.find((inn) => inn.number === Number(match.latest_inning_number))
         const batsman = latestInning?.batsmen?.find((b) => b.batsman_id === p.playerId)
 
         // Check if this player belongs to the current inning
@@ -797,7 +456,7 @@ export default function Portfolio() {
           return inn.batsmen?.some((batsman) => batsman.batsman_id === p.playerId)
         })
 
-        if (playerInning && playerInning.number === match.latest_inning_number && batsman) {
+        if (playerInning && playerInning.number === Number(match.latest_inning_number) && batsman) {
           const currentPrice = Number.parseFloat(p.currentPrice || "0")
           const isPlayerOut = batsman.dismissal !== "" && batsman.dismissal.toLowerCase() !== "not out"
 
@@ -865,7 +524,7 @@ export default function Portfolio() {
 
       if (isMatchOver) {
         // Get current team stock price for selling
-        const isTeamA = p.team === match.teama?.team_id
+        const isTeamA = Number(p.team) === match.teama?.team_id
         const teamKey = isTeamA ? 'teama' : 'teamb'
         const sellWindowKey = `team_${teamKey}`
         const currentPrice = isTeamA ? match.teamStockPrices?.teama : match.teamStockPrices?.teamb
@@ -881,17 +540,18 @@ export default function Portfolio() {
 
       // Check if inning is over for team portfolios
       if (match.innings && match.latest_inning_number) {
-        const latestInning = match.innings.find((inn) => inn.number === match.latest_inning_number)
+        const latestInning = match.innings.find((inn) => inn.number === Number(match.latest_inning_number))
 
         // Check if the latest inning is over (status indicates inning completion)
-        const isInningOver = latestInning?.status?.toLowerCase().includes("over") ||
-          latestInning?.status?.toLowerCase().includes("completed") ||
-          latestInning?.status?.toLowerCase().includes("finished")
+        const inningStatus = typeof latestInning?.status === 'number'
+          ? String(latestInning?.status)
+          : latestInning?.status || ""
+        const isInningOver = inningStatus === "2" || inningStatus === "3" || inningStatus === "4"
 
         // If inning is over and this team was batting in the latest inning, auto-sell team stocks
-        if (isInningOver && latestInning?.batting_team_id === p.team) {
+        if (isInningOver && latestInning?.batting_team_id === Number(p.team)) {
           // Get current team stock price for selling
-          const isTeamA = p.team === match.teama?.team_id
+          const isTeamA = Number(p.team) === match.teama?.team_id
           const teamKey = isTeamA ? 'teama' : 'teamb'
           const sellWindowKey = `team_${teamKey}`
           const currentPrice = isTeamA ? match.teamStockPrices?.teama : match.teamStockPrices?.teamb
@@ -946,10 +606,9 @@ export default function Portfolio() {
 
       Promise.allSettled(sellPromises).then(() => {
         setTimeout(() => {
-          fetchAllData(currentPage).then(() => {
-            fetchRealTimeData() // Also refresh real-time data
-            setAutoSellingInProgress(new Set()) // Clear the set after successful fetch
-          })
+          // Refresh data after auto-selling
+          portfolioSocket.fetchInitialData(currentPage, itemsPerPage)
+          setAutoSellingInProgress(new Set())
         }, 2000)
       })
     }
@@ -958,7 +617,7 @@ export default function Portfolio() {
       const sellPromises = teamPortfoliosToSell.map(async (item) => {
         try {
           const match = matchDataById[item.portfolio.matchId]
-          const isTeamA = item.portfolio.team === match?.teama?.team_id
+          const isTeamA = Number(item.portfolio.team) === match?.teama?.team_id
           const team = isTeamA ? match?.teama : match?.teamb
 
           if (team) {
@@ -972,13 +631,12 @@ export default function Portfolio() {
 
       Promise.allSettled(sellPromises).then(() => {
         setTimeout(() => {
-          fetchAllData(currentPage).then(() => {
-            fetchRealTimeData() // Also refresh real-time data
-          })
+          // Refresh data after auto-selling
+          portfolioSocket.fetchInitialData(currentPage, itemsPerPage)
         }, 2000)
       })
     }
-  }, [playerPortfolios, teamPortfolios, matchDataById, loading, fetchAllData, autoSellingInProgress, tradeModalPortfolio])
+  }, [playerPortfolios, teamPortfolios, matchDataById, loading, autoSellingInProgress, tradeModalPortfolio, currentPage, itemsPerPage])
 
   const openTradeModal = async (portfolio: PlayerPortfolio) => {
     setTradeModalPortfolio(portfolio)
@@ -1045,15 +703,16 @@ export default function Portfolio() {
     }
 
     // Check if latest inning is in progress
-    const latestInning = match.innings.find(inn => inn.number === match.latest_inning_number)
+    const latestInning = match.innings.find(inn => inn.number === Number(match.latest_inning_number))
     if (!latestInning) {
       return { allowed: false, reason: "Current inning data not available" }
     }
 
     // Check if inning is over (this indicates transition period)
-    const isInningOver = latestInning.status?.toLowerCase().includes("over") ||
-      latestInning.status?.toLowerCase().includes("completed") ||
-      latestInning.status?.toLowerCase().includes("finished")
+    const inningStatus = typeof latestInning.status === 'number'
+      ? String(latestInning.status)
+      : latestInning.status || ""
+    const isInningOver = inningStatus === "2" || inningStatus === "3" || inningStatus === "4"
 
     if (isInningOver) {
       return { allowed: false, reason: "Inning transition in progress" }
@@ -1113,8 +772,9 @@ export default function Portfolio() {
 
       toast.success(response?.message || `${action.charAt(0).toUpperCase() + action.slice(1)} successful`)
       setTradeModalOpen(false)
-      await fetchAllData(currentPage) // Refresh data after trade
-      await fetchRealTimeData() // Also refresh real-time data
+
+      // Refresh data after trade using portfolio socket
+      portfolioSocket.fetchInitialData(currentPage, itemsPerPage)
     } catch (e: any) {
       console.error(e?.message || `${action.charAt(0).toUpperCase() + action.slice(1)} failed`)
       toast.error(e?.message || `${action.charAt(0).toUpperCase() + action.slice(1)} failed`)
@@ -1137,7 +797,7 @@ export default function Portfolio() {
     setLoading(true)
     try {
       const match = matchDataById[teamTradeModalPortfolio.matchId]
-      const isTeamA = teamTradeModalPortfolio.team === match?.teama?.team_id
+      const isTeamA = Number(teamTradeModalPortfolio.team) === match?.teama?.team_id
       const team = isTeamA ? match?.teama : match?.teamb
 
       if (!team) {
@@ -1148,7 +808,7 @@ export default function Portfolio() {
       // Get real-time current price from match data
       let price = teamTradeModalPortfolio.currentPrice || "0"
       if (match && match.teamStockPrices) {
-        const isTeamA = teamTradeModalPortfolio.team === match.teama?.team_id
+        const isTeamA = Number(teamTradeModalPortfolio.team) === match.teama?.team_id
         const teamKey = isTeamA ? 'teama' : 'teamb'
         const realTimePrice = match.teamStockPrices[teamKey]
         if (realTimePrice !== undefined && realTimePrice !== null) {
@@ -1165,8 +825,9 @@ export default function Portfolio() {
 
       toast.success(response?.message || `${action.charAt(0).toUpperCase() + action.slice(1)} successful`)
       setTeamTradeModalOpen(false)
-      await fetchAllData(currentPage) // Refresh data after trade
-      await fetchRealTimeData() // Also refresh real-time data
+
+      // Refresh data after trade using portfolio socket
+      portfolioSocket.fetchInitialData(currentPage, itemsPerPage)
     } catch (e: any) {
       console.error(e?.message || `${action.charAt(0).toUpperCase() + action.slice(1)} failed`)
       toast.error(e?.message || `${action.charAt(0).toUpperCase() + action.slice(1)} failed`)
@@ -1217,8 +878,9 @@ export default function Portfolio() {
 
       await Promise.allSettled(sellPromises)
       toast.success(`Successfully sold all ${playerPortfolios.length} holdings`)
-      await fetchAllData(currentPage) // Refresh data after selling all
-      await fetchRealTimeData() // Also refresh real-time data
+
+      // Refresh data after selling all using portfolio socket
+      portfolioSocket.fetchInitialData(currentPage, itemsPerPage)
     } catch (e: any) {
       console.error("Sell all failed:", e?.message || "Unknown error")
       toast.error("Failed to sell all holdings")
@@ -1467,7 +1129,7 @@ export default function Portfolio() {
                                             href={`/betting-interface?id=${p.matchId}`}
                                             className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors cursor-pointer"
                                           >
-                                            {match?.short_title || "..."}
+                                            {match?.short_title || ""}
                                           </Link>
                                         </div>
                                         <Button
@@ -1762,20 +1424,21 @@ export default function Portfolio() {
 
                                 // Check if match/inning is over for this team
                                 const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "cancelled", "finished", "ended"]
-                                const statusNote = match?.status_str.toLowerCase()
+                                const statusNote = match?.status_str?.toLowerCase() || ""
                                 const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
 
                                 // Check if inning is over for this team
                                 let isInningOver = false
                                 if (match?.innings && match?.latest_inning_number) {
-                                  const latestInning = match.innings.find((inn) => inn.number === match.latest_inning_number)
-                                  isInningOver = Boolean(latestInning?.status?.toLowerCase().includes("over") ||
-                                    latestInning?.status?.toLowerCase().includes("completed") ||
-                                    latestInning?.status?.toLowerCase().includes("finished"))
+                                  const latestInning = match.innings.find((inn) => inn.number === Number(match.latest_inning_number))
+                                  {/* isInningOver = Boolean(latestInning?.status?.toLowerCase().includes("over") || */ }
+                                  {/*   latestInning?.status?.toLowerCase(c.includes("completed") || */ }
+                                  {/*   latestInning?.status?.toLowerCase().includes("finished")) */ }
+                                  isInningOver = latestInning?.status === 2
                                 }
 
-                                const teamInning = match?.innings?.find(inn => inn.batting_team_id === p.team)
-                                const isTeamUnavailable = isMatchOver || (isInningOver && teamInning?.number === match?.latest_inning_number) || false
+                                const teamInning = match?.innings?.find(inn => inn.batting_team_id === Number(p.team))
+                                const isTeamUnavailable = isMatchOver || (isInningOver && teamInning?.number === Number(match?.latest_inning_number)) || false
 
                                 return (
                                   <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-700/20 cursor-pointer">
@@ -1794,7 +1457,7 @@ export default function Portfolio() {
                                           variant="secondary"
                                           size="sm"
                                           className={`font-bold text-xs ${(() => {
-                                            const teamKey = p.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                                            const teamKey = Number(p.team) === match?.teama?.team_id ? 'teama' : 'teamb'
                                             const sellWindowKey = `team_${p.matchId}_${teamKey}`
                                             if (canTrade && !isTeamUnavailable) {
                                               if (sellWindowActive[sellWindowKey]) {
@@ -1817,7 +1480,7 @@ export default function Portfolio() {
                                           }}
                                         >
                                           {(() => {
-                                            const teamKey = p.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                                            const teamKey = Number(p.team) === match?.teama?.team_id ? 'teama' : 'teamb'
                                             const sellWindowKey = `team_${p.matchId}_${teamKey}`
                                             if (canTrade && !isTeamUnavailable) {
                                               if (sellWindowActive[sellWindowKey]) {
@@ -2222,7 +1885,7 @@ export default function Portfolio() {
           if (!portfolio) return null
 
           const match = matchDataById[portfolio.matchId]
-          const isTeamA = portfolio.team === match?.teama?.team_id
+          const isTeamA = Number(portfolio.team) === match?.teama?.team_id
           const team = isTeamA ? match?.teama : match?.teamb
 
           const boughtPrice = Number.parseFloat(portfolio.boughtPrice) || 0
@@ -2230,7 +1893,7 @@ export default function Portfolio() {
           // Get real-time current price from match data
           let currentPrice = Number.parseFloat(portfolio.currentPrice || "0") || 0
           if (match && match.teamStockPrices) {
-            const isTeamA = portfolio.team === match.teama?.team_id
+            const isTeamA = Number(portfolio.team) === match.teama?.team_id
             const teamKey = isTeamA ? 'teama' : 'teamb'
             const realTimePrice = match.teamStockPrices[teamKey]
             if (realTimePrice !== undefined && realTimePrice !== null) {
@@ -2395,7 +2058,7 @@ export default function Portfolio() {
                   <Button
                     size="lg"
                     className={`font-bold text-base ${(() => {
-                      const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                      const teamKey = Number(portfolio.team) === match?.teama?.team_id ? 'teama' : 'teamb'
                       const sellWindowKey = `team_${portfolio.matchId}_${teamKey}`
                       if (canTrade) {
                         if (sellWindowActive[sellWindowKey]) {
@@ -2408,7 +2071,7 @@ export default function Portfolio() {
                       }
                     })()}`}
                     onClick={() => {
-                      const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                      const teamKey = Number(portfolio.team) === match?.teama?.team_id ? 'teama' : 'teamb'
                       const sellWindowKey = `team_${portfolio.matchId}_${teamKey}`
 
                       if (!sellWindowActive[sellWindowKey]) {
@@ -2419,13 +2082,13 @@ export default function Portfolio() {
                       handleTeamTradeAction("sell")
                     }}
                     disabled={(() => {
-                      const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                      const teamKey = Number(portfolio.team) === match?.teama?.team_id ? 'teama' : 'teamb'
                       const sellWindowKey = `team_${portfolio.matchId}_${teamKey}`
                       return !canTrade || !sellWindowActive[sellWindowKey]
                     })()}
                   >
                     {(() => {
-                      const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                      const teamKey = Number(portfolio.team) === match?.teama?.team_id ? 'teama' : 'teamb'
                       const sellWindowKey = `team_${portfolio.matchId}_${teamKey}`
                       if (canTrade) {
                         if (sellWindowActive[sellWindowKey]) {
@@ -2442,7 +2105,7 @@ export default function Portfolio() {
 
                 {/* Sell window message */}
                 {(() => {
-                  const teamKey = portfolio.team === match?.teama?.team_id ? 'teama' : 'teamb'
+                  const teamKey = Number(portfolio.team) === match?.teama?.team_id ? 'teama' : 'teamb'
                   const sellWindowKey = `team_${portfolio.matchId}_${teamKey}`
                   return !sellWindowActive[sellWindowKey] && canTrade && (
                     <div className="mt-3 text-center">

@@ -2,9 +2,10 @@
 import React from "react";
 import { Match } from "@/types/match-schedule";
 import { useRouter } from "next/navigation";
-import { BadgePoundSterling, Cloud, Grid3X3, Hotel, PoundSterling } from "lucide-react";
+import { BadgePoundSterling, Cloud, Grid3X3, Hotel, PoundSterling, AlertCircle, X, Info } from "lucide-react";
 import MatchStartTimer from "@/app/(root)/betting-interface/components/match-start-timer";
 import { MatchInfoMarquee } from "@/components/betting/MatchInfoMarquee";
+import { toast } from "sonner";
 
 interface MatchCardProps {
   match: Match;
@@ -12,12 +13,51 @@ interface MatchCardProps {
 
 export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
   const [timerCompleted, setTimerCompleted] = React.useState(false);
+  const [popupMessage, setPopupMessage] = React.useState<string | null>(null);
   const router = useRouter();
 
   // Determine if the match should be considered live (timer or fallback to status_str)
-  const isLive = timerCompleted || (match.status_str && match.status_str.toLowerCase() === 'live');
+  const isLive = timerCompleted || (Number(match.status) === 3);
+
+  const handleRedirect = (matchId: string) => {
+    if (Number(match.status) === 3 && Number(match.game_state) === 3) {
+      // toast("Match is live now, redirecting to betting interface...");
+      router.push(`/betting-interface?id=${matchId}`)
+    }
+    if (Number(match.status) === 1) {
+      // toast("Match is in scheduled state right now")
+      setPopupMessage("Match is in scheduled state right now. Please wait for it to start.");
+    }
+    if (Number(match.status) === 2) {
+      // todo: create another page for match results and ask users to redirect there
+      setPopupMessage("Match is finished. you can't trade on finished match.");
+    }
+    if (Number(match.status) === 4) {
+      // todo: create another page for match results and ask users to redirect there
+      setPopupMessage("Sorry, the match is either abandoned, canceled or no result ");
+    }
+    if (Number(match.status) === 3 && Number(match.game_state) === 0) {
+      setPopupMessage("Match is live now, please wait for a while to get the live match data");
+    }
+    if (Number(match.status) === 3 && Number(match.game_state) === 1) {
+      setPopupMessage("Match will start shortly, please be patient or press the refresh button.");
+    }
+    if (Number(match.status) === 3 && Number(match.game_state) === 2) {
+      setPopupMessage("Toss is in progress, please wait for the toss result.");
+    }
+    if (Number(match.status) === 3 && Number(match.game_state) === 4) {
+      setPopupMessage("Match is Delayed or Postponed, please wait for the latest updates.");
+    }
+    if (Number(match.status) === 3 && Number(match.game_state) === 10) {
+      setPopupMessage("Match is Delayed or Postponed, please wait for the latest updates.");
+    }
+    if (Number(match.status) === 3 && Number(match.game_state) != 3) {
+      setPopupMessage(`${match.game_state_str}`);
+    }
+  };
+
   return (
-    <div className={`relative flex flex-col rounded-4xl overflow-hidden bg-gradient-to-tl from-transparent via-transparent to-sky- shadow-lg hover:shadow-2xl transition-all duration-300 animate-fade-in my-4 ${!isLive && "from-transparent via-transparent shadow-none hover:shadow-none"} w-full max-w-2xl mx-auto sm:my-2 sm:rounded-2xl sm:max-w-full`}>
+    <div className={`relative bg-white/3 flex flex-col rounded-4xl overflow-hidden bg-gradient-to-tl from-transparent via-transparent to-sky- shadow-lg hover:shadow-2xl transition-all duration-300 animate-fade-in my-4 ${!isLive && "from-transparent via-transparent shadow-none hover:shadow-none"} w-full max-w-2xl mx-auto sm:my-2 sm:rounded-2xl sm:max-w-full`}>
       {/* Header */}
       <div className="px-4 sm:px-2 pt-5 pb-3 flex flex-row items-center justify-between gap-2 ">
         {match.competition?.abbr && (
@@ -129,9 +169,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
       {/* Footer: More Info & CTA */}
       <div className="px-4 sm:px-2 pb-6 pt-2 gap-3 ">
         <button
-          onClick={() => router.push(`/betting-interface?id=${match.match_id}`)}
+          onClick={() => handleRedirect(match.match_id)}
           className={`w-full gap-2 rounded-full text-white font-extrabold py-3 px-8 cursor-pointer shadow-xl duration-300 transition-colors border-0 text-base sm:text-xl mt-2 md:mt-0 animate-fade-in min-h-[48px] sm:min-h-[40px] ${isLive
-            ? "bg-gradient-to-r from-transparent via-sky-700 to-transparent hover:via-green-800 hover:from-transparent hover:to-transparent"
+            ? "bg-gradient-to-r from-white/5 via-sky-500/60 to-white/5 hover:via-green-800 hover:from-transparent hover:to-transparent"
             : "bg-gradient-to-r from-transparent hover:via-red-600/70 hover:from-transparent hover:to-transparent via-red-500/80 to-transparent opacity-60 cursor-not-allowed"
             }`}
           aria-label={`Create Portfolio for ${match.teama?.name || 'Team A'} vs ${match.teamb?.name || 'Team B'}`}
@@ -141,6 +181,32 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
             : "Will be live soon"}
         </button>
       </div>
+
+      {/* Popup Message */}
+      {popupMessage && (
+        <div className="fixed inset-0 w-screen h-screen z-50 bg-black/50 backdrop-blur-sm flex justify-center items-center" onClick={() => setPopupMessage(null)}>
+          <div
+            className="z-[60] bg-gray-900/90 text-white px-8 py-6 rounded-xl shadow-2xl animate-fade-in max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <Info className="h-6 w-6 text-sky-400" />
+              <h3 className="text-lg font-semibold text-sky-100">Match Status</h3>
+              <button
+                onClick={() => setPopupMessage(null)}
+                className="ml-auto bg-gray-800/50 hover:bg-gray-700/80 rounded-full p-1 transition-colors"
+                aria-label="Close message"
+              >
+                <X className="h-4 w-4 text-gray-400 hover:text-white" />
+              </button>
+            </div>
+            <div className="text-center bg-white/5 p-5 rounded-xl mt-5 font-semibold">
+              <p className="text-gray-200">{popupMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div >
   );
 }; 
