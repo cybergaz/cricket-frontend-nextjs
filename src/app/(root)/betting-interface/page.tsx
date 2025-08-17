@@ -6,14 +6,13 @@ import { Loading } from "./components/Loading";
 import { MatchInfoApiResponse } from "./types-updated";
 import { toast } from "sonner";
 import MatchDashboard from "./match-dashboard";
-import { io } from "socket.io-client";
 
 export default function BettingPage() {
   const matchId = useSearchParams().get("id");
 
   const [matchData, setMatchData] = useState<MatchInfoApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const socketRef = useRef<any>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -44,43 +43,51 @@ export default function BettingPage() {
     };
 
     // Setup WebSocket connection
-    const setupSocket = () => {
+    const setupWebSocket = () => {
       // Use the WebSocket server URL from environment
-      const socket = io(process.env.NEXT_PUBLIC_BACKEND_SOCKET || 'http://localhost:3001');
+      const ws = new WebSocket(process.env.NEXT_PUBLIC_BACKEND_SOCKET || 'ws://localhost:3001');
 
-      socket.on('connect', () => {
+      ws.onopen = () => {
         console.log('Connected to WebSocket server');
-      });
+      };
 
-      socket.on('match_update', (data) => {
-        // Check if the update is for the current match
-        if (data && data.match_id && data.match_id.toString() === matchId) {
-          // console.log('Match update received for current match:', data);
-          // Update match data with the new data
-          setMatchData(prevData => {
-            if (!prevData) return data;
-            // Merge the new data with the existing data
-            return { ...prevData, ...data };
-          });
-          toast.info("Match data updated");
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          
+          if (message.type === 'match_update') {
+            const data = message.data;
+            // Check if the update is for the current match
+            if (data && data.match_id && data.match_id.toString() === matchId) {
+              // Update match data with the new data
+              setMatchData(prevData => {
+                if (!prevData) return data;
+                // Merge the new data with the existing data
+                return { ...prevData, ...data };
+              });
+              toast.info("Match data updated");
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
         }
-      });
+      };
 
-      socket.on('connect_error', (error) => {
-        console.error('Socket connection error:', error);
-      });
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
 
-      socket.on('disconnect', (reason) => {
-        console.log('Disconnected from WebSocket server:', reason);
-      });
+      ws.onclose = (event) => {
+        console.log('Disconnected from WebSocket server:', event.code, event.reason);
+      };
 
-      socketRef.current = socket;
+      wsRef.current = ws;
     };
 
     if (matchId) {
       setLoading(true);
       fetchData();
-      setupSocket();
+      setupWebSocket();
     } else {
       setLoading(true);
       setMatchData(null);
@@ -89,9 +96,9 @@ export default function BettingPage() {
 
     return () => {
       isMounted = false;
-      // Disconnect socket when component unmounts
-      if (socketRef.current) {
-        socketRef.current.disconnect();
+      // Disconnect WebSocket when component unmounts
+      if (wsRef.current) {
+        wsRef.current.close(1000, 'Component unmounted');
       }
     };
   }, [matchId]);

@@ -1,13 +1,12 @@
 import { create } from "zustand";
-import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 import { PlayerPortfolio, TeamPortfolio } from "@/app/(root)/positions/types";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-const BACKEND_SOCKET = process.env.NEXT_PUBLIC_BACKEND_SOCKET || (BACKEND_URL ? BACKEND_URL.replace(/:\d+/, ':3001') : 'http://localhost:3001');
+const BACKEND_SOCKET = process.env.NEXT_PUBLIC_BACKEND_SOCKET || (BACKEND_URL ? BACKEND_URL.replace(/:\d+/, ':3001') : 'ws://localhost:3001');
 
 interface PortfolioSocketState {
-  socket: Socket | null;
+  socket: WebSocket | null;
   playerPortfolios: PlayerPortfolio[];
   teamPortfolios: TeamPortfolio[];
   playerPortfoliosHistory: PlayerPortfolio[];
@@ -59,8 +58,8 @@ export const usePortfolioSocketStore = create<PortfolioSocketState>((set, get) =
 
   connectSocket: () => {
     // Don't create a new socket if one already exists
-    if (get().socket?.connected) {
-      console.log("Socket already connected");
+    if (get().socket?.readyState === WebSocket.OPEN) {
+      console.log("WebSocket already connected");
       return;
     }
 
@@ -86,149 +85,60 @@ export const usePortfolioSocketStore = create<PortfolioSocketState>((set, get) =
     const token = getTokenFromCookies();
     
     if (!token) {
-      console.error("No authentication token found. Cannot connect to portfolio socket.");
+      console.error("No authentication token found. Cannot connect to portfolio WebSocket.");
       toast.error("Authentication required. Please log in again.");
       return;
     }
 
-    const socket = io(`${BACKEND_SOCKET}/portfolio`, {
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      transports: ["websocket", "polling"],
-      withCredentials: true,
-      timeout: 20000,
-      auth: {
-        token: token
-      }
-    });
+    // Create WebSocket connection
+    const ws = new WebSocket(BACKEND_SOCKET);
 
-    socket.on("connect", () => {
-      console.log("Portfolio socket connected");
-      set({
-        isConnected: true,
-        isReconnecting: false,
-        reconnectAttempts: 0 // Reset reconnect attempts on successful connection
-      });
-
-      // Auto-subscribe to portfolio updates
-      get().subscribeToPortfolioUpdates();
-
-      // Show toast only if we were reconnecting
-      if (get().isReconnecting) {
-        toast.success("Reconnected to portfolio updates");
-      }
-    });
-
-    socket.on("connect_error", (error) => {
-      console.error("Portfolio socket connection error:", error);
-      set({ isConnected: false });
-
-      // Don't reconnect if it's an authentication error
-      if (error.message === 'Authentication failed' || error.message === 'Authentication token not provided') {
-        console.error("Authentication failed for portfolio socket. Please log in again.");
-        toast.error("Authentication failed. Please log in again.");
-        return;
-      }
-
-      // Start reconnection process for other errors
-      handleReconnect();
-    });
-
-    socket.on("reconnect_attempt", (attempt) => {
-      console.log(`Attempting to reconnect to portfolio socket: attempt ${attempt}`);
-      set({ isReconnecting: true });
-    });
-
-    socket.on("reconnect", () => {
-      console.log("Portfolio socket reconnected");
+    ws.onopen = () => {
+      console.log("Portfolio WebSocket connected");
       set({
         isConnected: true,
         isReconnecting: false,
         reconnectAttempts: 0
       });
-      toast.success("Reconnected to portfolio updates");
 
-      // Re-subscribe after reconnection
-      get().subscribeToPortfolioUpdates();
-    });
+      // Authenticate first
+      ws.send(JSON.stringify({
+        type: 'authenticate',
+        token: token
+      }));
 
-    socket.on("reconnect_error", (error) => {
-      console.error("Portfolio socket reconnection error:", error);
-      // Continue with manual reconnection strategy
-      handleReconnect();
-    });
+      // Show toast only if we were reconnecting
+      if (get().isReconnecting) {
+        toast.success("Reconnected to portfolio updates");
+      }
+    };
 
-    socket.on("reconnect_failed", () => {
-      console.error("Portfolio socket reconnection failed after all attempts");
-      // Continue with manual reconnection strategy
-      handleReconnect();
-    });
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        handleWebSocketMessage(message);
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
 
-    socket.on("disconnect", (reason) => {
-      console.log("Portfolio socket disconnected:", reason);
+    ws.onclose = (event) => {
+      console.log("Portfolio WebSocket disconnected:", event.code, event.reason);
       set({ isConnected: false });
 
-      // If the server disconnected us, we need to manually reconnect
-      if (reason === "io server disconnect" || reason === "transport close") {
+      // Handle reconnection
+      if (event.code !== 1000) { // Not a normal closure
         handleReconnect();
       }
-    });
+    };
 
-    // Handle portfolio updates
-    socket.on("portfolio_update", (data) => {
-      console.log("Portfolio update received:", data);
+    ws.onerror = (error) => {
+      console.error("Portfolio WebSocket error:", error);
+      set({ isConnected: false });
+      handleReconnect();
+    };
 
-      if (data.playerPortfolios) {
-        set({ playerPortfolios: data.playerPortfolios });
-      }
-
-      if (data.teamPortfolios) {
-        set({ teamPortfolios: data.teamPortfolios });
-      }
-
-      if (data.playerHistory) {
-        set({ playerPortfoliosHistory: data.playerHistory });
-      }
-
-      if (data.teamHistory) {
-        set({ teamPortfoliosHistory: data.teamHistory });
-      }
-
-      if (data.availableBalance !== undefined) {
-        set({ availableBalance: data.availableBalance });
-      }
-
-      if (data.totalProfit !== undefined) {
-        set({ totalProfit: data.totalProfit });
-      }
-
-      // Update match data if provided
-      if (data.matchData) {
-        set((state) => ({
-          matchDataById: {
-            ...state.matchDataById,
-            ...data.matchData
-          }
-        }));
-      }
-    });
-
-    // Handle match data updates (for price calculations)
-    socket.on("match_update", (data) => {
-      console.log(data)
-      if (data && data.match_id) {
-        set((state) => ({
-          matchDataById: {
-            ...state.matchDataById,
-            [data.match_id]: data
-          }
-        }));
-      }
-    });
-
-    set({ socket });
+    set({ socket: ws });
 
     // Helper function for manual reconnection with exponential backoff
     const handleReconnect = () => {
@@ -244,13 +154,13 @@ export const usePortfolioSocketStore = create<PortfolioSocketState>((set, get) =
       // Calculate delay with exponential backoff (1s, 2s, 4s, 8s, etc.)
       const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
 
-      console.log(`Scheduling portfolio socket reconnect in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+      console.log(`Scheduling portfolio WebSocket reconnect in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
 
       // Schedule reconnection
       setTimeout(() => {
         // Only attempt to reconnect if we're still disconnected
         if (!get().isConnected) {
-          console.log(`Attempting to reconnect portfolio socket (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+          console.log(`Attempting to reconnect portfolio WebSocket (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
           get().connectSocket();
         }
       }, delay);
@@ -261,24 +171,24 @@ export const usePortfolioSocketStore = create<PortfolioSocketState>((set, get) =
     const socket = get().socket;
     if (socket) {
       get().unsubscribeFromPortfolioUpdates();
-      socket.disconnect();
+      socket.close(1000, 'User disconnected');
       set({
         socket: null,
         isConnected: false,
         isReconnecting: false,
-        reconnectAttempts: 0 // Reset reconnect attempts
+        reconnectAttempts: 0
       });
     }
   },
 
   subscribeToPortfolioUpdates: () => {
     const socket = get().socket;
-    if (socket && socket.connected) {
-      socket.emit("subscribePortfolio");
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'subscribePortfolio' }));
       console.log("Subscribed to portfolio updates");
     } else {
-      console.warn("Cannot subscribe to portfolio updates: socket not connected");
-      // Try to reconnect if socket is not connected
+      console.warn("Cannot subscribe to portfolio updates: WebSocket not connected");
+      // Try to reconnect if WebSocket is not connected
       if (!get().isReconnecting && !get().isConnected) {
         get().connectSocket();
       }
@@ -287,8 +197,8 @@ export const usePortfolioSocketStore = create<PortfolioSocketState>((set, get) =
 
   unsubscribeFromPortfolioUpdates: () => {
     const socket = get().socket;
-    if (socket && socket.connected) {
-      socket.emit("unsubscribePortfolio");
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'unsubscribePortfolio' }));
       console.log("Unsubscribed from portfolio updates");
     }
   },
@@ -379,3 +289,71 @@ export const usePortfolioSocketStore = create<PortfolioSocketState>((set, get) =
     }
   },
 }));
+
+// Handle WebSocket messages
+const handleWebSocketMessage = (message: any) => {
+  const store = usePortfolioSocketStore.getState();
+
+  switch (message.type) {
+    case 'auth_success':
+      console.log('Authentication successful');
+      // Auto-subscribe to portfolio updates after authentication
+      store.subscribeToPortfolioUpdates();
+      break;
+
+    case 'auth_error':
+      console.error('Authentication failed:', message.message);
+      toast.error('Authentication failed. Please log in again.');
+      break;
+
+    case 'portfolio_update':
+      console.log("Portfolio update received:", message.data);
+      const data = message.data;
+
+      if (data.playerPortfolios) {
+        store.setPlayerPortfolios(data.playerPortfolios);
+      }
+
+      if (data.teamPortfolios) {
+        store.setTeamPortfolios(data.teamPortfolios);
+      }
+
+      if (data.playerHistory) {
+        store.setPlayerPortfoliosHistory(data.playerHistory);
+      }
+
+      if (data.teamHistory) {
+        store.setTeamPortfoliosHistory(data.teamHistory);
+      }
+
+      if (data.availableBalance !== undefined) {
+        store.setAvailableBalance(data.availableBalance);
+      }
+
+      if (data.totalProfit !== undefined) {
+        store.setTotalProfit(data.totalProfit);
+      }
+
+      // Update match data if provided
+      if (data.matchData) {
+        store.setMatchDataById({
+          ...store.matchDataById,
+          ...data.matchData
+        });
+      }
+      break;
+
+    case 'match_update':
+      console.log('Match update received:', message.data);
+      if (message.data && message.data.match_id) {
+        store.setMatchDataById({
+          ...store.matchDataById,
+          [message.data.match_id]: message.data
+        });
+      }
+      break;
+
+    default:
+      console.log('Unknown message type:', message.type);
+  }
+};

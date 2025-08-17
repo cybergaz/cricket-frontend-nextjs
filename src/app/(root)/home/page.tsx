@@ -16,6 +16,7 @@ const CricketSchedulePage = () => {
 
   const [matches, setMatches] = useState<Competition[]>();
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -253,13 +254,15 @@ const CricketSchedulePage = () => {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/competitions?limit=10`
         );
-        if (!res.ok) throw new Error("API Error");
+        if (!res.ok) {
+          setError("No Competitions found");
+        };
         const data = await res.json();
         const matchesData = data.data;
         setMatches(matchesData);
         return
       } catch (e) {
-        console.error("Fetch error:", e);
+        console.error("Competition fetch Fetch error:", e);
       } finally {
         setIsLoading(false);
       }
@@ -320,8 +323,10 @@ const CricketSchedulePage = () => {
         </div>
       </section>
 
-      {matches &&
-        <Competitions matches={matches} isLoading={isLoading} />
+      {
+        matches ?
+          <Competitions matches={matches} isLoading={isLoading} />
+          : <div className="text-lg text-red-500/70 pt-20 text-center">{error} </div>
       }
 
     </div>
