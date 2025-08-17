@@ -44,11 +44,25 @@ export default function BettingPage() {
 
     // Setup WebSocket connection
     const setupWebSocket = () => {
-      // Use the WebSocket server URL from environment
-      const ws = new WebSocket(process.env.NEXT_PUBLIC_BACKEND_SOCKET || 'ws://localhost:3001');
+      // Dynamically determine WebSocket protocol based on current page protocol
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = process.env.NEXT_PUBLIC_BACKEND_SOCKET || window.location.hostname + ':3001';
+      
+      // Ensure we have the correct protocol
+      const wsUrl = host.startsWith('ws://') || host.startsWith('wss://') 
+        ? host 
+        : `${protocol}//${host}`;
+      
+      let ws: WebSocket;
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch (error) {
+        console.error('Failed to create WebSocket connection:', error);
+        return; // Exit early if WebSocket creation fails
+      }
 
       ws.onopen = () => {
-        console.log('Connected to WebSocket server');
+        console.log('Connected to WebSocket server:', wsUrl);
       };
 
       ws.onmessage = (event) => {
@@ -75,10 +89,21 @@ export default function BettingPage() {
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        console.error('Failed to connect to:', wsUrl);
+        // Don't show error toast to user as WebSocket is not critical for basic functionality
       };
 
       ws.onclose = (event) => {
         console.log('Disconnected from WebSocket server:', event.code, event.reason);
+        // Attempt to reconnect after a delay if it wasn't a clean close
+        if (event.code !== 1000 && isMounted) {
+          setTimeout(() => {
+            if (isMounted) {
+              console.log('Attempting to reconnect WebSocket...');
+              setupWebSocket();
+            }
+          }, 5000);
+        }
       };
 
       wsRef.current = ws;
