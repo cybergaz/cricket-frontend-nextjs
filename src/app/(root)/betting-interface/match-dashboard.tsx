@@ -18,11 +18,21 @@ import { MatchInfoApiResponse, convertApiResponseToLegacyFormat, CricketMatchDat
 
 export interface MatchScorecardProps {
   matchData: MatchInfoApiResponse
+  ballEvent?: any
 }
 
-export default function MatchDashboard({ matchData }: MatchScorecardProps) {
+export default function MatchDashboard({ matchData, ballEvent }: MatchScorecardProps) {
 
   console.log(matchData)
+  console.log(ballEvent)
+
+  // const [ballData, setBallData] = useState<any>(null)
+  // useEffect(() => {
+  //   if(ballEvent){
+  //     setBallData(ballEvent)
+  //   }
+  //   setTimeout(()=> ballEvent)
+  // }, [ballEvent])
 
   const [isCommentaryOpen, setIsCommentaryOpen] = useState(false)
   const [isMatchInfoOpen, setIsMatchInfoOpen] = useState(false)
@@ -622,6 +632,12 @@ export default function MatchDashboard({ matchData }: MatchScorecardProps) {
                           className="w-28 h-28 md:w-36 md:h-36 rounded-full shadow-2xl bg-white/10 hover:scale-110 transition-transform duration-500"
                         />
                       </div>
+                      {
+                        ballEvent &&
+                        <div className="text-2xl md:text-4xl font-bold animate-pulse">
+                          {ballEvent.ball_event}
+                        </div>
+                      }
                       <div className="flex-1 flex flex-col items-center justify-center">
                         <div className="text-6xl md:text-7xl font-black text-white drop-shadow-xl tracking-wider">
                           {currentInnings?.scores}

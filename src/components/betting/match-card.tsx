@@ -51,6 +51,10 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
     if (Number(match.status) === 3 && Number(match.game_state) === 10) {
       setPopupMessage("Match is Delayed or Postponed, please wait for the latest updates.");
     }
+    if (Number(match.status) === 3 && Number(match.game_state) != 3 && Number(match.status_note.includes("won"))) {
+      setPopupMessage("Match is finished.");
+      router.push("/live-matches")
+    }
     if (Number(match.status) === 3 && Number(match.game_state) != 3) {
       setPopupMessage(`${match.game_state_str}`);
     }

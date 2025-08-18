@@ -11,6 +11,7 @@ export default function BettingPage() {
   const matchId = useSearchParams().get("id");
 
   const [matchData, setMatchData] = useState<MatchInfoApiResponse | null>(null);
+  const [ballEvent, setBallEvent] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -47,12 +48,12 @@ export default function BettingPage() {
       // Dynamically determine WebSocket protocol based on current page protocol
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = process.env.NEXT_PUBLIC_BACKEND_SOCKET || window.location.hostname + ':3001';
-      
+
       // Ensure we have the correct protocol
-      const wsUrl = host.startsWith('ws://') || host.startsWith('wss://') 
-        ? host 
+      const wsUrl = host.startsWith('ws://') || host.startsWith('wss://')
+        ? host
         : `${protocol}//${host}`;
-      
+
       let ws: WebSocket;
       try {
         ws = new WebSocket(wsUrl);
@@ -68,12 +69,21 @@ export default function BettingPage() {
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          
+
           if (message.type === 'match_update') {
             const data = message.data;
+
+
+            if (data && data.ball_event && data.match_id.toString() === matchId) {
+              console.log('Received ball event:', data.ball_event);
+              setBallEvent(data);
+              setTimeout(() => { setBallEvent(null) }, 1000);
+              toast.info("Ball Event updated");
+            }
             // Check if the update is for the current match
-            if (data && data.match_id && data.match_id.toString() === matchId) {
+            else if (data && data.match_id && data.match_id.toString() === matchId) {
               // Update match data with the new data
+              setBallEvent(null);
               setMatchData(prevData => {
                 if (!prevData) return data;
                 // Merge the new data with the existing data
@@ -134,7 +144,7 @@ export default function BettingPage() {
         loading
           ? <Loading />
           : matchData
-            ? <MatchDashboard matchData={matchData} />
+            ? <MatchDashboard matchData={matchData} ballEvent={ballEvent} />
             : <div className="text-xl font-bold text-center pt-20"> no match data, please report this to developers </div>
       }
     </>
