@@ -634,7 +634,7 @@ export default function MatchDashboard({ matchData, ballEvent }: MatchScorecardP
                       </div>
                       {
                         ballEvent &&
-                        <div className="text-2xl md:text-4xl font-bold animate-pulse">
+                        <div className="text-2xl font-bold animate-pulse">
                           {ballEvent.ball_event}
                         </div>
                       }
