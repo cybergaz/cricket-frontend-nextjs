@@ -23,8 +23,8 @@ export interface MatchScorecardProps {
 
 export default function MatchDashboard({ matchData, ballEvent }: MatchScorecardProps) {
 
-  console.log(matchData)
-  console.log(ballEvent)
+  // console.log(matchData)
+  // console.log(ballEvent)
 
   // const [ballData, setBallData] = useState<any>(null)
   // useEffect(() => {
@@ -624,22 +624,30 @@ export default function MatchDashboard({ matchData, ballEvent }: MatchScorecardP
               {currentInnings && battingTeam ? (
                 <Card className="rounded-2xl shadow-none overflow-hidden bg-slate-800/30">
                   <CardContent className="p-6 md:p-10 text-center space-y-4 md:space-y-6 flex flex-col items-center justify-center">
-                    <div className="flex w-full items-center">
+
+                    {
+                      ballEvent &&
+                      <div className="max-sm:flex hidden text-2xl max-sm:text-lg font-bold animate-pulse inset-0 items-center justify-center max-sm:items-start text-white">
+                        {ballEvent.ball_event}
+                      </div>
+                    }
+                    <div className="flex w-full items-center relative">
                       <div className="flex-1 flex justify-center items-center">
                         <img
                           src={battingTeam?.logo_url || "/placeholder.svg"}
                           alt={battingTeam?.name ?? "Batting Team"}
-                          className="w-28 h-28 md:w-36 md:h-36 rounded-full shadow-2xl bg-white/10 hover:scale-110 transition-transform duration-500"
+                          className="w-24 h-24 md:w-36 md:h-36 rounded-full shadow-2xl bg-white/10 hover:scale-110 transition-transform duration-500"
                         />
                       </div>
                       {
                         ballEvent &&
-                        <div className="text-2xl font-bold animate-pulse">
+                        <div className="max-sm:hidden text-2xl max-sm:text-lg font-bold animate-pulse absolute inset-0 flex items-center justify-center max-sm:items-start text-white">
                           {ballEvent.ball_event}
                         </div>
                       }
+
                       <div className="flex-1 flex flex-col items-center justify-center">
-                        <div className="text-6xl md:text-7xl font-black text-white drop-shadow-xl tracking-wider">
+                        <div className="text-4xl md:text-6xl font-black text-white drop-shadow-xl tracking-wider">
                           {currentInnings?.scores}
                         </div>
                         <div className="text-lg md:text-2xl font-semibold text-sky-100/80 mt-1">
@@ -1247,7 +1255,7 @@ export default function MatchDashboard({ matchData, ballEvent }: MatchScorecardP
             </div>
           )}          {/* Betting Modal (Now fully dynamic) */}
           {isBettingModalOpen && bettingPlayer && bettingPlayerIndex !== -1 && (
-            <div className="fixed inset-0 z-50 w-full h-full flex items-center justify-center bg-black/70 backdrop-blur-lg p-4 overflow-y-auto">
+            <div className="z-[60] fixed inset-0 w-full h-full flex items-center justify-center backdrop-blur-lg p-4 overflow-y-auto">
               <div className="w-full max-w-lg rounded-2xl bg-gradient-to-br from-gray-900/90 to-gray-900 p-4 sm:p-6 md:p-8 shadow-2xl">
                 {/* Header */}
                 <div className="mb-4 sm:mb-6 flex items-center justify-between">

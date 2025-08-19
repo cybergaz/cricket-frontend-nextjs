@@ -20,7 +20,7 @@ export default function BettingPage() {
 
     const fetchData = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/match/${matchId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/cricket/match_from_api/${matchId}`);
         const resJson = await res.json();
         const resData = resJson.data.response as MatchInfoApiResponse
 
@@ -55,6 +55,7 @@ export default function BettingPage() {
         : `${protocol}//${host}`;
 
       let ws: WebSocket;
+
       try {
         ws = new WebSocket(wsUrl);
       } catch (error) {
@@ -64,24 +65,21 @@ export default function BettingPage() {
 
       ws.onopen = () => {
         console.log('Connected to WebSocket server:', wsUrl);
+        ws.send(JSON.stringify({ type: 'subscribe_match', match_id: matchId }));
       };
 
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
 
+          if (message.type === 'match_subscription_success') {
+            console.log('Successfully subscribed to match:', matchId);
+          }
+
           if (message.type === 'match_update') {
             const data = message.data;
-
-
-            if (data && data.ball_event && data.match_id.toString() === matchId) {
-              console.log('Received ball event:', data.ball_event);
-              setBallEvent(data);
-              setTimeout(() => { setBallEvent(null) }, 1000);
-              toast.info("Ball Event updated");
-            }
             // Check if the update is for the current match
-            else if (data && data.match_id && data.match_id.toString() === matchId) {
+            if (data && data.match_id && data.match_id.toString() === matchId) {
               // Update match data with the new data
               setBallEvent(null);
               setMatchData(prevData => {
@@ -90,6 +88,17 @@ export default function BettingPage() {
                 return { ...prevData, ...data };
               });
               toast.info("Match data updated");
+            }
+          }
+
+          if (message.type === 'ball_update') {
+            const data = message.data;
+            // Check if the update is for the current match
+            if (data && data.ball_event && data.match_id.toString() === matchId) {
+              console.log('Received ball event:', data.ball_event);
+              setBallEvent(data);
+              setTimeout(() => { setBallEvent(null) }, 1000);
+              toast.info("Ball Event updated");
             }
           }
         } catch (error) {

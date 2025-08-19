@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { toast } from "sonner";
 import { PlayerPortfolio, TeamPortfolio } from "@/app/(root)/positions/types";
+import { getTokenFromCookies } from "@/lib/actions";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 const BACKEND_SOCKET = process.env.NEXT_PUBLIC_BACKEND_SOCKET || (BACKEND_URL ? BACKEND_URL.replace(/:\d+/, ':3001') : 'ws://localhost:3001');
@@ -83,7 +84,7 @@ export const usePortfolioSocketStore = create<PortfolioSocketState>((set, get) =
     };
 
     const token = getTokenFromCookies();
-    
+
     if (!token) {
       console.error("No authentication token found. Cannot connect to portfolio WebSocket.");
       toast.error("Authentication required. Please log in again.");
@@ -103,7 +104,7 @@ export const usePortfolioSocketStore = create<PortfolioSocketState>((set, get) =
 
       // Authenticate first
       ws.send(JSON.stringify({
-        type: 'authenticate',
+        type: 'subscribe_portfolio',
         token: token
       }));
 
@@ -182,9 +183,27 @@ export const usePortfolioSocketStore = create<PortfolioSocketState>((set, get) =
   },
 
   subscribeToPortfolioUpdates: () => {
+
+    const getTokenFromCookies = () => {
+      if (typeof document === "undefined") return null;
+      const cookies = document.cookie.split("; ");
+      const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="));
+      return tokenCookie ? tokenCookie.split("=")[1] : null;
+    };
+
+    const token = getTokenFromCookies();
+
+    if (!token) {
+      console.error("No authentication token found. Cannot connect to portfolio WebSocket.");
+      toast.error("Authentication required. Please log in again.");
+      return;
+    }
     const socket = get().socket;
     if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: 'subscribePortfolio' }));
+      socket.send(JSON.stringify({
+        type: 'subscribePortfolio',
+        token: token
+      }));
       console.log("Subscribed to portfolio updates");
     } else {
       console.warn("Cannot subscribe to portfolio updates: WebSocket not connected");
@@ -215,13 +234,6 @@ export const usePortfolioSocketStore = create<PortfolioSocketState>((set, get) =
     set({ isLoading: true });
 
     try {
-      const getTokenFromCookies = () => {
-        if (typeof document === "undefined") return null;
-        const cookies = document.cookie.split("; ");
-        const tokenCookie = cookies.find((cookie) => cookie.startsWith("token="));
-        return tokenCookie ? tokenCookie.split("=")[1] : null;
-      };
-
       const token = getTokenFromCookies();
       if (!token) {
         console.error("Authentication token not found. Please log in.");
@@ -261,26 +273,42 @@ export const usePortfolioSocketStore = create<PortfolioSocketState>((set, get) =
         ...(apiData.teamPortfolios || []).map((p: TeamPortfolio) => p.matchId)
       ]));
 
+      console.log("uniqueMatchIds -> ", uniqueMatchIds)
       const newMatchData: Record<string, any> = {};
+
       if (uniqueMatchIds.length > 0) {
         await Promise.all(
           uniqueMatchIds.map(async (matchId) => {
             try {
-              const matchRes = await fetch(`${BACKEND_URL}/cricket/scorecard/${matchId}`);
+              const matchRes = await fetch(`${BACKEND_URL}/cricket/match_from_api/${matchId}`);
               const matchResJson = await matchRes.json();
               if (matchResJson.success) {
-                newMatchData[matchId] = matchResJson.data;
+                const matchData = matchResJson.data.response;
+                console.log("matchData -> ", matchData)
+
+                // Ensure teamStockPrices exists with default values if not provided
+                if (!matchData.teamStockPrices) {
+                  matchData.teamStockPrices = { teama: 50, teamb: 50 };
+                }
+
+                newMatchData[matchId] = matchData;
               }
             } catch (e) {
               console.error(`Failed to fetch match data for ${matchId}`, e);
             }
           }),
         );
-      }
 
-      set((state) => ({
-        matchDataById: { ...state.matchDataById, ...newMatchData }
-      }));
+        // Update matchDataById with the collected match data
+        if (Object.keys(newMatchData).length > 0) {
+          set({
+            matchDataById: {
+              ...get().matchDataById,
+              ...newMatchData
+            }
+          });
+        }
+      }
 
     } catch (e: any) {
       console.error("Fetch error: " + (e?.message || "Unknown error"));
@@ -295,18 +323,17 @@ const handleWebSocketMessage = (message: any) => {
   const store = usePortfolioSocketStore.getState();
 
   switch (message.type) {
-    case 'auth_success':
-      console.log('Authentication successful');
+    case 'portfolio_subscription_success':
+      console.log('success:', message.message);
       // Auto-subscribe to portfolio updates after authentication
       store.subscribeToPortfolioUpdates();
       break;
 
-    case 'auth_error':
-      console.error('Authentication failed:', message.message);
-      toast.error('Authentication failed. Please log in again.');
+    case 'subscription_error':
+      toast.error('socket subscription_error: ' + message.message);
       break;
 
-    case 'portfolio_update':
+    case 'portfolio_update_xxxx':
       console.log("Portfolio update received:", message.data);
       const data = message.data;
 
@@ -336,6 +363,13 @@ const handleWebSocketMessage = (message: any) => {
 
       // Update match data if provided
       if (data.matchData) {
+        // Ensure all matches have teamStockPrices
+        Object.keys(data.matchData).forEach(matchId => {
+          if (data.matchData[matchId] && !data.matchData[matchId].teamStockPrices) {
+            data.matchData[matchId].teamStockPrices = { teama: 50, teamb: 50 };
+          }
+        });
+
         store.setMatchDataById({
           ...store.matchDataById,
           ...data.matchData
@@ -346,6 +380,11 @@ const handleWebSocketMessage = (message: any) => {
     case 'match_update':
       console.log('Match update received:', message.data);
       if (message.data && message.data.match_id) {
+        // Ensure the match has teamStockPrices
+        if (!message.data.teamStockPrices) {
+          message.data.teamStockPrices = { teama: 50, teamb: 50 };
+        }
+
         store.setMatchDataById({
           ...store.matchDataById,
           [message.data.match_id]: message.data
