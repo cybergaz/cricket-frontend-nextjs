@@ -825,9 +825,8 @@ export default function Portfolio() {
         const batsman = latestInning?.batsmen?.find((b) => b.batsman_id === p.playerId)
 
         if (batsman && batsman.dismissal != "" && batsman.dismissal.toLowerCase() !== "not out") {
-          // Calculate current price for selling
-          const currentPrice = calculateCurrentPriceFromMatch(match, p.playerId);
-          const sellPrice = currentPrice > 0 ? currentPrice : Number.parseFloat(p.boughtPrice) / 2;
+          // Sell at 50% of buy price when player is out
+          const sellPrice = Number.parseFloat(p.boughtPrice) / 2;
 
           portfoliosToSell.push({
             portfolio: p,
