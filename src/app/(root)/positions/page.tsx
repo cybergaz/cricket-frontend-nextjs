@@ -86,12 +86,11 @@ const getTeamB = (match?: MatchInfoApiResponse): Team | undefined => {
 // Helper function to safely check match status
 const isMatchLiveOrInProgress = (match?: MatchInfoApiResponse): boolean => {
   const status = match?.match_info?.status;
-  if (status && typeof status === 'string') {
-    const statusStr = status as string;
-    return statusStr.toLowerCase() === "live" || statusStr.toLowerCase() === "inprogress";
+  if (typeof status === 'string') {
+    const statusNum = Number(status);
+    return statusNum === 3; // 3 = Live
   } else if (typeof status === 'number') {
-    // Assuming 1 means in progress/live based on API documentation
-    return status === 1;
+    return status === 3; // 3 = Live
   }
   return false;
 }
@@ -116,11 +115,24 @@ const isInningOver = (inning?: any): boolean => {
 
   // Handle both string and number status types
   if (typeof status === 'string') {
-    return ["2", "3", "4", "completed", "over", "finished"].includes(status.toLowerCase());
+    const statusNum = Number(status);
+    return statusNum === 2; // 2 = Completed
   } else if (typeof status === 'number') {
-    return status === 2 || status === 3 || status === 4;
+    return status === 2; // 2 = Completed
   }
 
+  return false;
+}
+
+// Helper function to check if match is over
+const isMatchOver = (match?: MatchInfoApiResponse): boolean => {
+  const status = match?.match_info?.status;
+  if (typeof status === 'string') {
+    const statusNum = Number(status);
+    return statusNum === 2; // 2 = Completed
+  } else if (typeof status === 'number') {
+    return status === 2; // 2 = Completed
+  }
   return false;
 }
 
@@ -183,6 +195,123 @@ const calculatePlayerPnL = (
   const pnl = (currentPrice - boughtPrice) * quantity;
   const pnlPercent = boughtPrice > 0 ? (pnl / (boughtPrice * quantity)) * 100 : 0;
   return { pnl, pnlPercent };
+}
+
+// Helper function to calculate team stock price (copied from match-dashboard)
+const calculateTeamStockPriceForDisplay = (innings: any[], battingTeamId: string, matchId: string) => {
+  console.log(`calculateTeamStockPriceForDisplay called:`, {
+    inningsCount: innings.length,
+    battingTeamId,
+    matchId
+  });
+
+  if (!innings || innings.length === 0) {
+    console.log(`No innings data, returning default price 50`);
+    return 50; // Default launch price
+  }
+
+  // Check if we have a cached price in localStorage
+  const storageKey = `team_stock_${matchId}_${battingTeamId}`;
+  const cachedPrice = localStorage.getItem(storageKey);
+
+  if (cachedPrice) {
+    console.log(`Using cached price for ${storageKey}: ${cachedPrice}`);
+    return parseFloat(cachedPrice);
+  }
+
+  // Find the current inning where the team is batting
+  const currentInning = innings.find(inning => String(inning.batting_team_id) === String(battingTeamId));
+  if (!currentInning || !currentInning.batsmen) {
+    console.log(`No batting inning found for team ${battingTeamId}, returning default price 50`);
+    return 50;
+  }
+
+  console.log(`Found batting inning for team ${battingTeamId}:`, {
+    inningNumber: currentInning.number,
+    batsmenCount: currentInning.batsmen.length,
+    batsmen: currentInning.batsmen.map((b: any) => ({
+      name: b.name,
+      runs: b.runs,
+      how_out: b.how_out,
+      dismissal: b.dismissal,
+      batting: b.batting
+    }))
+  });
+
+  let accumulatedPrice = 50; // Start with launch price
+  const batsmen = currentInning.batsmen;
+
+  // Sort batsmen by their batting order (assuming they come in order they played)
+  // We'll use the array order as batting order since that's how they appear in the data
+  batsmen.forEach((batsman: any, index: number) => {
+    const runs = Number(batsman.runs) || 0;
+    const isOut = batsman.how_out !== "Not out" && batsman.dismissal !== "";
+    const isCurrentlyBatting = batsman.batting === "true" && batsman.dismissal === "";
+
+    console.log(`Processing batsman ${batsman.name}:`, {
+      runs,
+      isOut,
+      isCurrentlyBatting,
+      how_out: batsman.how_out,
+      dismissal: batsman.dismissal
+    });
+
+    if (runs > 0) {
+      // Add 20% of runs to accumulated price
+      const runsContribution = runs * 0.2;
+      accumulatedPrice += runsContribution;
+      console.log(`Added ${runsContribution} to price (${runs} runs * 0.2), new total: ${accumulatedPrice}`);
+    }
+
+    // If player is out, subtract 10% from accumulated price
+    if (isOut) {
+      const outPenalty = accumulatedPrice * 0.1;
+      accumulatedPrice -= outPenalty;
+      console.log(`Subtracted ${outPenalty} from price (out penalty), new total: ${accumulatedPrice}`);
+    }
+
+    // For currently batting players, we still add their runs but don't apply out penalty yet
+    if (isCurrentlyBatting && runs > 0) {
+      // Runs are already added above, no additional penalty
+      console.log(`Player ${batsman.name} is currently batting with ${runs} runs`);
+    }
+  });
+
+  // Ensure price doesn't go below 0
+  const finalPrice = Math.max(0, accumulatedPrice);
+  console.log(`Final calculated price for team ${battingTeamId}: ${finalPrice}`);
+
+  return finalPrice;
+}
+
+// Helper function to calculate current team price for a portfolio
+const calculateCurrentTeamPrice = (match?: MatchInfoApiResponse, teamId?: string): number => {
+  if (!match || !teamId || !match.scorecard?.innings) {
+    console.log(`Team price calculation failed:`, {
+      hasMatch: !!match,
+      teamId,
+      hasInnings: !!match?.scorecard?.innings
+    });
+    return 50; // Default price
+  }
+
+  const innings = match.scorecard.innings;
+  const matchId = match.match_info?.match_id?.toString() || '';
+
+  console.log(`Calculating team price for team ${teamId} in match ${matchId}:`, {
+    inningsCount: innings.length,
+    innings: innings.map(inn => ({
+      number: inn.number,
+      status: inn.status,
+      batting_team_id: inn.batting_team_id,
+      batsmenCount: inn.batsmen?.length || 0
+    }))
+  });
+
+  const price = calculateTeamStockPriceForDisplay(innings, teamId, matchId);
+  console.log(`Calculated team price for team ${teamId}: ${price}`);
+
+  return price;
 }
 
 export default function Portfolio() {
@@ -352,7 +481,23 @@ export default function Portfolio() {
 
   // Price change detection and sell window activation
   useEffect(() => {
-    if (playerPortfolios.length === 0) return
+    if (playerPortfolios.length === 0 && teamPortfolios.length === 0) return
+
+    console.log("Price change detection running for:", {
+      playerPortfolios: playerPortfolios.length,
+      teamPortfolios: teamPortfolios.length
+    });
+
+    // Debug team portfolios
+    if (teamPortfolios.length > 0) {
+      console.log("Team portfolios data:", teamPortfolios.map(p => ({
+        teamName: p.teamName,
+        team: p.team,
+        matchId: p.matchId,
+        quantity: p.quantity,
+        boughtPrice: p.boughtPrice
+      })));
+    }
 
     playerPortfolios.forEach((portfolio) => {
       const match = matchDataById[portfolio.matchId]
@@ -444,13 +589,42 @@ export default function Portfolio() {
     // Check team stock price changes
     teamPortfolios.forEach((portfolio) => {
       const match = matchDataById[portfolio.matchId]
-      if (!match) return
+      if (!match) {
+        console.log(`No match data found for team portfolio:`, portfolio.matchId);
+        return;
+      }
 
-      const isTeamA = Number(portfolio.team) === getTeamA(match)?.team_id
+      const isTeamA = String(portfolio.team) === String(getTeamA(match)?.team_id)
       const teamKey = isTeamA ? 'teama' : 'teamb'
-      const teamStockPrices = getTeamStockPrices(match)
-      const currentTeamPrice = teamStockPrices[teamKey] !== undefined && teamStockPrices[teamKey] !== null ? teamStockPrices[teamKey] : 50
+
+      // Calculate current team price using our function
+      const currentTeamPrice = calculateCurrentTeamPrice(match, String(portfolio.team));
       const sellWindowKey = `team_${portfolio.matchId}_${teamKey}`
+
+      // Debug logging for team price changes
+      console.log(`Team ${portfolio.teamName} price check:`, {
+        matchId: portfolio.matchId,
+        teamId: portfolio.team,
+        teamIdType: typeof portfolio.team,
+        teamAId: getTeamA(match)?.team_id,
+        teamAIdType: typeof getTeamA(match)?.team_id,
+        teamBId: getTeamB(match)?.team_id,
+        teamBIdType: typeof getTeamB(match)?.team_id,
+        isTeamA,
+        teamKey,
+        sellWindowKey,
+        currentPrice: currentTeamPrice,
+        lastPrice: previousTeamStockPrices.current[sellWindowKey] || 0,
+        // Debug match data
+        matchHasScorecard: !!match.scorecard,
+        matchInningsCount: match.scorecard?.innings?.length || 0,
+        matchInnings: match.scorecard?.innings?.map(inn => ({
+          number: inn.number,
+          batting_team_id: inn.batting_team_id,
+          batting_team_id_type: typeof inn.batting_team_id,
+          status: inn.status
+        }))
+      });
 
       // Store last valid team price (non-zero price)
       if (currentTeamPrice > 0) {
@@ -465,6 +639,7 @@ export default function Portfolio() {
         if (!justActivatedSellWindow.current[sellWindowKey]) {
           setSellWindowActive(prev => {
             if (!prev[sellWindowKey]) {
+              console.log(`Activating sell window for team ${portfolio.teamName} with key ${sellWindowKey}`);
               setSellWindowTimeLeft(prevTime => ({ ...prevTime, [sellWindowKey]: 5 }))
               justActivatedSellWindow.current[sellWindowKey] = true
               // Reset the flag after a short delay
@@ -480,6 +655,7 @@ export default function Portfolio() {
         previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
       } else if (lastTeamPrice === 0) {
         // First time setting price
+        console.log(`Setting initial team price for ${portfolio.teamName}: ${currentTeamPrice}`);
         previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
       }
     })
@@ -560,18 +736,12 @@ export default function Portfolio() {
         third_fielder_id: "",
       }
 
-      // TEMPORARILY DISABLE AUTO-SELLING FOR DEBUGGING
-      // We'll return early here to prevent any auto-selling
-
-      // Check if match is over
-      const matchStatus = match.match_info?.status
-      const isMatchOver = matchStatus === 2 || String(matchStatus) === "2"
-
-      if (isMatchOver) {
+      // Check if match is over (status = 2 = Completed)
+      if (isMatchOver(match)) {
         console.log(`Match ${p.matchId} is over, auto-selling player ${p.playerName}`);
 
-        // Use last valid price if available, otherwise use current price
-        const lastValidPrice = lastValidPrices.current[p.playerId] || Number.parseFloat(p.currentPrice || "0")
+        // Use last valid price if available, otherwise calculate current price
+        const lastValidPrice = lastValidPrices.current[p.playerId] || calculateCurrentPriceFromMatch(match, p.playerId)
         portfoliosToSell.push({
           portfolio: p,
           price: String(lastValidPrice),
@@ -593,7 +763,7 @@ export default function Portfolio() {
         return;
       }
 
-      // Check if inning is over using our helper function
+      // Check if inning is over using our helper function (status = 2 = Completed)
       const inningOverStatus = isInningOver(latestInning);
       if (latestInning) {
         console.log(`Inning status for match ${p.matchId}:`, {
@@ -625,39 +795,43 @@ export default function Portfolio() {
           isPlayerOut: isPlayerOut
         });
 
-        // Auto-sell if inning is over and player is not out (or if price is 0)
-        const currentPrice = Number.parseFloat(p.currentPrice || "0");
-        // if (!isPlayerOut || currentPrice === 0) {
-        //   // Use last valid price if available, otherwise use current price
-        //   const lastValidPrice = lastValidPrices.current[p.playerId] || currentPrice;
-        //
-        //   console.log(`Auto-selling player ${p.playerName}:`, {
-        //     reason: !isPlayerOut ? "Player Not Out" : "Price Zero",
-        //     price: lastValidPrice
-        //   });
-        //
-        //   portfoliosToSell.push({
-        //     portfolio: p,
-        //     price: String(lastValidPrice),
-        //     reason: `Inning is Over${!isPlayerOut ? " - Player Not Out" : " - Price Zero"}`,
-        //   });
-        //
-        //   // Close trade modal if this player is currently being traded
-        //   if (tradeModalPortfolio !== null && tradeModalPortfolio.playerId === p.playerId) {
-        //     setTradeModalOpen(false);
-        //     setTradeModalPortfolio(null);
-        //   }
-        // }
+        // Auto-sell if inning is over and player is not out
+        if (!isPlayerOut) {
+          // Use last valid price if available, otherwise use current price
+          const lastValidPrice = lastValidPrices.current[p.playerId] || calculateCurrentPriceFromMatch(match, p.playerId);
+
+          console.log(`Auto-selling player ${p.playerName}:`, {
+            reason: "Inning is Over - Player Not Out",
+            price: lastValidPrice
+          });
+
+          portfoliosToSell.push({
+            portfolio: p,
+            price: String(lastValidPrice),
+            reason: `Inning is Over - Player Not Out`,
+          });
+
+          // Close trade modal if this player is currently being traded
+          if (tradeModalPortfolio !== null && tradeModalPortfolio.playerId === p.playerId) {
+            setTradeModalOpen(false);
+            setTradeModalPortfolio(null);
+          }
+        }
       }
 
+      // Check if player is out
       if (match.scorecard?.innings && match.match_info?.latest_inning_number) {
         const latestInning = match.scorecard.innings.find((inn) => inn.number === Number(match.match_info.latest_inning_number))
         const batsman = latestInning?.batsmen?.find((b) => b.batsman_id === p.playerId)
 
         if (batsman && batsman.dismissal != "" && batsman.dismissal.toLowerCase() !== "not out") {
+          // Calculate current price for selling
+          const currentPrice = calculateCurrentPriceFromMatch(match, p.playerId);
+          const sellPrice = currentPrice > 0 ? currentPrice : Number.parseFloat(p.boughtPrice) / 2;
+
           portfoliosToSell.push({
             portfolio: p,
-            price: (Number.parseFloat(p.boughtPrice) / 2).toString(),
+            price: String(sellPrice),
             reason: `${p.playerName} is Out`,
           })
 
@@ -669,71 +843,8 @@ export default function Portfolio() {
         }
       }
 
-      // Additional check for when player price drops to 0 during their inning
-      if (match.scorecard?.innings && match.match_info?.latest_inning_number) {
-        const latestInning = match.scorecard.innings.find((inn) => inn.number === Number(match.match_info.latest_inning_number))
-        const batsman = latestInning?.batsmen?.find((b) => b.batsman_id === p.playerId)
-
-        // Check if this player belongs to the current inning
-        const playerInning = match.scorecard.innings.find((inn) => {
-          return inn.batsmen?.some((batsman) => batsman.batsman_id === p.playerId)
-        })
-
-        if (playerInning && playerInning.number === Number(match.match_info.latest_inning_number) && batsman) {
-          const currentPrice = Number.parseFloat(p.currentPrice || "0")
-          const isPlayerOut = batsman.dismissal !== "" && batsman.dismissal.toLowerCase() !== "not out"
-
-          // Auto-sell if price is 0 and player is not out (this indicates inning ended for this player)
-          // if (currentPrice === 0 && !isPlayerOut) {
-          //   // Use last valid price if available, otherwise use 0
-          //   const lastValidPrice = lastValidPrices.current[p.playerId] || 0
-          //   portfoliosToSell.push({
-          //     portfolio: p,
-          //     price: String(lastValidPrice),
-          //     reason: `Player Inning Ended - Price Zero`,
-          //   })
-          //
-          //   // Close trade modal if this player is currently being traded
-          //   if (tradeModalPortfolio !== null && tradeModalPortfolio.playerId === p.playerId) {
-          //     setTradeModalOpen(false)
-          //     setTradeModalPortfolio(null)
-          //   }
-          // }
-        }
-      }
-
-      // Final safety check: if player price is 0 and they're not out, auto-sell regardless of inning status
-      const currentPrice = Number.parseFloat(p.currentPrice || "0")
-      if (currentPrice === 0) {
-        // Check if player is out in any inning
-        let isPlayerOut = false
-        if (match.scorecard?.innings) {
-          for (const inning of match.scorecard.innings) {
-            const batsman = inning.batsmen?.find((b) => b.batsman_id === p.playerId)
-            if (batsman && batsman.dismissal !== "" && batsman.dismissal.toLowerCase() !== "not out") {
-              isPlayerOut = true
-              break
-            }
-          }
-        }
-
-        // If player is not out and price is 0, auto-sell
-        // if (!isPlayerOut) {
-        //   // Use last valid price if available, otherwise use 0
-        //   const lastValidPrice = lastValidPrices.current[p.playerId]
-        //   portfoliosToSell.push({
-        //     portfolio: p,
-        //     price: String(lastValidPrice),
-        //     reason: `Player Price Zero - Auto Sell`,
-        //   })
-        //
-        //   // Close trade modal if this player is currently being traded
-        //   if (tradeModalPortfolio && tradeModalPortfolio.playerId === p.playerId) {
-        //     setTradeModalOpen(false)
-        //     setTradeModalPortfolio(null)
-        //   }
-        // }
-      }
+      // REMOVED: The problematic auto-selling logic that was causing issues
+      // No more auto-selling based on price being 0
     })
 
     // Check team portfolios for auto-selling
@@ -741,19 +852,13 @@ export default function Portfolio() {
       const match = matchDataById[p.matchId]
       if (!match) return
 
-      const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "cancelled", "finished", "ended"]
-      const statusNote = `${match.match_info.status_note || ""} ${match.match_info.live || ""}`.toLowerCase()
-      const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
-
-      if (isMatchOver) {
-        // Get current team stock price for selling
-        const isTeamA = Number(p.team) === getTeamA(match)?.team_id
-        const teamKey = isTeamA ? 'teama' : 'teamb'
-        const sellWindowKey = `team_${teamKey}`
-        const teamStockPrices = getTeamStockPrices(match)
-        const currentPrice = isTeamA ? teamStockPrices.teama : teamStockPrices.teamb
+      // Check if match is over (status = 2 = Completed)
+      if (isMatchOver(match)) {
+        // Get current team stock price for selling using our calculation function
+        const currentPrice = calculateCurrentTeamPrice(match, p.team);
+        const sellWindowKey = `team_${p.team}`
         // Use last valid price if available, otherwise use current price
-        const lastValidPrice = lastValidTeamPrices.current[sellWindowKey] || currentPrice || 0
+        const lastValidPrice = lastValidTeamPrices.current[sellWindowKey] || currentPrice
         teamPortfoliosToSell.push({
           portfolio: p,
           price: String(lastValidPrice),
@@ -766,20 +871,17 @@ export default function Portfolio() {
       if (match.scorecard?.innings && match.match_info?.latest_inning_number) {
         const latestInning = match.scorecard.innings.find((inn) => inn.number === Number(match.match_info.latest_inning_number))
 
-        // Check if the latest inning is over (status indicates inning completion)
+        // Check if the latest inning is over (status = 2 = Completed)
         const inningStatus = typeof latestInning?.status === 'number'
-          ? String(latestInning?.status)
-          : latestInning?.status || ""
-        const isInningOver = inningStatus === "2" || inningStatus === "3" || inningStatus === "4"
+          ? latestInning?.status
+          : Number(latestInning?.status || "0")
+        const isInningOver = inningStatus === 2
 
         // If inning is over and this team was batting in the latest inning, auto-sell team stocks
         if (isInningOver && latestInning?.batting_team_id === Number(p.team)) {
-          // Get current team stock price for selling
-          const isTeamA = Number(p.team) === getTeamA(match)?.team_id
-          const teamKey = isTeamA ? 'teama' : 'teamb'
-          const sellWindowKey = `team_${teamKey}`
-          const teamStockPrices = getTeamStockPrices(match)
-          const currentPrice = isTeamA ? teamStockPrices.teama : teamStockPrices.teamb
+          // Get current team stock price for selling using our calculation function
+          const currentPrice = calculateCurrentTeamPrice(match, p.team);
+          const sellWindowKey = `team_${p.team}`
           // Use last valid price if available, otherwise use current price
           const lastValidPrice = lastValidTeamPrices.current[sellWindowKey] || currentPrice || 0
           teamPortfoliosToSell.push({
@@ -861,7 +963,7 @@ export default function Portfolio() {
         }, 2000)
       })
     }
-  }, [playerPortfolios, teamPortfolios, matchDataById, loading, autoSellingInProgress, tradeModalPortfolio, currentPage, itemsPerPage])
+  }, [playerPortfolios, teamPortfolios, matchDataById, loading, autoSellingInProgress, tradeModalPortfolio, currentPage, itemsPerPage]);
 
   const openTradeModal = async (portfolio: PlayerPortfolio) => {
     setTradeModalPortfolio(portfolio)
@@ -905,19 +1007,15 @@ export default function Portfolio() {
       return { allowed: false, reason: "No Match data available" }
     }
 
-    // Check if match is over
-    const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "cancelled", "finished", "ended"]
-    const statusNote = `${match.match_info.status_note || ""} ${match.match_info.live || ""}`.toLowerCase()
-    const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
-
-    if (isMatchOver) {
+    // Check if match is over (status = 2 = Completed)
+    if (isMatchOver(match)) {
       return { allowed: false, reason: "Match is over" }
     }
 
-    // Check if we have valid team stock prices (with fallback)
-    const teamStockPrices = getTeamStockPrices(match)
-    const teamAPrice = teamStockPrices.teama !== undefined && teamStockPrices.teama !== null ? teamStockPrices.teama : 50
-    const teamBPrice = teamStockPrices.teamb !== undefined && teamStockPrices.teamb !== null ? teamStockPrices.teamb : 50
+    // Check if we have valid team stock prices using our calculation function
+    // We'll check both teams to ensure we can calculate prices
+    const teamAPrice = calculateCurrentTeamPrice(match, match.match_info.teama?.team_id?.toString());
+    const teamBPrice = calculateCurrentTeamPrice(match, match.match_info.teamb?.team_id?.toString());
 
     if (typeof teamAPrice !== 'number' || typeof teamBPrice !== 'number') {
       return { allowed: false, reason: "Team stock prices not available" }
@@ -934,11 +1032,11 @@ export default function Portfolio() {
       return { allowed: false, reason: "Current inning data not available" }
     }
 
-    // Check if inning is over (this indicates transition period)
+    // Check if inning is over (status = 2 = Completed, this indicates transition period)
     const inningStatus = typeof latestInning.status === 'number'
-      ? String(latestInning.status)
-      : latestInning.status || ""
-    const isInningOver = inningStatus === "2" || inningStatus === "3" || inningStatus === "4"
+      ? latestInning.status
+      : Number(latestInning.status || "0")
+    const isInningOver = inningStatus === 2
 
     if (isInningOver) {
       return { allowed: false, reason: "Inning transition in progress" }
@@ -975,7 +1073,12 @@ export default function Portfolio() {
         second_fielder_id: "",
         third_fielder_id: "",
       }
-      const price = tradeModalPortfolio.currentPrice || "0"
+
+      // Calculate current price from match data instead of using portfolio data
+      const match = matchDataById[tradeModalPortfolio.matchId]
+      const currentPrice = calculateCurrentPriceFromMatch(match, tradeModalPortfolio.playerId)
+      const price = String(currentPrice)
+
       const quantityStr = String(tradeQuantity)
       const matchId = tradeModalPortfolio.matchId
 
@@ -1031,17 +1134,10 @@ export default function Portfolio() {
         return
       }
 
-      // Get real-time current price from match data
-      let price = teamTradeModalPortfolio.currentPrice || "0"
-      if (match) {
-        const teamStockPrices = getTeamStockPrices(match)
-        const isTeamA = Number(teamTradeModalPortfolio.team) === getTeamA(match)?.team_id
-        const teamKey = isTeamA ? 'teama' : 'teamb'
-        const realTimePrice = teamStockPrices[teamKey]
-        if (realTimePrice !== undefined && realTimePrice !== null) {
-          price = String(realTimePrice)
-        }
-      }
+      // Get real-time current price from match data using our calculation function
+      const currentPrice = calculateCurrentTeamPrice(match, teamTradeModalPortfolio.team)
+      const price = String(currentPrice)
+
       const quantityStr = String(teamTradeQuantity)
       const matchId = teamTradeModalPortfolio.matchId
 
@@ -1096,7 +1192,12 @@ export default function Portfolio() {
           second_fielder_id: "",
           third_fielder_id: "",
         }
-        const price = portfolio.currentPrice || "0"
+
+        // Calculate current price from match data instead of using portfolio data
+        const match = matchDataById[portfolio.matchId]
+        const currentPrice = calculateCurrentPriceFromMatch(match, portfolio.playerId)
+        const price = String(currentPrice)
+
         const quantity = portfolio.quantity
         const matchId = portfolio.matchId
 
@@ -1645,11 +1746,12 @@ export default function Portfolio() {
                               {teamPortfolios.map((p, idx) => {
                                 const boughtPrice = Number.parseFloat(p.boughtPrice) || 0
                                 const match = matchDataById[p.matchId]
-                                const isTeamA = match ? Number(p.team) === getTeamA(match)?.team_id : false
-                                const teamStockPrices = match ? getTeamStockPrices(match) : { teama: 0, teamb: 0 }
-                                const currentPrice = teamStockPrices[isTeamA ? 'teama' : 'teamb'] !== undefined ?
-                                  teamStockPrices[isTeamA ? 'teama' : 'teamb'] :
-                                  Number.parseFloat(p.currentPrice || "0") || 0
+                                const isTeamA = String(p.team) === String(getTeamA(match)?.team_id)
+                                const teamKey = isTeamA ? 'teama' : 'teamb'
+
+                                // Calculate current price using the team stock price calculation function
+                                const currentPrice = calculateCurrentTeamPrice(match, String(p.team));
+
                                 const quantity = Number.parseInt(p.quantity, 10) || 0
                                 const pnl = (currentPrice - boughtPrice) * quantity
                                 const pnlPercent = boughtPrice > 0 ? (pnl / (boughtPrice * quantity)) * 100 : 0
@@ -1660,22 +1762,36 @@ export default function Portfolio() {
                                 const canTrade = tradingCheck.allowed
 
                                 // Check if match/inning is over for this team
-                                const matchOverWords = ["won", "loss", "draw", "abandoned", "no result", "completed", "cancelled", "finished", "ended"]
-                                const statusNote = match ? getMatchStatusStr(match).toLowerCase() : ""
-                                const isMatchOver = matchOverWords.some((word) => statusNote.includes(word))
+                                const matchIsOver = isMatchOver(match);
 
                                 // Check if inning is over for this team
                                 let isInningOver = false
                                 if (match?.scorecard?.innings && match?.match_info?.latest_inning_number) {
                                   const latestInning = match.scorecard.innings.find((inn) => inn.number === Number(match.match_info.latest_inning_number))
-                                  {/* isInningOver = Boolean(latestInning?.status?.toLowerCase().includes("over") || */ }
-                                  {/*   latestInning?.status?.toLowerCase(c.includes("completed") || */ }
-                                  {/*   latestInning?.status?.toLowerCase().includes("finished")) */ }
-                                  isInningOver = latestInning?.status === 2
+                                  // Check if inning is over (status = 2 = Completed)
+                                  const inningStatus = typeof latestInning?.status === 'number'
+                                    ? latestInning?.status
+                                    : Number(latestInning?.status || "0")
+                                  isInningOver = inningStatus === 2
                                 }
 
                                 const teamInning = match?.scorecard?.innings?.find(inn => inn.batting_team_id === Number(p.team))
-                                const isTeamUnavailable = isMatchOver || (isInningOver && teamInning?.number === Number(match?.match_info.latest_inning_number)) || false
+                                const isTeamUnavailable = matchIsOver || (isInningOver && teamInning?.number === Number(match?.match_info.latest_inning_number)) || false
+
+                                // Debug: Check sell window status
+                                const sellWindowKey = `team_${p.matchId}_${teamKey}`
+                                const sellWindowIsActive = sellWindowActive[sellWindowKey]
+                                const sellWindowTimeRemaining = sellWindowTimeLeft[sellWindowKey]
+
+                                console.log(`Team ${p.teamName} UI render:`, {
+                                  teamKey,
+                                  sellWindowKey,
+                                  sellWindowIsActive,
+                                  sellWindowTimeRemaining,
+                                  canTrade,
+                                  isTeamUnavailable,
+                                  currentPrice
+                                });
 
                                 return (
                                   <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-700/20 cursor-pointer">
@@ -1694,7 +1810,7 @@ export default function Portfolio() {
                                           variant="secondary"
                                           size="sm"
                                           className={`font-bold text-xs ${(() => {
-                                            const teamKey = Number(p.team) === getTeamA(match)?.team_id ? 'teama' : 'teamb'
+                                            const teamKey = String(p.team) === String(getTeamA(match)?.team_id) ? 'teama' : 'teamb'
                                             const sellWindowKey = `team_${p.matchId}_${teamKey}`
                                             if (canTrade && !isTeamUnavailable) {
                                               if (sellWindowActive[sellWindowKey]) {
@@ -1717,7 +1833,7 @@ export default function Portfolio() {
                                           }}
                                         >
                                           {(() => {
-                                            const teamKey = Number(p.team) === getTeamA(match)?.team_id ? 'teama' : 'teamb'
+                                            const teamKey = String(p.team) === String(getTeamA(match)?.team_id) ? 'teama' : 'teamb'
                                             const sellWindowKey = `team_${p.matchId}_${teamKey}`
                                             if (canTrade && !isTeamUnavailable) {
                                               if (sellWindowActive[sellWindowKey]) {
@@ -2127,17 +2243,9 @@ export default function Portfolio() {
 
           const boughtPrice = Number.parseFloat(portfolio.boughtPrice) || 0
 
-          // Get real-time current price from match data
-          let currentPrice = Number.parseFloat(portfolio.currentPrice || "0") || 0
-          if (match) {
-            const teamStockPrices = getTeamStockPrices(match)
-            const isTeamA = Number(portfolio.team) === getTeamA(match)?.team_id
-            const teamKey = isTeamA ? 'teama' : 'teamb'
-            const realTimePrice = teamStockPrices[teamKey]
-            if (realTimePrice !== undefined && realTimePrice !== null) {
-              currentPrice = realTimePrice
-            }
-          }
+          // Get real-time current price from match data using our calculation function
+          const currentPrice = calculateCurrentTeamPrice(match, portfolio.team);
+
           const totalValue = teamTradeQuantity * currentPrice
           const pnl = (currentPrice - boughtPrice) * Number.parseInt(portfolio.quantity, 10)
 
