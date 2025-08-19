@@ -36,7 +36,7 @@ const calculatePlayerCurrentPrice = (batsmanData: Batsman | undefined, batsmanNu
     console.log("Missing data for price calculation:", { batsmanData, batsmanNumber });
     return 0;
   }
-  
+
   // Log the batsman data to debug
   console.log("Calculating price for batsman:", {
     name: batsmanData.name,
@@ -48,7 +48,7 @@ const calculatePlayerCurrentPrice = (batsmanData: Batsman | undefined, batsmanNu
     fours: batsmanData.fours,
     sixes: batsmanData.sixes
   });
-  
+
   const basePrice = batsmanNumber <= 2 ? 35 : batsmanNumber < 5 ? 30 : 25
   const price =
     basePrice -
@@ -58,7 +58,7 @@ const calculatePlayerCurrentPrice = (batsmanData: Batsman | undefined, batsmanNu
     Number(batsmanData.run3 || 0) * 2.25 +
     Number(batsmanData.fours || 0) * 3 +
     Number(batsmanData.sixes || 0) * 4.5
-    
+
   console.log("Calculated price:", price);
   return price
 }
@@ -104,23 +104,23 @@ const getMatchStatusStr = (match?: MatchInfoApiResponse): string => {
 // Helper function to safely check if an inning is over
 const isInningOver = (inning?: any): boolean => {
   if (!inning) return false;
-  
+
   const status = inning.status;
-  
+
   // Log the inning status for debugging
   console.log("Checking inning status:", {
     inningNumber: inning.number,
     status: status,
     type: typeof status
   });
-  
+
   // Handle both string and number status types
   if (typeof status === 'string') {
     return ["2", "3", "4", "completed", "over", "finished"].includes(status.toLowerCase());
   } else if (typeof status === 'number') {
     return status === 2 || status === 3 || status === 4;
   }
-  
+
   return false;
 }
 
@@ -129,7 +129,7 @@ const getLatestInning = (match?: MatchInfoApiResponse) => {
   if (!match?.scorecard?.innings || !match.match_info?.latest_inning_number) {
     return undefined;
   }
-  
+
   const latestInningNumber = Number(match.match_info.latest_inning_number);
   return match.scorecard.innings.find(inn => inn.number === latestInningNumber);
 }
@@ -139,16 +139,16 @@ const findPlayerInInnings = (match?: MatchInfoApiResponse, playerId?: string) =>
   if (!match?.scorecard?.innings || !playerId) {
     return { inning: undefined, batsman: undefined };
   }
-  
+
   for (const inning of match.scorecard.innings) {
     if (!inning.batsmen) continue;
-    
+
     const batsman = inning.batsmen.find(b => b.batsman_id === playerId);
     if (batsman) {
       return { inning, batsman };
     }
   }
-  
+
   return { inning: undefined, batsman: undefined };
 }
 
@@ -157,27 +157,27 @@ const calculateCurrentPriceFromMatch = (match?: MatchInfoApiResponse, playerId?:
   if (!match || !playerId) {
     return 0;
   }
-  
+
   // Find player in innings
   const { inning, batsman } = findPlayerInInnings(match, playerId);
   if (!batsman) {
     console.log(`Player ${playerId} not found in match ${match.match_info?.match_id}`);
     return 0;
   }
-  
+
   // Find batsman index/position to determine base price
   let batsmanIndex = -1;
   if (inning && inning.batsmen) {
     batsmanIndex = inning.batsmen.findIndex(b => b.batsman_id === playerId);
   }
-  
+
   return calculatePlayerCurrentPrice(batsman, batsmanIndex >= 0 ? batsmanIndex : undefined);
 }
 
 // Helper function to calculate P&L for a player
 const calculatePlayerPnL = (
-  boughtPrice: number, 
-  currentPrice: number, 
+  boughtPrice: number,
+  currentPrice: number,
   quantity: number
 ): { pnl: number, pnlPercent: number } => {
   const pnl = (currentPrice - boughtPrice) * quantity;
@@ -290,7 +290,7 @@ export default function Portfolio() {
     portfolioSocket.fetchInitialData(currentPage, itemsPerPage)
       .then(() => {
         setLoading(false)
-        
+
         // Debug logging
         console.log("Match data received:", Object.keys(matchDataById).length);
         if (Object.keys(matchDataById).length > 0) {
@@ -305,7 +305,7 @@ export default function Portfolio() {
             status: sampleMatch.match_info?.status,
             status_str: sampleMatch.match_info?.status_str
           });
-          
+
           if (sampleMatch.scorecard?.innings?.length > 0) {
             const latestInning = sampleMatch.scorecard.innings[sampleMatch.scorecard.innings.length - 1];
             console.log("Latest inning:", {
@@ -562,7 +562,6 @@ export default function Portfolio() {
 
       // TEMPORARILY DISABLE AUTO-SELLING FOR DEBUGGING
       // We'll return early here to prevent any auto-selling
-      return;
 
       // Check if match is over
       const matchStatus = match.match_info?.status
@@ -570,7 +569,7 @@ export default function Portfolio() {
 
       if (isMatchOver) {
         console.log(`Match ${p.matchId} is over, auto-selling player ${p.playerName}`);
-        
+
         // Use last valid price if available, otherwise use current price
         const lastValidPrice = lastValidPrices.current[p.playerId] || Number.parseFloat(p.currentPrice || "0")
         portfoliosToSell.push({
@@ -593,19 +592,19 @@ export default function Portfolio() {
         console.log(`No latest inning found for match ${p.matchId}`);
         return;
       }
-      
+
       // Check if inning is over using our helper function
       const inningOverStatus = isInningOver(latestInning);
       if (latestInning) {
-        console.log(`Inning status for match ${p.matchId}:`, { 
+        console.log(`Inning status for match ${p.matchId}:`, {
           inningNumber: latestInning.number,
           isOver: inningOverStatus
         });
       }
-      
+
       // Find player in innings
       const { inning: playerInning, batsman } = findPlayerInInnings(match, p.playerId);
-      
+
       // Log player inning information
       if (playerInning) {
         console.log(`Player ${p.playerName} found in inning ${playerInning.number}`);
@@ -613,30 +612,30 @@ export default function Portfolio() {
         console.log(`Player ${p.playerName} not found in any innings`);
         return; // Skip if player not found in any innings
       }
-      
+
       // Check if player's inning is the latest inning and if it's over
       if (inningOverStatus && playerInning && latestInning && playerInning.number === latestInning.number) {
         // Check if player is out
-        const isPlayerOut = batsman && batsman.dismissal && 
-                           batsman.dismissal !== "" && 
-                           batsman.dismissal.toLowerCase() !== "not out";
-        
+        const isPlayerOut = batsman && batsman.dismissal &&
+          batsman.dismissal !== "" &&
+          batsman.dismissal.toLowerCase() !== "not out";
+
         console.log(`Player ${p.playerName} dismissal check:`, {
           dismissal: batsman?.dismissal || "N/A",
           isPlayerOut: isPlayerOut
         });
-        
+
         // Auto-sell if inning is over and player is not out (or if price is 0)
         const currentPrice = Number.parseFloat(p.currentPrice || "0");
         if (!isPlayerOut || currentPrice === 0) {
           // Use last valid price if available, otherwise use current price
           const lastValidPrice = lastValidPrices.current[p.playerId] || currentPrice;
-          
+
           console.log(`Auto-selling player ${p.playerName}:`, {
             reason: !isPlayerOut ? "Player Not Out" : "Price Zero",
             price: lastValidPrice
           });
-          
+
           portfoliosToSell.push({
             portfolio: p,
             price: String(lastValidPrice),
@@ -1342,15 +1341,15 @@ export default function Portfolio() {
                                 console.log("Player Portfolio:", p)
                                 const boughtPrice = Number.parseFloat(p.boughtPrice) || 0
                                 const match = matchDataById[p.matchId]
-                                
+
                                 // Calculate current price from match data instead of using portfolio data
                                 const currentPrice = calculateCurrentPriceFromMatch(match, p.playerId);
-                                
+
                                 const quantity = Number.parseInt(p.quantity, 10) || 0
-                                
+
                                 // Calculate P&L using the calculated current price
                                 const { pnl, pnlPercent } = calculatePlayerPnL(boughtPrice, currentPrice, quantity);
-                                
+
                                 const isPriceLoading = currentPrice === 0 && match && isMatchLiveOrInProgress(match)
 
                                 return (
@@ -1861,12 +1860,12 @@ export default function Portfolio() {
         (() => {
           const portfolio = tradeModalPortfolio
           const match = matchDataById[portfolio.matchId]
-          
+
           // Calculate current price from match data
           const currentPrice = calculateCurrentPriceFromMatch(match, portfolio.playerId);
           const boughtPrice = Number.parseFloat(portfolio.boughtPrice) || 0
           const totalValue = tradeQuantity * currentPrice
-          
+
           // Calculate P&L using the calculated current price
           const quantity = Number.parseInt(portfolio.quantity, 10) || 0
           const { pnl, pnlPercent } = calculatePlayerPnL(boughtPrice, currentPrice, quantity);
