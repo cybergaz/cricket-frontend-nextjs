@@ -627,27 +627,27 @@ export default function Portfolio() {
 
         // Auto-sell if inning is over and player is not out (or if price is 0)
         const currentPrice = Number.parseFloat(p.currentPrice || "0");
-        if (!isPlayerOut || currentPrice === 0) {
-          // Use last valid price if available, otherwise use current price
-          const lastValidPrice = lastValidPrices.current[p.playerId] || currentPrice;
-
-          console.log(`Auto-selling player ${p.playerName}:`, {
-            reason: !isPlayerOut ? "Player Not Out" : "Price Zero",
-            price: lastValidPrice
-          });
-
-          portfoliosToSell.push({
-            portfolio: p,
-            price: String(lastValidPrice),
-            reason: `Inning is Over${!isPlayerOut ? " - Player Not Out" : " - Price Zero"}`,
-          });
-
-          // Close trade modal if this player is currently being traded
-          if (tradeModalPortfolio !== null && tradeModalPortfolio.playerId === p.playerId) {
-            setTradeModalOpen(false);
-            setTradeModalPortfolio(null);
-          }
-        }
+        // if (!isPlayerOut || currentPrice === 0) {
+        //   // Use last valid price if available, otherwise use current price
+        //   const lastValidPrice = lastValidPrices.current[p.playerId] || currentPrice;
+        //
+        //   console.log(`Auto-selling player ${p.playerName}:`, {
+        //     reason: !isPlayerOut ? "Player Not Out" : "Price Zero",
+        //     price: lastValidPrice
+        //   });
+        //
+        //   portfoliosToSell.push({
+        //     portfolio: p,
+        //     price: String(lastValidPrice),
+        //     reason: `Inning is Over${!isPlayerOut ? " - Player Not Out" : " - Price Zero"}`,
+        //   });
+        //
+        //   // Close trade modal if this player is currently being traded
+        //   if (tradeModalPortfolio !== null && tradeModalPortfolio.playerId === p.playerId) {
+        //     setTradeModalOpen(false);
+        //     setTradeModalPortfolio(null);
+        //   }
+        // }
       }
 
       if (match.scorecard?.innings && match.match_info?.latest_inning_number) {
@@ -684,21 +684,21 @@ export default function Portfolio() {
           const isPlayerOut = batsman.dismissal !== "" && batsman.dismissal.toLowerCase() !== "not out"
 
           // Auto-sell if price is 0 and player is not out (this indicates inning ended for this player)
-          if (currentPrice === 0 && !isPlayerOut) {
-            // Use last valid price if available, otherwise use 0
-            const lastValidPrice = lastValidPrices.current[p.playerId] || 0
-            portfoliosToSell.push({
-              portfolio: p,
-              price: String(lastValidPrice),
-              reason: `Player Inning Ended - Price Zero`,
-            })
-
-            // Close trade modal if this player is currently being traded
-            if (tradeModalPortfolio !== null && tradeModalPortfolio.playerId === p.playerId) {
-              setTradeModalOpen(false)
-              setTradeModalPortfolio(null)
-            }
-          }
+          // if (currentPrice === 0 && !isPlayerOut) {
+          //   // Use last valid price if available, otherwise use 0
+          //   const lastValidPrice = lastValidPrices.current[p.playerId] || 0
+          //   portfoliosToSell.push({
+          //     portfolio: p,
+          //     price: String(lastValidPrice),
+          //     reason: `Player Inning Ended - Price Zero`,
+          //   })
+          //
+          //   // Close trade modal if this player is currently being traded
+          //   if (tradeModalPortfolio !== null && tradeModalPortfolio.playerId === p.playerId) {
+          //     setTradeModalOpen(false)
+          //     setTradeModalPortfolio(null)
+          //   }
+          // }
         }
       }
 
