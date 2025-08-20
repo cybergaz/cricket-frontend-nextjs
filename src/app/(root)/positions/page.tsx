@@ -532,8 +532,13 @@ export default function Portfolio() {
       }
 
       // Check if price has changed for this player
-      const lastPrice = previousPrices.current[portfolio.playerId] || 0
-      if (currentPrice !== lastPrice && lastPrice !== 0) {
+      const lastPrice = previousPrices.current[portfolio.playerId]
+      
+      if (lastPrice === undefined) {
+        // First time seeing this player, set initial price
+        previousPrices.current[portfolio.playerId] = currentPrice
+        console.log(`Initial price set for ${portfolio.playerName}: ${currentPrice}`)
+      } else if (currentPrice !== lastPrice) {
         // Check if wickets have increased for this match
         let wicketsIncreased = false
         if (match && match.scorecard?.innings && match.match_info?.latest_inning_number) {
@@ -580,13 +585,11 @@ export default function Portfolio() {
         }
         // Update the previous price after processing the change
         previousPrices.current[portfolio.playerId] = currentPrice
-      } else if (lastPrice === 0) {
-        // First time setting price
-        previousPrices.current[portfolio.playerId] = currentPrice
       }
+      // Don't update previousPrices if price hasn't changed - this preserves the last known price for change detection
     })
 
-    // Check team stock price changes
+          // Check team stock price changes
     teamPortfolios.forEach((portfolio) => {
       const match = matchDataById[portfolio.matchId]
       if (!match) {
@@ -614,7 +617,7 @@ export default function Portfolio() {
         teamKey,
         sellWindowKey,
         currentPrice: currentTeamPrice,
-        lastPrice: previousTeamStockPrices.current[sellWindowKey] || 0,
+        lastPrice: previousTeamStockPrices.current[sellWindowKey] || "undefined",
         // Debug match data
         matchHasScorecard: !!match.scorecard,
         matchInningsCount: match.scorecard?.innings?.length || 0,
@@ -632,8 +635,13 @@ export default function Portfolio() {
       }
 
       // Check if team stock price has changed
-      const lastTeamPrice = previousTeamStockPrices.current[sellWindowKey] || 0
-      if (currentTeamPrice !== lastTeamPrice && lastTeamPrice !== 0) {
+      const lastTeamPrice = previousTeamStockPrices.current[sellWindowKey]
+      
+      if (lastTeamPrice === undefined) {
+        // First time seeing this team, set initial price
+        console.log(`Setting initial team price for ${portfolio.teamName}: ${currentTeamPrice}`);
+        previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
+      } else if (currentTeamPrice !== lastTeamPrice) {
         console.log(`Team stock price changed for ${portfolio.teamName}: ${lastTeamPrice} -> ${currentTeamPrice}`)
         // Only activate sell window if it's not already active and wasn't just activated
         if (!justActivatedSellWindow.current[sellWindowKey]) {
@@ -653,11 +661,8 @@ export default function Portfolio() {
         }
         // Update the previous price after processing the change
         previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
-      } else if (lastTeamPrice === 0) {
-        // First time setting price
-        console.log(`Setting initial team price for ${portfolio.teamName}: ${currentTeamPrice}`);
-        previousTeamStockPrices.current[sellWindowKey] = currentTeamPrice
       }
+      // Don't update previousTeamStockPrices if price hasn't changed - this preserves the last known price for change detection
     })
   }, [playerPortfolios, teamPortfolios, matchDataById])
 

@@ -192,8 +192,14 @@ export default function MatchDashboard({ matchData, ballEvent }: MatchScorecardP
       const isCurrentlyBatting = batsman.batting === "true" && batsman.dismissal === ""
 
       // Check if price has changed for this player
-      const lastPrice = previousPrices.current[batsman.batsman_id] || 0
-      if (currentPrice !== lastPrice && lastPrice !== 0) {
+      const lastPrice = previousPrices.current[batsman.batsman_id]
+      
+      if (lastPrice === undefined) {
+        // First time seeing this player, set initial price
+        previousPrices.current[batsman.batsman_id] = currentPrice
+        console.log(`Initial price set for ${batsman.name}: ${currentPrice}`)
+      } else if (currentPrice !== lastPrice) {
+        // Price has changed for this player
         console.log(`Price changed for ${batsman.name}: ${lastPrice} -> ${currentPrice}`)
 
         // Only activate sell window if player is not out AND wickets haven't increased
@@ -216,15 +222,11 @@ export default function MatchDashboard({ matchData, ballEvent }: MatchScorecardP
 
         // Update the previous price after processing the change
         previousPrices.current[batsman.batsman_id] = currentPrice
-      } else if (lastPrice === 0) {
-        // First time setting price
-        previousPrices.current[batsman.batsman_id] = currentPrice
-      } else {
-        // Update previous price even when no change detected (for tracking)
-        previousPrices.current[batsman.batsman_id] = currentPrice
       }
+      // Don't update previousPrices if price hasn't changed - this preserves the last known price for change detection
     })
-  }, [data?.innings, data?.latest_inning_number])
+    
+  }, [data?.match_id, data?.latest_inning_number])
 
   // Team stock price update detection using new calculation method
   useEffect(() => {
